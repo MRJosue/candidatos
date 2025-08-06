@@ -5,9 +5,6 @@ use Illuminate\Support\Facades\Route;
 
 
 
-Route::get('/admin/login', function () {
-    return redirect('/login');
-})->name('filament.admin.auth.login');
 
 Route::get('/', function () {
     return view('welcome');
@@ -19,7 +16,7 @@ Route::get('/home', function () {
 
 Route::get('/dashboard', function () {
     return redirect('/admin');
-})->middleware(['auth'])->name('dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
 
 
 Route::middleware('auth')->group(function () {
