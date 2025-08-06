@@ -64,7 +64,7 @@ class TipoPuestoResource extends Resource
             ])
             ->filters([
                 // Puedes agregar filtros aquí si deseas
-            ])  ->extraAttributes(['autocomplete' => 'off']);
+            ])  ;
     }
 
     public static function getRelations(): array
