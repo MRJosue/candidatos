@@ -5,9 +5,9 @@ use Illuminate\Support\Facades\Route;
 
 
 
-Route::get('/admin/login', function () {
-    return redirect('/login');
-})->name('filament.admin.auth.login');
+// Route::get('/admin/login', function () {
+//     return redirect('/login');
+// })->name('filament.admin.auth.login');
 
 Route::get('/', function () {
     return view('welcome');
