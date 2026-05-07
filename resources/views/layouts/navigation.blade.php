@@ -18,20 +18,20 @@
                     <x-nav-link :href="route('talents.index')" :active="request()->routeIs('talents.*')">
                         Talentos
                     </x-nav-link>
+                    <x-nav-link :href="route('cv.index')" :active="request()->routeIs('cv.*')">
+                        CVs
+                    </x-nav-link>
+                    <x-nav-link :href="route('templates.index')" :active="request()->routeIs('templates.*')">
+                        Plantillas
+                    </x-nav-link>
                     <x-nav-link :href="route('companies.index')" :active="request()->routeIs('companies.*')">
-                        Companias
+                        Compañías
                     </x-nav-link>
                     <x-nav-link :href="route('vacancies.index')" :active="request()->routeIs('vacancies.*')">
                         Vacantes
                     </x-nav-link>
                     <x-nav-link :href="route('applications.index')" :active="request()->routeIs('applications.*')">
                         Postulaciones
-                    </x-nav-link>
-                    <x-nav-link :href="route('cv.index')" :active="request()->routeIs('cv.*')">
-                        CVs
-                    </x-nav-link>
-                    <x-nav-link :href="route('templates.index')" :active="request()->routeIs('templates.*')">
-                        Plantillas
                     </x-nav-link>
                     <x-nav-link :href="route('appointments.index')" :active="request()->routeIs('appointments.*')">
                         Citas
@@ -92,20 +92,20 @@
             <x-responsive-nav-link :href="route('talents.index')" :active="request()->routeIs('talents.*')">
                 Talentos
             </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('cv.index')" :active="request()->routeIs('cv.*')">
+                CVs
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('templates.index')" :active="request()->routeIs('templates.*')">
+                Plantillas
+            </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('companies.index')" :active="request()->routeIs('companies.*')">
-                Companias
+                Compañías
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('vacancies.index')" :active="request()->routeIs('vacancies.*')">
                 Vacantes
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('applications.index')" :active="request()->routeIs('applications.*')">
                 Postulaciones
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('cv.index')" :active="request()->routeIs('cv.*')">
-                CVs
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('templates.index')" :active="request()->routeIs('templates.*')">
-                Plantillas
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('appointments.index')" :active="request()->routeIs('appointments.*')">
                 Citas
