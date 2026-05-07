@@ -71,7 +71,7 @@
             </div>
         </div>
     </x-slot>
-
+  
     <style>
         #cv-preview-dialog::backdrop {
             background: rgba(107, 114, 128, 0.75);
