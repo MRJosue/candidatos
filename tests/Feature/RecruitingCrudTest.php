@@ -107,6 +107,19 @@ class RecruitingCrudTest extends TestCase
         ]);
     }
 
+    public function test_recruiter_can_download_talent_import_layout(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get(route('talents.import.layout'));
+
+        $response
+            ->assertOk()
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        $this->assertNotEmpty($response->streamedContent());
+    }
+
     public function test_recruiter_can_manage_companies(): void
     {
         $user = User::factory()->create();

@@ -66,7 +66,7 @@ class TalentImportController extends Controller
         $sheet->fromArray($labels, null, 'A1');
         $sheet->fromArray($samples, null, 'A2');
 
-        foreach (self::COLUMNS as $index => $column) {
+        foreach (array_values(self::COLUMNS) as $index => $column) {
             $letter = Coordinate::stringFromColumnIndex($index + 1);
             $sheet->getColumnDimension($letter)->setWidth($this->columnWidth($column['label']));
 
