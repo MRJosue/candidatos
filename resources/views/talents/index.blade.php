@@ -2,7 +2,10 @@
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">Talentos</h2>
-            <a href="{{ route('talents.create') }}" class="px-4 py-2 bg-gray-900 text-white rounded text-sm">Nuevo postulante</a>
+            <div class="flex items-center gap-2">
+                <a href="{{ route('talents.import') }}" class="px-4 py-2 bg-gray-100 text-gray-700 rounded text-sm">Carga masiva</a>
+                <a href="{{ route('talents.create') }}" class="px-4 py-2 bg-gray-900 text-white rounded text-sm">Nuevo postulante</a>
+            </div>
         </div>
     </x-slot>
 

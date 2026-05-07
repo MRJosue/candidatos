@@ -13,6 +13,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicTalentProfileController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\TalentController;
+use App\Http\Controllers\TalentImportController;
 use App\Http\Controllers\VacancyController;
 use Illuminate\Support\Facades\Route;
 
@@ -30,6 +31,10 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    Route::get('/talents/import', [TalentImportController::class, 'create'])->name('talents.import');
+    Route::get('/talents/import/layout', [TalentImportController::class, 'layout'])->name('talents.import.layout');
+    Route::post('/talents/import/preview', [TalentImportController::class, 'preview'])->name('talents.import.preview');
+    Route::post('/talents/import/store', [TalentImportController::class, 'store'])->name('talents.import.store');
     Route::resource('talents', TalentController::class);
     Route::post('/talents/{talent}/applications', [JobApplicationController::class, 'storeForTalent'])->name('talents.applications.store');
     Route::get('/talents/{talent}/cv/create', [CvProfileController::class, 'createForTalent'])->name('talents.cv.create');

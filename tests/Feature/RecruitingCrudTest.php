@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\Company;
-use App\Models\CvProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Tests\TestCase;
 
 class RecruitingCrudTest extends TestCase
@@ -51,6 +53,58 @@ class RecruitingCrudTest extends TestCase
             ->assertRedirect(route('talents.index'));
 
         $this->assertNull($talent->fresh());
+    }
+
+    public function test_recruiter_can_import_talents_from_excel_preview(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->post(route('talents.import.preview'), [
+                'talents_file' => $this->talentImportFile([
+                    [
+                        'Ana',
+                        'Lopez',
+                        'ana@example.com',
+                        '5551234567',
+                        'Ciudad de Mexico',
+                        'Backend Developer',
+                        'Backend Developer',
+                        'Senior',
+                        'LinkedIn',
+                        'active',
+                        'Inmediata',
+                        '45000',
+                        '55000',
+                        'MXN',
+                        'PHP, Laravel, MySQL',
+                        'Espanol, Ingles B2',
+                        'https://linkedin.com/in/ana',
+                        'Construye APIs y paneles internos.',
+                        'Lista para entrevista.',
+                        '2026-05-07',
+                    ],
+                ]),
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('talents.import'));
+
+        $this->assertSame(1, session('talent_import.rows.valid_count'));
+
+        $this->actingAs($user)
+            ->post(route('talents.import.store'))
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('talents.index'));
+
+        $talent = $user->talents()->first();
+
+        $this->assertSame('Ana', $talent->first_name);
+        $this->assertSame(['PHP', 'Laravel', 'MySQL'], $talent->technical_stack);
+        $this->assertDatabaseHas('talents', [
+            'recruiter_id' => $user->id,
+            'email' => 'ana@example.com',
+            'currency' => 'MXN',
+        ]);
     }
 
     public function test_recruiter_can_manage_companies(): void
@@ -343,5 +397,39 @@ class RecruitingCrudTest extends TestCase
         $this->assertSame(['PHP', 'Laravel'], $talent->technical_stack);
         $this->assertSame('CV actualizado', $talent->cvProfile->title);
         $this->assertSame('Perfil actualizado', $talent->cvProfile->summary);
+    }
+
+    private function talentImportFile(array $rows): UploadedFile
+    {
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray([
+            'Nombre',
+            'Apellido',
+            'Email',
+            'Telefono',
+            'Ubicacion',
+            'Headline',
+            'Puesto objetivo',
+            'Senioridad',
+            'Fuente',
+            'Estado',
+            'Disponibilidad',
+            'Expectativa minima',
+            'Expectativa maxima',
+            'Moneda',
+            'Stack tecnico',
+            'Idiomas',
+            'Links',
+            'Resumen tecnico',
+            'Notas internas',
+            'Ultimo contacto',
+        ], null, 'A1');
+        $sheet->fromArray($rows, null, 'A2');
+
+        $path = tempnam(sys_get_temp_dir(), 'talents-import-').'.xlsx';
+        (new Xlsx($spreadsheet))->save($path);
+
+        return new UploadedFile($path, 'talentos.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
     }
 }
