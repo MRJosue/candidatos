@@ -120,6 +120,19 @@ class RecruitingCrudTest extends TestCase
         $this->assertNotEmpty($response->streamedContent());
     }
 
+    public function test_talent_import_page_uses_relative_import_urls(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get(route('talents.import'));
+
+        $response
+            ->assertOk()
+            ->assertSee('href="/talents/import/layout"', false)
+            ->assertSee('action="/talents/import/preview"', false)
+            ->assertDontSee('https://candidatos.icu', false);
+    }
+
     public function test_recruiter_can_manage_companies(): void
     {
         $user = User::factory()->create();

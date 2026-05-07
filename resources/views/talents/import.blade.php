@@ -5,7 +5,7 @@
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">Carga masiva de talentos</h2>
                 <p class="text-sm text-gray-500">Descarga el layout, completa los registros y valida la previsualizacion antes de guardar.</p>
             </div>
-            <a href="{{ route('talents.index') }}" class="px-4 py-2 bg-gray-100 text-gray-700 rounded text-sm text-center">Volver</a>
+            <a href="/talents" class="px-4 py-2 bg-gray-100 text-gray-700 rounded text-sm text-center">Volver</a>
         </div>
     </x-slot>
 
@@ -26,7 +26,7 @@
                         <p class="mt-1 text-sm text-gray-500">Las columnas obligatorias estan resaltadas en amarillo dentro del archivo.</p>
                     </div>
 
-                    <a href="{{ route('talents.import.layout') }}" class="inline-flex items-center justify-center px-4 py-2 bg-gray-900 text-white rounded text-sm">
+                    <a href="/talents/import/layout" class="inline-flex items-center justify-center px-4 py-2 bg-gray-900 text-white rounded text-sm">
                         Descargar layout Excel
                     </a>
 
@@ -62,7 +62,7 @@
                         <p class="mt-1 text-sm text-gray-500">Acepta archivos .xlsx, .xls y .csv con la misma estructura del layout.</p>
                     </div>
 
-                    <form method="POST" action="{{ route('talents.import.preview') }}" enctype="multipart/form-data" class="space-y-4">
+                    <form method="POST" action="/talents/import/preview" enctype="multipart/form-data" class="space-y-4">
                         @csrf
                         <label class="block">
                             <span class="text-sm text-gray-700">Archivo de talentos</span>
@@ -91,7 +91,7 @@
                             </p>
                         </div>
 
-                        <form method="POST" action="{{ route('talents.import.store') }}" x-on:submit="saving = true">
+                        <form method="POST" action="/talents/import/store" x-on:submit="saving = true">
                             @csrf
                             <button class="px-4 py-2 bg-gray-900 text-white rounded text-sm disabled:cursor-not-allowed disabled:opacity-50" @disabled(! $canImport)>
                                 Cargar registros
