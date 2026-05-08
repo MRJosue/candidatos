@@ -36,14 +36,10 @@
                                     <a href="{{ route('vacancies.show', $application->vacancy) }}" class="font-medium text-gray-900">{{ $application->vacancy->display_title }}</a>
                                     <p class="text-sm text-gray-500">{{ $application->vacancy->display_company ?? 'Cliente confidencial' }}</p>
                                 </td>
-                                <td class="px-6 py-4 text-sm">
-                                    @php($colors = $application->statusColors())
-                                    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium" style="background-color: {{ $colors['background'] }}; color: {{ $colors['text'] }};">
-                                        <span class="h-2 w-2 rounded-full" style="background-color: {{ $colors['dot'] }};"></span>
-                                        {{ $application->statusLabel() }}
-                                    </span>
+                                <td class="px-6 py-4 text-sm text-gray-700 capitalize">{{ str_replace('_', ' ', $application->status) }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-700">
+                                    <x-application-stage-badge :stage="$application->stage" />
                                 </td>
-                                <td class="px-6 py-4 text-sm text-gray-700 capitalize">{{ str_replace('_', ' ', $application->stage) }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-700">{{ $application->match_score !== null ? $application->match_score.'%' : 'Sin score' }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-700">{{ $application->last_activity_at?->format('d/m/Y H:i') ?? 'Sin actividad' }}</td>
                                 <td class="px-6 py-4 text-right text-sm">

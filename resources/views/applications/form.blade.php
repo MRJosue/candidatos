@@ -46,7 +46,7 @@
         <span class="text-sm text-gray-700">Etapa</span>
         <select name="stage" class="mt-1 w-full rounded border-gray-300" required>
             @foreach ($stageOptions as $value => $label)
-                <option value="{{ $value }}" @selected(old('stage', $application->stage) === $value)>{{ $label }}</option>
+                <option value="{{ $value }}" @selected(old('stage', \App\Models\JobApplication::normalizedStage($application->stage)) === $value)>{{ $label }}</option>
             @endforeach
         </select>
     </label>

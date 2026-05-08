@@ -25,8 +25,8 @@ class JobApplicationController extends Controller
     {
         return view('applications.create', [
             'application' => new JobApplication([
-                'status' => JobApplication::DEFAULT_STATUS,
-                'stage' => 'screening',
+                'status' => 'applied',
+                'stage' => JobApplication::DEFAULT_STAGE,
                 'applied_at' => now(),
                 'last_activity_at' => now(),
             ]),
@@ -100,8 +100,8 @@ class JobApplicationController extends Controller
             'talent_id' => $talent->id,
             'vacancy_id' => $data['vacancy_id'],
             'cv_profile_id' => $talent->cvProfile?->id,
-            'status' => JobApplication::DEFAULT_STATUS,
-            'stage' => 'screening',
+            'status' => 'applied',
+            'stage' => JobApplication::DEFAULT_STAGE,
             'applied_at' => now(),
             'last_activity_at' => now(),
         ]);
@@ -160,18 +160,17 @@ class JobApplicationController extends Controller
 
     private function statusOptions(): array
     {
-        return JobApplication::statusOptions();
+        return [
+            'applied' => 'Aplicada',
+            'active' => 'Activa',
+            'rejected' => 'Rechazada',
+            'withdrawn' => 'Retirada',
+            'hired' => 'Contratada',
+        ];
     }
 
     private function stageOptions(): array
     {
-        return [
-            'screening' => 'Filtro inicial',
-            'interview' => 'Entrevista',
-            'technical_test' => 'Prueba tecnica',
-            'offer' => 'Oferta',
-            'hired' => 'Contratado',
-            'rejected' => 'Rechazado',
-        ];
+        return JobApplication::stageOptions();
     }
 }

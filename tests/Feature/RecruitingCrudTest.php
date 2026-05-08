@@ -304,8 +304,8 @@ class RecruitingCrudTest extends TestCase
         $response = $this->actingAs($user)->post(route('applications.store'), [
             'talent_id' => $talent->id,
             'vacancy_id' => $vacancy->id,
-            'status' => 'in_review',
-            'stage' => 'screening',
+            'status' => 'applied',
+            'stage' => 'review',
             'match_score' => 82,
             'notes' => 'Buen perfil',
         ]);
@@ -324,8 +324,8 @@ class RecruitingCrudTest extends TestCase
             ->put(route('applications.update', $application), [
                 'talent_id' => $talent->id,
                 'vacancy_id' => $vacancy->id,
-                'status' => 'hr_interview',
-                'stage' => 'interview',
+                'status' => 'active',
+                'stage' => 'technical_interview',
                 'match_score' => 90,
                 'notes' => 'Avanza a entrevista',
             ])
@@ -334,8 +334,8 @@ class RecruitingCrudTest extends TestCase
 
         $application->refresh();
 
-        $this->assertSame('hr_interview', $application->status);
-        $this->assertSame('interview', $application->stage);
+        $this->assertSame('active', $application->status);
+        $this->assertSame('technical_interview', $application->stage);
         $this->assertSame(90, $application->match_score);
 
         $this->actingAs($user)

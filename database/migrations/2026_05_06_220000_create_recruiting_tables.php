@@ -82,8 +82,8 @@ return new class extends Migration
             $table->foreignId('talent_id')->constrained('talents')->cascadeOnDelete();
             $table->foreignId('vacancy_id')->constrained()->cascadeOnDelete();
             $table->foreignId('cv_profile_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('status')->default('in_review');
-            $table->string('stage')->default('screening');
+            $table->string('status')->default('applied');
+            $table->string('stage')->default('waiting_feedback');
             $table->unsignedTinyInteger('match_score')->nullable();
             $table->timestamp('applied_at')->nullable();
             $table->timestamp('last_activity_at')->nullable();

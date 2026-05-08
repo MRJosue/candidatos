@@ -86,11 +86,7 @@
                                     {{ $application->vacancy->display_title }}
                                     <span class="block text-sm text-gray-500">{{ $application->vacancy->display_company ?? 'Cliente confidencial' }}</span>
                                 </span>
-                                @php($colors = $application->statusColors())
-                                <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-medium" style="background-color: {{ $colors['background'] }}; color: {{ $colors['text'] }};">
-                                    <span class="h-2 w-2 rounded-full" style="background-color: {{ $colors['dot'] }};"></span>
-                                    {{ $application->statusLabel() }}
-                                </span>
+                                <x-application-stage-badge :stage="$application->stage" class="shrink-0" />
                             </a>
                         @empty
                             <p class="text-gray-500">Sin postulaciones registradas.</p>

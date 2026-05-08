@@ -81,17 +81,10 @@
                         <h3 class="font-semibold text-gray-900">Pipeline</h3>
                     </div>
                     <div class="divide-y divide-gray-100">
-                        @forelse ($pipelineStatuses as $status)
+                        @forelse ($pipelineStages as $stage)
                             <div class="flex items-center justify-between gap-3 px-4 py-3">
-                                @php
-                                    $application = new \App\Models\JobApplication(['status' => $status->status]);
-                                    $colors = $application->statusColors();
-                                @endphp
-                                <span class="inline-flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-medium" style="background-color: {{ $colors['background'] }}; color: {{ $colors['text'] }};">
-                                    <span class="h-2 w-2 shrink-0 rounded-full" style="background-color: {{ $colors['dot'] }};"></span>
-                                    <span class="truncate">{{ $application->statusLabel() }}</span>
-                                </span>
-                                <span class="rounded bg-gray-900 px-2.5 py-1 text-sm font-semibold text-white">{{ $status->total }}</span>
+                                <x-application-stage-badge :stage="$stage->stage" />
+                                <span class="rounded bg-gray-900 px-2.5 py-1 text-sm font-semibold text-white">{{ $stage->total }}</span>
                             </div>
                         @empty
                             <p class="px-4 py-6 text-sm text-gray-500">Sin postulaciones en seguimiento.</p>

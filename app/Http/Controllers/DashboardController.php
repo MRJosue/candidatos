@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\JobApplication;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -31,9 +31,9 @@ class DashboardController extends Controller
                 ->latest()
                 ->limit(5)
                 ->get(),
-            'pipelineStatuses' => $user->jobApplications()
-                ->select('status', DB::raw('count(*) as total'))
-                ->groupBy('status')
+            'pipelineStages' => $user->jobApplications()
+                ->selectRaw($this->normalizedStageSql().' as stage, count(*) as total')
+                ->groupByRaw($this->normalizedStageSql())
                 ->orderByDesc('total')
                 ->get(),
             'nextAppointments' => $user->appointments()
@@ -43,5 +43,14 @@ class DashboardController extends Controller
                 ->limit(3)
                 ->get(),
         ]);
+    }
+
+    private function normalizedStageSql(): string
+    {
+        $cases = collect(JobApplication::LEGACY_STAGE_MAP)
+            ->map(fn (string $normalized, string $legacy) => "when '{$legacy}' then '{$normalized}'")
+            ->implode(' ');
+
+        return "case stage {$cases} else stage end";
     }
 }
