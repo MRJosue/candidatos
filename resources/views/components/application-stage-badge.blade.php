@@ -4,20 +4,22 @@
     $normalizedStage = \App\Models\JobApplication::normalizedStage($stage);
     $label = \App\Models\JobApplication::stageLabelFor($stage);
 
-    $classes = [
-        'waiting_feedback' => 'bg-pink-100 text-pink-700 ring-pink-200',
-        'socioeconomic_study' => 'bg-emerald-100 text-emerald-700 ring-emerald-200',
-        'psychometric_tests' => 'bg-orange-100 text-orange-700 ring-orange-200',
-        'technical_interview' => 'bg-amber-100 text-amber-800 ring-amber-200',
-        'review' => 'bg-sky-100 text-sky-700 ring-sky-200',
-        'hr_interview' => 'bg-purple-100 text-purple-700 ring-purple-200',
-        'offer_sent' => 'bg-yellow-100 text-yellow-700 ring-yellow-200',
-        'hired' => 'bg-emerald-100 text-emerald-700 ring-emerald-200',
-        'rejected' => 'bg-red-100 text-red-700 ring-red-200',
-    ][$normalizedStage] ?? 'bg-gray-100 text-gray-700 ring-gray-200';
+    $palette = [
+        'waiting_feedback' => ['background' => '#f3d8e5', 'text' => '#7a3f5f', 'ring' => '#ead0dc'],
+        'socioeconomic_study' => ['background' => '#dcebe3', 'text' => '#3d6f57', 'ring' => '#cfe2d8'],
+        'psychometric_tests' => ['background' => '#f2dcc8', 'text' => '#795335', 'ring' => '#ead0b7'],
+        'technical_interview' => ['background' => '#ead9c6', 'text' => '#72583d', 'ring' => '#dec6ad'],
+        'review' => ['background' => '#d5e5f6', 'text' => '#2d5f87', 'ring' => '#c5d9ee'],
+        'hr_interview' => ['background' => '#e8d6f4', 'text' => '#765099', 'ring' => '#ddc6ed'],
+        'offer_sent' => ['background' => '#f1e7bf', 'text' => '#786323', 'ring' => '#e4d79f'],
+        'hired' => ['background' => '#dcebe3', 'text' => '#3d6f57', 'ring' => '#cfe2d8'],
+        'rejected' => ['background' => '#f1d8d5', 'text' => '#8a4943', 'ring' => '#e7c7c3'],
+    ][$normalizedStage] ?? ['background' => '#f3f4f6', 'text' => '#4b5563', 'ring' => '#e5e7eb'];
+
+    $style = "display: inline-flex; max-width: 100%; align-items: center; border-radius: 9999px; padding: 0.25rem 0.625rem; font-size: 0.75rem; font-weight: 500; line-height: 1rem; background-color: {$palette['background']}; color: {$palette['text']}; box-shadow: inset 0 0 0 1px {$palette['ring']};";
 @endphp
 
-<span {{ $attributes->merge(['class' => "inline-flex max-w-full items-center rounded-full px-2.5 py-1 text-xs font-medium leading-4 ring-1 {$classes}"]) }}>
-    <span class="mr-1.5 h-2 w-2 shrink-0 rounded-full bg-current opacity-70"></span>
-    <span class="truncate">{{ $label }}</span>
+<span {{ $attributes->merge(['style' => $style]) }}>
+    <span style="margin-right: 0.375rem; height: 0.5rem; width: 0.5rem; flex-shrink: 0; border-radius: 9999px; background-color: currentColor; opacity: 0.7;"></span>
+    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ $label }}</span>
 </span>

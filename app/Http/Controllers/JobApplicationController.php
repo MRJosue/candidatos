@@ -160,13 +160,7 @@ class JobApplicationController extends Controller
 
     private function statusOptions(): array
     {
-        return [
-            'applied' => 'Aplicada',
-            'active' => 'Activa',
-            'rejected' => 'Rechazada',
-            'withdrawn' => 'Retirada',
-            'hired' => 'Contratada',
-        ];
+        return JobApplication::statusOptions();
     }
 
     private function stageOptions(): array

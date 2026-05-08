@@ -23,7 +23,7 @@
                 <div class="lg:col-span-2 bg-white p-6 rounded shadow-sm">
                     <h3 class="font-semibold mb-4">Seguimiento</h3>
                     <dl class="grid md:grid-cols-2 gap-4 text-sm">
-                        <div><dt class="text-gray-500">Estado</dt><dd class="capitalize">{{ str_replace('_', ' ', $application->status) }}</dd></div>
+                        <div><dt class="text-gray-500">Estado</dt><dd class="mt-1"><x-application-status-badge :status="$application->status" /></dd></div>
                         <div><dt class="text-gray-500">Etapa</dt><dd class="mt-1"><x-application-stage-badge :stage="$application->stage" /></dd></div>
                         <div><dt class="text-gray-500">Match</dt><dd>{{ $application->match_score !== null ? $application->match_score.'%' : 'Sin score' }}</dd></div>
                         <div><dt class="text-gray-500">CV</dt><dd>{{ $application->cvProfile?->title ?? 'Sin CV asociado' }}</dd></div>

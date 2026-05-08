@@ -36,7 +36,9 @@
                                     <a href="{{ route('vacancies.show', $application->vacancy) }}" class="font-medium text-gray-900">{{ $application->vacancy->display_title }}</a>
                                     <p class="text-sm text-gray-500">{{ $application->vacancy->display_company ?? 'Cliente confidencial' }}</p>
                                 </td>
-                                <td class="px-6 py-4 text-sm text-gray-700 capitalize">{{ str_replace('_', ' ', $application->status) }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-700">
+                                    <x-application-status-badge :status="$application->status" />
+                                </td>
                                 <td class="px-6 py-4 text-sm text-gray-700">
                                     <x-application-stage-badge :stage="$application->stage" />
                                 </td>
