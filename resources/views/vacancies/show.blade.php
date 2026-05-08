@@ -60,7 +60,13 @@
                                 </p>
                             </div>
                             <div class="text-right">
-                                <p class="text-sm capitalize">{{ str_replace('_', ' ', $application->stage) }}</p>
+                                @php($colors = $application->statusColors())
+                                <p>
+                                    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-medium" style="background-color: {{ $colors['background'] }}; color: {{ $colors['text'] }};">
+                                        <span class="h-2 w-2 rounded-full" style="background-color: {{ $colors['dot'] }};"></span>
+                                        {{ $application->statusLabel() }}
+                                    </span>
+                                </p>
                                 <p class="text-xs text-gray-500">{{ $application->cvProfile?->title ?? 'Sin CV asociado' }}</p>
                             </div>
                         </div>

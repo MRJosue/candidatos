@@ -23,7 +23,16 @@
                 <div class="lg:col-span-2 bg-white p-6 rounded shadow-sm">
                     <h3 class="font-semibold mb-4">Seguimiento</h3>
                     <dl class="grid md:grid-cols-2 gap-4 text-sm">
-                        <div><dt class="text-gray-500">Estado</dt><dd class="capitalize">{{ str_replace('_', ' ', $application->status) }}</dd></div>
+                        <div>
+                            <dt class="text-gray-500">Estado</dt>
+                            <dd>
+                                @php($colors = $application->statusColors())
+                                <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium" style="background-color: {{ $colors['background'] }}; color: {{ $colors['text'] }};">
+                                    <span class="h-2 w-2 rounded-full" style="background-color: {{ $colors['dot'] }};"></span>
+                                    {{ $application->statusLabel() }}
+                                </span>
+                            </dd>
+                        </div>
                         <div><dt class="text-gray-500">Etapa</dt><dd class="capitalize">{{ str_replace('_', ' ', $application->stage) }}</dd></div>
                         <div><dt class="text-gray-500">Match</dt><dd>{{ $application->match_score !== null ? $application->match_score.'%' : 'Sin score' }}</dd></div>
                         <div><dt class="text-gray-500">CV</dt><dd>{{ $application->cvProfile?->title ?? 'Sin CV asociado' }}</dd></div>

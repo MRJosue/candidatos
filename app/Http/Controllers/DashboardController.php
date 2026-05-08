@@ -31,9 +31,9 @@ class DashboardController extends Controller
                 ->latest()
                 ->limit(5)
                 ->get(),
-            'pipelineStages' => $user->jobApplications()
-                ->select('stage', DB::raw('count(*) as total'))
-                ->groupBy('stage')
+            'pipelineStatuses' => $user->jobApplications()
+                ->select('status', DB::raw('count(*) as total'))
+                ->groupBy('status')
                 ->orderByDesc('total')
                 ->get(),
             'nextAppointments' => $user->appointments()
