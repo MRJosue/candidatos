@@ -41,41 +41,24 @@ class JobApplicationController extends Controller
             ->latest()
             ->get();
 
+        $headers = $this->exportHeaders();
+        $rows = $applications
+            ->map(fn (JobApplication $application): array => $this->exportRow($application))
+            ->all();
+
+        if (! class_exists(\ZipArchive::class)) {
+            return $this->streamExcelHtml($headers, $rows);
+        }
+
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Postulaciones');
 
-        $headers = [
-            'Postulante',
-            'Email',
-            'Vacante',
-            'Compania',
-            'Estado',
-            'Etapa',
-            'Match',
-            'Fecha de postulacion',
-            'Ultima actividad',
-            'CV asociado',
-            'Notas',
-        ];
-
         $sheet->fromArray($headers, null, 'A1');
 
         $row = 2;
-        foreach ($applications as $application) {
-            $sheet->fromArray([
-                $application->talent->full_name,
-                $application->talent->email,
-                $application->vacancy->display_title,
-                $application->vacancy->display_company ?? 'Cliente confidencial',
-                $application->status_label,
-                JobApplication::stageLabelFor($application->stage),
-                $application->match_score !== null ? "{$application->match_score}%" : 'Sin score',
-                $application->applied_at?->format('d/m/Y H:i') ?? 'Sin fecha',
-                $application->last_activity_at?->format('d/m/Y H:i') ?? 'Sin actividad',
-                $application->cvProfile?->title ?? 'Sin CV asociado',
-                $application->notes,
-            ], null, "A{$row}");
+        foreach ($rows as $exportRow) {
+            $sheet->fromArray($exportRow, null, "A{$row}");
             $row++;
         }
 
@@ -350,5 +333,64 @@ class JobApplicationController extends Controller
             ->all();
 
         return [$stage, ...$legacyValues];
+    }
+
+    private function exportHeaders(): array
+    {
+        return [
+            'Postulante',
+            'Email',
+            'Vacante',
+            'Compania',
+            'Estado',
+            'Etapa',
+            'Match',
+            'Fecha de postulacion',
+            'Ultima actividad',
+            'CV asociado',
+            'Notas',
+        ];
+    }
+
+    private function exportRow(JobApplication $application): array
+    {
+        return [
+            $application->talent->full_name,
+            $application->talent->email,
+            $application->vacancy->display_title,
+            $application->vacancy->display_company ?? 'Cliente confidencial',
+            $application->status_label,
+            JobApplication::stageLabelFor($application->stage),
+            $application->match_score !== null ? "{$application->match_score}%" : 'Sin score',
+            $application->applied_at?->format('d/m/Y H:i') ?? 'Sin fecha',
+            $application->last_activity_at?->format('d/m/Y H:i') ?? 'Sin actividad',
+            $application->cvProfile?->title ?? 'Sin CV asociado',
+            $application->notes,
+        ];
+    }
+
+    private function streamExcelHtml(array $headers, array $rows): StreamedResponse
+    {
+        return response()->streamDownload(function () use ($headers, $rows): void {
+            echo '<html><head><meta charset="UTF-8"></head><body><table border="1"><thead><tr>';
+
+            foreach ($headers as $header) {
+                echo '<th>'.e($header).'</th>';
+            }
+
+            echo '</tr></thead><tbody>';
+
+            foreach ($rows as $row) {
+                echo '<tr>';
+                foreach ($row as $cell) {
+                    echo '<td>'.e((string) $cell).'</td>';
+                }
+                echo '</tr>';
+            }
+
+            echo '</tbody></table></body></html>';
+        }, 'postulaciones.xls', [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+        ]);
     }
 }

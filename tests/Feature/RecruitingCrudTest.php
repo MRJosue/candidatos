@@ -424,6 +424,17 @@ class RecruitingCrudTest extends TestCase
         @unlink($path);
     }
 
+    public function test_templates_index_creates_default_templates_when_missing(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('templates.index'))
+            ->assertOk()
+            ->assertSee('Clasico profesional')
+            ->assertSee('Ejecutivo premium');
+    }
+
     public function test_recruiter_can_create_and_assign_cv_from_talent(): void
     {
         $user = User::factory()->create();

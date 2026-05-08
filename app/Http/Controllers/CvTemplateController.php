@@ -10,6 +10,10 @@ class CvTemplateController extends Controller
 {
     public function index()
     {
+        if (CvTemplate::query()->where('is_active', true)->doesntExist()) {
+            CvTemplate::ensureDefaultTemplates();
+        }
+
         return view('templates.index', [
             'templates' => CvTemplate::where('is_active', true)->orderBy('is_premium')->orderBy('name')->get(),
             'purchasedTemplateIds' => auth()->user()?->purchases()->where('status', 'paid')->pluck('cv_template_id')->all() ?? [],
