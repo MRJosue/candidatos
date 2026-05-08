@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Tests\TestCase;
@@ -343,6 +344,84 @@ class RecruitingCrudTest extends TestCase
             ->assertRedirect(route('applications.index'));
 
         $this->assertNull($application->fresh());
+    }
+
+    public function test_recruiter_can_filter_and_export_job_applications(): void
+    {
+        $user = User::factory()->create();
+        $company = $user->companies()->create(['name' => 'Acme']);
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'email' => 'ana@example.com',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $otherTalent = $user->talents()->create([
+            'first_name' => 'Beto',
+            'last_name' => 'Ruiz',
+            'email' => 'beto@example.com',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $vacancy = $user->vacancies()->create([
+            'company_id' => $company->id,
+            'title' => 'Backend Developer',
+            'client_company' => $company->name,
+            'status' => 'open',
+            'currency' => 'MXN',
+        ]);
+        $otherVacancy = $user->vacancies()->create([
+            'company_id' => $company->id,
+            'title' => 'Frontend Developer',
+            'client_company' => $company->name,
+            'status' => 'open',
+            'currency' => 'MXN',
+        ]);
+
+        $user->jobApplications()->create([
+            'talent_id' => $talent->id,
+            'vacancy_id' => $vacancy->id,
+            'status' => 'active',
+            'stage' => 'review',
+            'match_score' => 90,
+            'last_activity_at' => '2026-05-07 12:50:00',
+        ]);
+        $user->jobApplications()->create([
+            'talent_id' => $otherTalent->id,
+            'vacancy_id' => $otherVacancy->id,
+            'status' => 'rejected',
+            'stage' => 'technical_interview',
+            'match_score' => 40,
+            'last_activity_at' => '2026-05-08 09:00:00',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('applications.index', ['status' => 'active', 'per_page' => 10]))
+            ->assertOk()
+            ->assertSee('Limpiar filtros')
+            ->assertSee('Exportar Excel')
+            ->assertSee('Ana Lopez')
+            ->assertDontSee('beto@example.com');
+
+        $response = $this->actingAs($user)
+            ->get(route('applications.export', ['status' => 'active']));
+
+        $response
+            ->assertOk()
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        $path = tempnam(sys_get_temp_dir(), 'postulaciones').'.xlsx';
+        file_put_contents($path, $response->streamedContent());
+
+        $sheet = IOFactory::load($path)->getActiveSheet();
+
+        $this->assertSame('Postulante', $sheet->getCell('A1')->getValue());
+        $this->assertSame('Ana Lopez', $sheet->getCell('A2')->getValue());
+        $this->assertSame('Activa', $sheet->getCell('E2')->getValue());
+        $this->assertNull($sheet->getCell('A3')->getValue());
+
+        @unlink($path);
     }
 
     public function test_recruiter_can_create_and_assign_cv_from_talent(): void

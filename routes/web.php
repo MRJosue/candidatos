@@ -38,6 +38,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('talents', TalentController::class);
     Route::post('/talents/{talent}/applications', [JobApplicationController::class, 'storeForTalent'])->name('talents.applications.store');
     Route::get('/talents/{talent}/cv/create', [CvProfileController::class, 'createForTalent'])->name('talents.cv.create');
+    Route::get('/applications/export', [JobApplicationController::class, 'export'])->name('applications.export');
     Route::resource('applications', JobApplicationController::class);
     Route::resource('companies', CompanyController::class);
     Route::resource('vacancies', VacancyController::class);
