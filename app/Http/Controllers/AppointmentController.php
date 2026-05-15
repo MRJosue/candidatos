@@ -4,21 +4,39 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreAppointmentRequest;
 use App\Models\Appointment;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class AppointmentController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $calendarMonth = $this->resolveCalendarMonth($request->query('month'));
+        $calendarStart = $calendarMonth->startOfMonth()->startOfWeek(CarbonInterface::MONDAY);
+        $calendarEnd = $calendarMonth->endOfMonth()->endOfWeek(CarbonInterface::SUNDAY);
+        $calendarAppointmentsByDate = $request->user()
+            ->appointments()
+            ->with(['talent', 'vacancy.company', 'vacancy.position'])
+            ->whereBetween('scheduled_at', [$calendarStart, $calendarEnd])
+            ->where('status', '!=', 'cancelled')
+            ->orderBy('scheduled_at')
+            ->get()
+            ->groupBy(fn (Appointment $appointment) => $appointment->scheduled_at->toDateString());
+
         return view('appointments.index', [
-            'appointments' => auth()->user()
+            'appointments' => $request->user()
                 ->appointments()
                 ->with(['talent', 'vacancy.company', 'vacancy.position'])
                 ->latest('scheduled_at')
                 ->paginate(20),
+            'calendarAppointmentsByDate' => $calendarAppointmentsByDate,
+            'calendarMonth' => $calendarMonth,
+            'calendarWeeks' => $this->calendarWeeks($calendarStart, $calendarEnd),
         ]);
     }
 
@@ -109,5 +127,35 @@ class AppointmentController extends Controller
                 ->orderBy('title')
                 ->get(),
         ];
+    }
+
+    private function resolveCalendarMonth(?string $month): CarbonImmutable
+    {
+        if ($month) {
+            try {
+                return CarbonImmutable::createFromFormat('Y-m', $month)->startOfMonth();
+            } catch (\Throwable) {
+                //
+            }
+        }
+
+        return CarbonImmutable::now()->startOfMonth();
+    }
+
+    private function calendarWeeks(CarbonImmutable $start, CarbonImmutable $end): Collection
+    {
+        $weeks = collect();
+        $week = collect();
+
+        for ($day = $start; $day->lessThanOrEqualTo($end); $day = $day->addDay()) {
+            $week->push($day);
+
+            if ($week->count() === 7) {
+                $weeks->push($week);
+                $week = collect();
+            }
+        }
+
+        return $weeks;
     }
 }

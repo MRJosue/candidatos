@@ -78,4 +78,46 @@ class AppointmentTest extends TestCase
         $this->assertSame($vacancy->id, $appointment->vacancy_id);
         $this->assertSame('scheduled', $appointment->status);
     }
+
+    public function test_index_shows_calendar_tab_with_current_appointments(): void
+    {
+        $user = User::factory()->create();
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $vacancy = $user->vacancies()->create([
+            'title' => 'Backend Developer',
+            'status' => 'open',
+            'currency' => 'MXN',
+        ]);
+
+        $user->appointments()->create([
+            'talent_id' => $talent->id,
+            'vacancy_id' => $vacancy->id,
+            'scheduled_at' => '2026-05-20 10:30:00',
+            'timezone' => 'America/Mexico_City',
+            'status' => 'scheduled',
+        ]);
+
+        $user->appointments()->create([
+            'talent_id' => $talent->id,
+            'vacancy_id' => $vacancy->id,
+            'scheduled_at' => '2026-05-21 11:00:00',
+            'timezone' => 'America/Mexico_City',
+            'status' => 'cancelled',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('appointments.index', ['tab' => 'calendar', 'month' => '2026-05']))
+            ->assertOk()
+            ->assertSee('Calendario')
+            ->assertSee('Calendario de citas')
+            ->assertSee('Ana Lopez')
+            ->assertSee('Backend Developer')
+            ->assertSee('10:30')
+            ->assertDontSee('11:00');
+    }
 }
