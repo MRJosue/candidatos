@@ -63,11 +63,11 @@ class StoreCvEducationRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'institution' => 'institucion',
-            'location' => 'ubicacion',
-            'degree' => 'titulo o grado',
-            'field' => 'area',
-            'gpa' => 'GPA / promedio',
+            'institution' => 'institución',
+            'location' => 'ubicación',
+            'degree' => 'título o grado',
+            'field' => 'área',
+            'gpa' => 'promedio',
             'honors' => 'honores',
             'thesis' => 'tesis',
             'relevant_coursework' => 'cursos relevantes',

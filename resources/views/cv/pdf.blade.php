@@ -26,9 +26,9 @@
         ->merge(collect($mainSectionKeys)->diff($sectionOrder['main']))
         ->values();
     $contactItems = collect([
-        ['label' => 'Ubicacion', 'value' => $profile->location, 'href' => null, 'icon' => null],
-        ['label' => 'Email', 'value' => $profile->email, 'href' => $profile->email ? 'mailto:'.$profile->email : null, 'icon' => null],
-        ['label' => 'Telefono', 'value' => $profile->phone, 'href' => null, 'icon' => null],
+        ['label' => 'Ubicación', 'value' => $profile->location, 'href' => null, 'icon' => null],
+        ['label' => 'Correo electrónico', 'value' => $profile->email, 'href' => $profile->email ? 'mailto:'.$profile->email : null, 'icon' => null],
+        ['label' => 'Teléfono', 'value' => $profile->phone, 'href' => null, 'icon' => null],
         ['label' => 'LinkedIn', 'value' => $profile->linkedin_url, 'href' => $profile->linkedin_url, 'icon' => 'in'],
         ['label' => 'Portafolio', 'value' => $profile->portfolio_url, 'href' => $profile->portfolio_url, 'icon' => 'www'],
     ])->filter(fn ($item) => filled($item['value']))->values();
@@ -145,7 +145,7 @@
         .template-classic .side-col { width: 33%; border-left: 1px solid #d7dee8; padding-left: 11px; }
         .template-classic .side-block { background: #f7fafc; border: 1px solid #e1e7ef; padding: 7px; margin-bottom: 7px; }
 
-        .template-academic { color: #111827; font-size: 8.4px; line-height: 1.32; }
+        .template-academic { color: #111827; font-size: 8.2px; line-height: 1.25; }
         .template-academic p,
         .template-academic li,
         .template-academic td,
@@ -155,26 +155,30 @@
             word-wrap: break-word;
             word-break: break-word;
         }
-        .template-academic .masthead { text-align: center; border: 1px solid #111827; padding: 9px 12px 8px; }
-        .template-academic h1 { font-size: 20px; }
-        .template-academic .contact { margin-top: 4px; color: #4b5563; }
+        .template-academic .masthead { text-align: center; border: 1px solid #111827; padding: 6px 10px 5px; }
+        .template-academic h1 { font-size: 17px; line-height: 1.02; }
+        .template-academic .masthead p { line-height: 1.18; }
+        .template-academic .contact { margin-top: 2px; color: #4b5563; }
         .template-academic h2 {
             border-bottom: 1.5px solid #111827;
             color: #111827;
-            padding-bottom: 4px;
-            margin-top: 10px;
+            padding-bottom: 2px;
+            margin-top: 7px;
+            margin-bottom: 3px;
         }
-        .template-academic .academic-note { background: #f5f5f4; border-left: 3px solid #737373; padding: 6px 8px; margin-top: 7px; }
-        .template-academic .entry { padding-bottom: 5px; border-bottom: 1px solid #e5e7eb; margin-bottom: 6px; }
+        .template-academic .academic-note { background: #f5f5f4; border-left: 3px solid #737373; padding: 4px 7px; margin-top: 5px; }
+        .template-academic .entry { padding-bottom: 3px; border-bottom: 1px solid #e5e7eb; margin-bottom: 4px; }
         .template-academic .entry:last-child { border-bottom: 0; }
         .template-academic .split td:first-child { width: 72%; padding-right: 8px; }
         .template-academic .split .right {
             width: 28%;
             padding-left: 4px;
             text-align: left;
-            font-size: 8.2px;
-            line-height: 1.25;
+            font-size: 8px;
+            line-height: 1.18;
         }
+        .template-academic ul { margin-top: 2px; margin-left: 12px; }
+        .template-academic li { margin-bottom: 0; }
 
         .template-sidebar { width: 100%; border-collapse: collapse; }
         .template-sidebar td { vertical-align: top; }
@@ -322,7 +326,7 @@
                             </div>
                         @endforeach
                     @elseif ($section === 'education')
-                        <h2>Educacion</h2>
+                        <h2>Educación</h2>
                         @foreach ($profile->education as $item)
                             <div class="item">
                                 <p class="row-meta">{{ $item->start_date?->format('Y') }} - {{ $item->end_date?->format('Y') }}</p>
@@ -365,29 +369,29 @@
         @if ($profile->summary || $profile->objective)
             <div class="academic-note">
                 @if ($profile->summary)<p>{{ $profile->summary }}</p>@endif
-                @if ($profile->objective)<p style="margin-top: 6px;"><strong>Objective:</strong> {{ $profile->objective }}</p>@endif
+                @if ($profile->objective)<p style="margin-top: 6px;"><strong>Objetivo:</strong> {{ $profile->objective }}</p>@endif
             </div>
         @endif
 
         @foreach ($mainSectionOrder as $section)
             @if ($section === 'education')
-                <h2>Education</h2>
+                <h2>Educación</h2>
                 @foreach ($profile->education as $item)
                     <div class="entry">
                         <table class="split"><tr><td><strong>{{ $item->institution }}</strong></td><td class="right">{{ $item->location }}</td></tr></table>
-                        <table class="split"><tr><td>{{ $item->degree }}@if($item->field), {{ $item->field }}@endif @if($item->gpa) · GPA {{ $item->gpa }}@endif</td><td class="right">{{ $item->end_date?->format('M Y') }}</td></tr></table>
-                        @if ($item->honors)<p><strong>Honors:</strong> {{ $item->honors }}</p>@endif
-                        @if ($item->thesis)<p><strong>Thesis:</strong> {{ $item->thesis }}</p>@endif
-                        @if ($item->relevant_coursework)<p><strong>Relevant Coursework:</strong> {{ $item->relevant_coursework }}</p>@endif
+                        <table class="split"><tr><td>{{ $item->degree }}@if($item->field), {{ $item->field }}@endif @if($item->gpa) · Promedio {{ $item->gpa }}@endif</td><td class="right">{{ $item->end_date?->format('M Y') }}</td></tr></table>
+                        @if ($item->honors)<p><strong>Honores:</strong> {{ $item->honors }}</p>@endif
+                        @if ($item->thesis)<p><strong>Tesis:</strong> {{ $item->thesis }}</p>@endif
+                        @if ($item->relevant_coursework)<p><strong>Cursos relevantes:</strong> {{ $item->relevant_coursework }}</p>@endif
                         @if ($item->description)<ul>@foreach ($lines($item->description) as $line)<li>{{ $line }}</li>@endforeach</ul>@endif
                     </div>
                 @endforeach
             @elseif ($section === 'experiences')
-                <h2>Experience</h2>
+                <h2>Experiencia</h2>
                 @foreach ($profile->experiences as $item)
                     <div class="entry">
                         <table class="split"><tr><td><strong>{{ $item->company }}</strong></td><td class="right">{{ $item->location }}</td></tr></table>
-                        <table class="split"><tr><td>{{ $item->position }}</td><td class="right">{{ $item->start_date?->format('M Y') }} - {{ $item->is_current ? 'Present' : $item->end_date?->format('M Y') }}</td></tr></table>
+                        <table class="split"><tr><td>{{ $item->position }}</td><td class="right">{{ $item->start_date?->format('M Y') }} - {{ $item->is_current ? 'Actual' : $item->end_date?->format('M Y') }}</td></tr></table>
                         <ul>@foreach ($lines($item->description) as $line)<li>{{ $line }}</li>@endforeach</ul>
                     </div>
                 @endforeach
@@ -395,7 +399,7 @@
         @endforeach
 
         @if ($profile->leadership_activities)
-            <h2>Leadership & Activities</h2>
+            <h2>Liderazgo y actividades</h2>
             <ul>@foreach ($lines($profile->leadership_activities) as $line)<li>{{ $line }}</li>@endforeach</ul>
         @endif
 
@@ -417,7 +421,7 @@
                 @endforeach
             @endif
         @endforeach
-        @if ($profile->interests)<h2>Interests</h2><p>{{ $lines($profile->interests)->join(', ') }}</p>@endif
+        @if ($profile->interests)<h2>Intereses</h2><p>{{ $lines($profile->interests)->join(', ') }}</p>@endif
     </div>
 @else
     <div class="template-classic">
@@ -470,7 +474,7 @@
                                 </div>
                             @endforeach
                         @elseif ($section === 'education')
-                            <h2>Educacion</h2>
+                            <h2>Educación</h2>
                             @foreach ($profile->education as $item)
                                 <div class="item">
                                     <table class="split">
@@ -480,7 +484,7 @@
                                         </tr>
                                     </table>
                                     <p class="muted">{{ $item->institution }}@if($item->location), {{ $item->location }}@endif</p>
-                                    <p>{{ collect([$item->field, $item->gpa ? 'GPA '.$item->gpa : null, $item->honors])->filter()->join(' · ') }}</p>
+                                    <p>{{ collect([$item->field, $item->gpa ? 'Promedio '.$item->gpa : null, $item->honors])->filter()->join(' · ') }}</p>
                                     @if ($item->description)<p>{{ $item->description }}</p>@endif
                                     @if ($item->relevant_coursework)<p><strong>Cursos relevantes:</strong> {{ $item->relevant_coursework }}</p>@endif
                                 </div>

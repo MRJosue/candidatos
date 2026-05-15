@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreAppointmentRequest;
 use App\Models\Appointment;
-use App\Models\Service;
 use Illuminate\Http\Request;
 
 class AppointmentController extends Controller
@@ -15,17 +14,21 @@ class AppointmentController extends Controller
     public function index()
     {
         return view('appointments.index', [
-            'appointments' => auth()->user()->appointments()->with('service')->latest('scheduled_at')->paginate(20),
+            'appointments' => auth()->user()
+                ->appointments()
+                ->with(['talent', 'vacancy.company', 'vacancy.position'])
+                ->latest('scheduled_at')
+                ->paginate(20),
         ]);
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
         return view('appointments.create', [
-            'services' => Service::where('is_active', true)->orderBy('name')->get(),
+            ...$this->formOptions($request),
         ]);
     }
 
@@ -51,32 +54,31 @@ class AppointmentController extends Controller
         abort_unless($appointment->user_id === auth()->id(), 403);
 
         return view('appointments.show', [
-            'appointment' => $appointment->load('service'),
+            'appointment' => $appointment->load(['talent', 'vacancy.company', 'vacancy.position']),
         ]);
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Appointment $appointment)
+    public function edit(Request $request, Appointment $appointment)
     {
         abort_unless($appointment->user_id === auth()->id(), 403);
 
         return view('appointments.edit', [
             'appointment' => $appointment,
-            'services' => Service::where('is_active', true)->orderBy('name')->get(),
+            ...$this->formOptions($request),
         ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Appointment $appointment)
+    public function update(StoreAppointmentRequest $request, Appointment $appointment)
     {
         abort_unless($appointment->user_id === auth()->id(), 403);
 
-        $validated = $request->validate((new StoreAppointmentRequest())->rules());
-        $appointment->update($validated);
+        $appointment->update($request->validated());
 
         return redirect()->route('appointments.show', $appointment)->with('status', 'Cita actualizada.');
     }
@@ -91,5 +93,21 @@ class AppointmentController extends Controller
         $appointment->update(['status' => 'cancelled']);
 
         return redirect()->route('appointments.index')->with('status', 'Cita cancelada.');
+    }
+
+    private function formOptions(Request $request): array
+    {
+        return [
+            'talents' => $request->user()
+                ->talents()
+                ->orderBy('last_name')
+                ->orderBy('first_name')
+                ->get(),
+            'vacancies' => $request->user()
+                ->vacancies()
+                ->with(['company', 'position'])
+                ->orderBy('title')
+                ->get(),
+        ];
     }
 }

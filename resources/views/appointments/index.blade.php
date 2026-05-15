@@ -9,7 +9,10 @@
         @if (session('status'))<div class="bg-emerald-50 text-emerald-800 p-4 rounded">{{ session('status') }}</div>@endif
         @foreach ($appointments as $appointment)
             <a href="{{ route('appointments.show', $appointment) }}" class="block bg-white p-5 rounded shadow-sm">
-                {{ $appointment->service->name }} · {{ $appointment->scheduled_at->format('d/m/Y H:i') }} · {{ $appointment->status }}
+                {{ $appointment->talent?->full_name ?? 'Candidato no disponible' }}
+                · {{ $appointment->vacancy?->display_title ?? 'Vacante no disponible' }}
+                · {{ $appointment->scheduled_at->format('d/m/Y H:i') }}
+                · {{ $appointment->status }}
             </a>
         @endforeach
         {{ $appointments->links() }}

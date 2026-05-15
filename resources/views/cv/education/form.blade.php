@@ -1,9 +1,9 @@
 <div class="grid md:grid-cols-2 gap-4">
-    <input name="institution" placeholder="Institucion" value="{{ old('institution', $education->institution ?? '') }}" class="rounded border-gray-300" required>
-    <input name="location" placeholder="Ciudad, estado o pais" value="{{ old('location', $education->location ?? '') }}" class="rounded border-gray-300">
-    <input name="degree" placeholder="Titulo o grado" value="{{ old('degree', $education->degree ?? '') }}" class="rounded border-gray-300" required>
-    <input name="field" placeholder="Area" value="{{ old('field', $education->field ?? '') }}" class="rounded border-gray-300">
-    <input name="gpa" placeholder="GPA / promedio" value="{{ old('gpa', $education->gpa ?? '') }}" class="rounded border-gray-300">
+    <input name="institution" placeholder="Institución" value="{{ old('institution', $education->institution ?? '') }}" class="rounded border-gray-300" required>
+    <input name="location" placeholder="Ciudad, estado o país" value="{{ old('location', $education->location ?? '') }}" class="rounded border-gray-300">
+    <input name="degree" placeholder="Título o grado" value="{{ old('degree', $education->degree ?? '') }}" class="rounded border-gray-300" required>
+    <input name="field" placeholder="Área" value="{{ old('field', $education->field ?? '') }}" class="rounded border-gray-300">
+    <input name="gpa" placeholder="Promedio" value="{{ old('gpa', $education->gpa ?? '') }}" class="rounded border-gray-300">
     <input name="honors" placeholder="Honores o reconocimientos" value="{{ old('honors', $education->honors ?? '') }}" class="rounded border-gray-300">
     <input type="number" name="sort_order" placeholder="Orden" value="{{ old('sort_order', $education->sort_order ?? 0) }}" class="rounded border-gray-300">
     <input type="date" name="start_date" value="{{ old('start_date', optional($education?->start_date ?? null)->format('Y-m-d')) }}" class="rounded border-gray-300">

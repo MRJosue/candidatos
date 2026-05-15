@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800">Educacion</h2>
+            <h2 class="font-semibold text-xl text-gray-800">Educación</h2>
             <a href="{{ route('cv.education.create', $profile) }}" class="inline-flex items-center rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800">Agregar educacion</a>
         </div>
     </x-slot>

@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('appointments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('service_id')->constrained()->cascadeOnDelete();
             $table->dateTime('scheduled_at');
             $table->string('timezone')->default('America/Mexico_City');
             $table->string('status')->default('scheduled');

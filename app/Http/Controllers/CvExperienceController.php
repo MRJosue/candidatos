@@ -39,7 +39,10 @@ class CvExperienceController extends Controller
     {
         $this->authorize('update', $cvProfile);
 
-        $cvProfile->experiences()->create($request->validated());
+        $data = $request->validated();
+        $data['is_current'] = $request->boolean('is_current');
+
+        $cvProfile->experiences()->create($data);
 
         return redirect()->route('cv.show', $cvProfile)->with('status', 'Experiencia agregada.');
     }
@@ -69,7 +72,10 @@ class CvExperienceController extends Controller
     {
         $this->authorize('update', $cvExperience->cvProfile);
 
-        $cvExperience->update($request->validated());
+        $data = $request->validated();
+        $data['is_current'] = $request->boolean('is_current');
+
+        $cvExperience->update($data);
 
         return redirect()->route('cv.show', $cvExperience->cvProfile)->with('status', 'Experiencia actualizada.');
     }

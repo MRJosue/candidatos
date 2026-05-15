@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreAppointmentRequest extends FormRequest
 {
@@ -23,7 +24,14 @@ class StoreAppointmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'service_id' => ['required', 'exists:services,id'],
+            'talent_id' => [
+                'required',
+                Rule::exists('talents', 'id')->where('recruiter_id', $this->user()->id),
+            ],
+            'vacancy_id' => [
+                'required',
+                Rule::exists('vacancies', 'id')->where('recruiter_id', $this->user()->id),
+            ],
             'scheduled_at' => ['required', 'date', 'after:now'],
             'timezone' => ['nullable', 'timezone'],
             'notes' => ['nullable', 'string', 'max:1500'],

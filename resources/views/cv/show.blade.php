@@ -13,7 +13,7 @@
         ];
         $mainSectionLabels = [
             'experiences' => 'Experiencia',
-            'education' => 'Educacion',
+            'education' => 'Educación',
         ];
         $sideSectionOrder = collect($sectionOrder['side'])
             ->filter(fn ($section) => array_key_exists($section, $sideSectionLabels))
@@ -137,7 +137,7 @@
 
             <section class="rounded border border-gray-200 bg-white/60 p-4">
                 <div class="mb-4 flex items-center justify-between">
-                    <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Experiencia / Educacion</h3>
+                    <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Experiencia / Educación</h3>
                     <span class="text-xs text-gray-400">Arrastra los cards para ordenar</span>
                 </div>
                 <div class="grid gap-6 lg:grid-cols-2">
@@ -197,7 +197,7 @@
                         x-on:drop.prevent="drop('main', 'education', $event)"
                     >
                         <div class="flex justify-between mb-3">
-                            <h3 class="font-semibold cursor-move">Educacion</h3>
+                            <h3 class="font-semibold cursor-move">Educación</h3>
                             <a href="{{ route('cv.education.create', $profile) }}" class="text-indigo-700">Agregar</a>
                         </div>
                         <div class="space-y-4">
@@ -253,10 +253,15 @@
                         <div class="flex justify-between mb-3"><h3 class="font-semibold cursor-move">{{ $skillsTitle }}</h3><a href="{{ route('cv.skills.create', ['cvProfile' => $profile, 'type' => 'skill']) }}" class="text-indigo-700">Agregar</a></div>
                         <div class="flex flex-wrap gap-2">
                             @forelse ($skills as $skill)
-                                <span class="inline-flex items-center gap-2 rounded bg-gray-100 px-2 py-1">
+                                <div class="inline-flex items-center gap-2 rounded bg-gray-100 px-2 py-1">
                                     {{ $skill->name }}
                                     <a href="{{ route('skills.edit', $skill) }}" class="text-xs text-indigo-700">Editar</a>
-                                </span>
+                                    <form method="POST" action="{{ route('skills.destroy', $skill) }}" onsubmit="return confirm('¿Eliminar esta habilidad?')" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-xs text-red-700">Eliminar</button>
+                                    </form>
+                                </div>
                             @empty
                                 <p class="text-sm text-gray-500">Aun no has agregado habilidades.</p>
                             @endforelse
@@ -277,10 +282,15 @@
                         <div class="flex justify-between mb-3"><h3 class="font-semibold cursor-move">Idiomas</h3><a href="{{ route('cv.skills.create', ['cvProfile' => $profile, 'type' => 'language']) }}" class="text-indigo-700">Agregar</a></div>
                         <div class="flex flex-wrap gap-2">
                             @forelse ($languages as $skill)
-                                <span class="inline-flex items-center gap-2 rounded bg-gray-100 px-2 py-1">
+                                <div class="inline-flex items-center gap-2 rounded bg-gray-100 px-2 py-1">
                                     {{ $skill->name }}@if($skill->level) · {{ $skill->level }}/5 @endif
                                     <a href="{{ route('skills.edit', $skill) }}" class="text-xs text-indigo-700">Editar</a>
-                                </span>
+                                    <form method="POST" action="{{ route('skills.destroy', $skill) }}" onsubmit="return confirm('¿Eliminar este idioma?')" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-xs text-red-700">Eliminar</button>
+                                    </form>
+                                </div>
                             @empty
                                 <p class="text-sm text-gray-500">Aun no has agregado idiomas.</p>
                             @endforelse
@@ -301,10 +311,15 @@
                         <div class="flex justify-between mb-3"><h3 class="font-semibold cursor-move">{{ $softSkillsTitle }}</h3><a href="{{ route('cv.skills.create', ['cvProfile' => $profile, 'type' => 'soft_skill']) }}" class="text-indigo-700">Agregar</a></div>
                         <div class="flex flex-wrap gap-2">
                             @forelse ($softSkills as $skill)
-                                <span class="inline-flex items-center gap-2 rounded bg-gray-100 px-2 py-1">
+                                <div class="inline-flex items-center gap-2 rounded bg-gray-100 px-2 py-1">
                                     {{ $skill->name }}
                                     <a href="{{ route('skills.edit', $skill) }}" class="text-xs text-indigo-700">Editar</a>
-                                </span>
+                                    <form method="POST" action="{{ route('skills.destroy', $skill) }}" onsubmit="return confirm('¿Eliminar esta habilidad blanda?')" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-xs text-red-700">Eliminar</button>
+                                    </form>
+                                </div>
                             @empty
                                 <p class="text-sm text-gray-500">Aun no has agregado habilidades blandas.</p>
                             @endforelse

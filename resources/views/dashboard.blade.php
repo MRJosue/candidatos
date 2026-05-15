@@ -100,7 +100,10 @@
                     <div class="divide-y divide-gray-100">
                         @forelse ($nextAppointments as $appointment)
                             <div class="flex items-center justify-between gap-3 px-4 py-3">
-                                <span class="truncate text-sm font-medium text-gray-800">{{ $appointment->service->name }}</span>
+                                <span class="min-w-0">
+                                    <span class="block truncate text-sm font-medium text-gray-800">{{ $appointment->talent?->full_name ?? 'Candidato no disponible' }}</span>
+                                    <span class="block truncate text-xs text-gray-500">{{ $appointment->vacancy?->display_title ?? 'Vacante no disponible' }}</span>
+                                </span>
                                 <span class="shrink-0 text-sm text-gray-500">{{ $appointment->scheduled_at->format('d/m/Y H:i') }}</span>
                             </div>
                         @empty

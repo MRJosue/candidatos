@@ -37,7 +37,7 @@ class DashboardController extends Controller
                 ->orderByDesc('total')
                 ->get(),
             'nextAppointments' => $user->appointments()
-                ->with('service')
+                ->with(['talent', 'vacancy.company', 'vacancy.position'])
                 ->where('scheduled_at', '>=', now())
                 ->orderBy('scheduled_at')
                 ->limit(3)

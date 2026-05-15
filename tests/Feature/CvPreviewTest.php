@@ -25,6 +25,11 @@ class CvPreviewTest extends TestCase
             'section_order' => CvProfile::defaultSectionOrder(),
         ]);
 
+        $skill = $profile->skills()->create([
+            'name' => 'Laravel',
+            'type' => 'skill',
+        ]);
+
         $response = $this
             ->actingAs($user)
             ->get(route('cv.show', $profile));
@@ -36,6 +41,9 @@ class CvPreviewTest extends TestCase
             ->assertSee('data-cv-preview-frame', false)
             ->assertSee('id="cv-preview-html"', false)
             ->assertSee('Josue Daniel Cardona')
+            ->assertSee('action="'.route('skills.destroy', $skill).'"', false)
+            ->assertSee('method="POST"', false)
+            ->assertSee('value="DELETE"', false)
             ->assertDontSee('src="'.route('cv.preview', $profile).'"', false);
     }
 }

@@ -9,7 +9,8 @@ class Appointment extends Model
 {
     protected $fillable = [
         'user_id',
-        'service_id',
+        'talent_id',
+        'vacancy_id',
         'scheduled_at',
         'timezone',
         'status',
@@ -28,8 +29,13 @@ class Appointment extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function service(): BelongsTo
+    public function talent(): BelongsTo
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(Talent::class);
+    }
+
+    public function vacancy(): BelongsTo
+    {
+        return $this->belongsTo(Vacancy::class);
     }
 }

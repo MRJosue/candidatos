@@ -23,15 +23,15 @@
         <input name="full_name" value="{{ old('full_name', $profile->full_name ?? auth()->user()->name) }}" class="mt-1 w-full rounded border-gray-300" required>
     </label>
     <label class="block">
-        <span class="text-sm text-gray-700">Email</span>
+        <span class="text-sm text-gray-700">Correo electrónico</span>
         <input type="email" name="email" value="{{ old('email', $profile->email ?? auth()->user()->email) }}" class="mt-1 w-full rounded border-gray-300" required>
     </label>
     <label class="block">
-        <span class="text-sm text-gray-700">Telefono</span>
+        <span class="text-sm text-gray-700">Teléfono</span>
         <input name="phone" value="{{ old('phone', $profile->phone ?? '') }}" class="mt-1 w-full rounded border-gray-300">
     </label>
     <label class="block">
-        <span class="text-sm text-gray-700">Ubicacion</span>
+        <span class="text-sm text-gray-700">Ubicación</span>
         <input name="location" value="{{ old('location', $profile->location ?? '') }}" class="mt-1 w-full rounded border-gray-300">
     </label>
     <label class="block md:col-span-2">
