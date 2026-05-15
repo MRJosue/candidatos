@@ -120,4 +120,47 @@ class AppointmentTest extends TestCase
             ->assertSee('10:30')
             ->assertDontSee('11:00');
     }
+
+    public function test_index_shows_appointments_in_table_layout(): void
+    {
+        $user = User::factory()->create();
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'email' => 'ana@example.com',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $vacancy = $user->vacancies()->create([
+            'title' => 'Backend Developer',
+            'client_company' => 'Acme',
+            'status' => 'open',
+            'currency' => 'MXN',
+        ]);
+
+        $user->appointments()->create([
+            'talent_id' => $talent->id,
+            'vacancy_id' => $vacancy->id,
+            'scheduled_at' => '2026-05-20 10:30:00',
+            'timezone' => 'America/Mexico_City',
+            'status' => 'scheduled',
+            'notes' => 'Entrevista tecnica',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('appointments.index'))
+            ->assertOk()
+            ->assertSee('Candidato')
+            ->assertSee('Vacante')
+            ->assertSee('Empresa')
+            ->assertSee('Fecha')
+            ->assertSee('Acciones')
+            ->assertSee('Ana Lopez')
+            ->assertSee('ana@example.com')
+            ->assertSee('Backend Developer')
+            ->assertSee('Acme')
+            ->assertSee('Agendada')
+            ->assertSee('Ver')
+            ->assertSee('Editar');
+    }
 }
