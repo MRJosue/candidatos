@@ -19,14 +19,14 @@
                 <div class="bg-emerald-50 text-emerald-800 p-4 rounded">{{ session('status') }}</div>
             @endif
 
-            <div class="border-b border-gray-200">
-                <nav class="-mb-px flex gap-6" aria-label="Tabs">
+            <div class="app-tabs border-b">
+                <nav class="-mb-px flex gap-2" aria-label="Tabs">
                     <a href="{{ route('appointments.index', ['tab' => 'list', 'month' => $calendarMonth->format('Y-m')]) }}"
-                        class="border-b-2 px-1 py-3 text-sm font-medium {{ $activeTab === 'list' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
+                        class="app-tab-link {{ $activeTab === 'list' ? 'app-tab-link-active' : '' }}">
                         Listado
                     </a>
                     <a href="{{ route('appointments.index', ['tab' => 'calendar', 'month' => $calendarMonth->format('Y-m')]) }}"
-                        class="border-b-2 px-1 py-3 text-sm font-medium {{ $activeTab === 'calendar' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
+                        class="app-tab-link {{ $activeTab === 'calendar' ? 'app-tab-link-active' : '' }}">
                         Calendario
                     </a>
                 </nav>

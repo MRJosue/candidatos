@@ -56,7 +56,7 @@
             .auth-page {
                 min-height: 100vh;
                 background:
-                    linear-gradient(color-mix(in srgb, var(--cv-bg) 88%, transparent), color-mix(in srgb, var(--cv-bg) 92%, transparent)),
+                    linear-gradient(color-mix(in srgb, var(--cv-bg) 58%, transparent), color-mix(in srgb, var(--cv-bg) 70%, transparent)),
                     var(--cv-bg-image),
                     radial-gradient(circle at top left, var(--cv-surface-soft) 0, var(--cv-bg) 38%, var(--cv-surface-muted) 100%);
                 background-position: center;
@@ -249,7 +249,7 @@
 
             .dark .auth-page {
                 background:
-                    linear-gradient(color-mix(in srgb, var(--cv-bg) 88%, transparent), color-mix(in srgb, var(--cv-bg) 92%, transparent)),
+                    linear-gradient(color-mix(in srgb, var(--cv-bg) 64%, transparent), color-mix(in srgb, var(--cv-bg) 78%, transparent)),
                     var(--cv-bg-image),
                     radial-gradient(circle at top left, var(--cv-surface-soft) 0, var(--cv-bg) 45%, #0f0a07 100%);
                 background-position: center;

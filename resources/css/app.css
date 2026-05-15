@@ -51,11 +51,12 @@ summary::-webkit-details-marker {
 
     .app-shell {
         background:
-            linear-gradient(color-mix(in srgb, var(--cv-bg) 88%, transparent), color-mix(in srgb, var(--cv-bg) 92%, transparent)),
+            linear-gradient(color-mix(in srgb, var(--cv-bg) 58%, transparent), color-mix(in srgb, var(--cv-bg) 70%, transparent)),
             var(--cv-bg-image),
             var(--cv-bg);
         background-attachment: fixed;
         background-position: center;
+        background-repeat: no-repeat;
         background-size: cover;
     }
 
@@ -76,6 +77,187 @@ summary::-webkit-details-marker {
 }
 
 @layer components {
+    .app-nav {
+        border-color: var(--cv-border);
+        background: color-mix(in srgb, var(--cv-surface) 88%, transparent);
+        color: var(--cv-text);
+        backdrop-filter: blur(12px);
+    }
+
+    .app-logo {
+        color: var(--cv-text);
+    }
+
+    .app-nav-link {
+        border-color: transparent;
+        color: var(--cv-text-muted);
+    }
+
+    .app-nav-link:hover,
+    .app-nav-link:focus {
+        border-color: color-mix(in srgb, var(--cv-accent) 55%, transparent);
+        color: var(--cv-text);
+    }
+
+    .app-nav-link-active,
+    .app-nav-link-active:hover,
+    .app-nav-link-active:focus {
+        border-color: var(--cv-accent);
+        color: var(--cv-text);
+    }
+
+    .app-responsive-nav-link {
+        border-color: transparent;
+        color: var(--cv-text-muted);
+    }
+
+    .app-responsive-nav-link:hover,
+    .app-responsive-nav-link:focus {
+        border-color: color-mix(in srgb, var(--cv-accent) 55%, transparent);
+        background: var(--cv-surface-soft);
+        color: var(--cv-text);
+    }
+
+    .app-responsive-nav-link-active,
+    .app-responsive-nav-link-active:hover,
+    .app-responsive-nav-link-active:focus {
+        border-color: var(--cv-accent);
+        background: color-mix(in srgb, var(--cv-accent) 12%, var(--cv-surface));
+        color: var(--cv-text);
+    }
+
+    .app-icon-button,
+    .app-user-menu-trigger {
+        --tw-ring-color: color-mix(in srgb, var(--cv-accent) 55%, transparent);
+        border-color: var(--cv-border);
+        color: var(--cv-text-muted);
+    }
+
+    .app-icon-button:hover,
+    .app-icon-button:focus,
+    .app-user-menu-trigger:hover,
+    .app-user-menu-trigger:focus {
+        background: var(--cv-surface-soft);
+        color: var(--cv-text);
+    }
+
+    .app-user-dropdown {
+        border-color: color-mix(in srgb, var(--cv-border) 70%, transparent);
+        background: var(--cv-surface);
+        --tw-ring-color: color-mix(in srgb, var(--cv-border) 70%, transparent);
+    }
+
+    .app-user-dropdown-section,
+    .app-responsive-settings {
+        border-color: var(--cv-border);
+    }
+
+    .app-menu-label,
+    .app-user-email {
+        color: var(--cv-text-muted);
+    }
+
+    .app-user-name {
+        color: var(--cv-text);
+    }
+
+    .app-menu-select {
+        --tw-ring-color: color-mix(in srgb, var(--cv-accent) 55%, transparent);
+        border-color: var(--cv-border);
+        background: var(--cv-surface);
+        color: var(--cv-text);
+    }
+
+    .app-menu-select:focus {
+        border-color: var(--cv-accent);
+    }
+
+    .app-dropdown-link {
+        color: var(--cv-text-muted);
+    }
+
+    .app-dropdown-link:hover,
+    .app-dropdown-link:focus {
+        background: var(--cv-surface-soft);
+        color: var(--cv-text);
+    }
+
+    .app-responsive-menu {
+        background: color-mix(in srgb, var(--cv-surface) 96%, transparent);
+    }
+
+    .app-responsive-menu-button {
+        color: var(--cv-text-muted);
+    }
+
+    .app-responsive-menu-button:hover,
+    .app-responsive-menu-button:focus {
+        background: var(--cv-surface-soft);
+        color: var(--cv-text);
+    }
+
+    .app-tabs {
+        border-color: var(--cv-border);
+    }
+
+    .app-tab-link {
+        border-bottom: 2px solid transparent;
+        color: var(--cv-text-muted);
+        display: inline-flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        line-height: 1.25rem;
+        transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease;
+    }
+
+    .app-tab-link:hover,
+    .app-tab-link:focus {
+        border-color: color-mix(in srgb, var(--cv-accent) 45%, transparent);
+        color: var(--cv-text);
+        outline: none;
+    }
+
+    .app-tab-link-active,
+    .app-tab-link-active:hover,
+    .app-tab-link-active:focus {
+        border-color: var(--cv-accent);
+        color: var(--cv-text);
+    }
+
+    .app-dashboard .bg-white,
+    .app-dashboard .bg-white\/60 {
+        background: color-mix(in srgb, var(--cv-surface) 72%, transparent);
+        backdrop-filter: blur(14px);
+    }
+
+    .app-dashboard .hover\:bg-gray-50:hover,
+    .app-dashboard .focus\:bg-gray-50:focus {
+        background: color-mix(in srgb, var(--cv-surface-soft) 78%, transparent);
+    }
+
+    .app-dashboard .bg-gray-100,
+    .app-dashboard .hover\:bg-gray-100:hover,
+    .app-dashboard .focus\:bg-gray-100:focus {
+        background: color-mix(in srgb, var(--cv-surface-muted) 72%, transparent);
+    }
+
+    .app-dashboard .ring-gray-100 {
+        --tw-ring-color: color-mix(in srgb, var(--cv-border) 58%, transparent);
+    }
+
+    .app-dashboard .border-gray-100,
+    .app-dashboard .border-gray-200,
+    .app-dashboard .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+        border-color: color-mix(in srgb, var(--cv-border) 70%, transparent);
+    }
+
+    .dark .app-dashboard .bg-white,
+    .dark .app-dashboard .bg-white\/60 {
+        background: color-mix(in srgb, var(--cv-surface) 78%, transparent);
+    }
+
     .min-h-screen.bg-gray-100,
     .bg-gray-100 {
         background: var(--cv-surface-muted);
@@ -83,11 +265,12 @@ summary::-webkit-details-marker {
 
     .app-shell.min-h-screen.bg-gray-100 {
         background:
-            linear-gradient(color-mix(in srgb, var(--cv-bg) 88%, transparent), color-mix(in srgb, var(--cv-bg) 92%, transparent)),
+            linear-gradient(color-mix(in srgb, var(--cv-bg) 58%, transparent), color-mix(in srgb, var(--cv-bg) 70%, transparent)),
             var(--cv-bg-image),
             var(--cv-bg);
         background-attachment: fixed;
         background-position: center;
+        background-repeat: no-repeat;
         background-size: cover;
     }
 
@@ -166,11 +349,12 @@ summary::-webkit-details-marker {
 
     .dark .app-shell.min-h-screen.bg-gray-100 {
         background:
-            linear-gradient(color-mix(in srgb, var(--cv-bg) 88%, transparent), color-mix(in srgb, var(--cv-bg) 92%, transparent)),
+            linear-gradient(color-mix(in srgb, var(--cv-bg) 64%, transparent), color-mix(in srgb, var(--cv-bg) 78%, transparent)),
             var(--cv-bg-image),
             var(--cv-bg);
         background-attachment: fixed;
         background-position: center;
+        background-repeat: no-repeat;
         background-size: cover;
     }
 
