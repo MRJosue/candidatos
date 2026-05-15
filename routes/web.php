@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\ApplicationThemeController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CvEducationController;
 use App\Http\Controllers\CvExperienceController;
@@ -29,7 +30,16 @@ Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verif
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::patch('/profile/appearance', [ProfileController::class, 'updateAppearance'])->name('profile.appearance.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::middleware('admin')->group(function () {
+        Route::post('/admin/themes/import-json', [ApplicationThemeController::class, 'importJson'])->name('admin.themes.import-json');
+        Route::resource('admin/themes', ApplicationThemeController::class)
+            ->except('show')
+            ->names('admin.themes')
+            ->parameters(['themes' => 'theme']);
+    });
 
     Route::get('/talents/import', [TalentImportController::class, 'create'])->name('talents.import');
     Route::get('/talents/import/layout', [TalentImportController::class, 'layout'])->name('talents.import.layout');

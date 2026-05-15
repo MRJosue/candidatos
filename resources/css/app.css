@@ -9,3 +9,253 @@
 summary::-webkit-details-marker {
     display: none;
 }
+
+@layer base {
+    :root {
+        --cv-bg: #fbf3e7;
+        --cv-surface: #fffaf3;
+        --cv-surface-muted: #f5eadc;
+        --cv-surface-soft: #fff7ed;
+        --cv-border: #ead8c2;
+        --cv-text: #2f261f;
+        --cv-text-muted: #6f5b49;
+        --cv-accent: #b45309;
+        --cv-accent-hover: #92400e;
+    }
+
+    html.dark {
+        --cv-bg: #17110d;
+        --cv-surface: #211814;
+        --cv-surface-muted: #2b211d;
+        --cv-surface-soft: #32261f;
+        --cv-border: #4a372c;
+        --cv-text: #f6eadb;
+        --cv-text-muted: #d4bda7;
+        --cv-accent: #f59e0b;
+        --cv-accent-hover: #fbbf24;
+    }
+
+    html {
+        color-scheme: light;
+    }
+
+    html.dark {
+        color-scheme: dark;
+    }
+
+    body {
+        background: var(--cv-bg);
+        color: var(--cv-text);
+        @apply transition-colors duration-200;
+    }
+
+    .app-shell {
+        background:
+            linear-gradient(color-mix(in srgb, var(--cv-bg) 88%, transparent), color-mix(in srgb, var(--cv-bg) 92%, transparent)),
+            var(--cv-bg-image),
+            var(--cv-bg);
+        background-attachment: fixed;
+        background-position: center;
+        background-size: cover;
+    }
+
+    input,
+    select,
+    textarea {
+        @apply transition-colors duration-150;
+    }
+
+    .dark input,
+    .dark select,
+    .dark textarea {
+        border-color: var(--cv-border);
+        background: var(--cv-surface);
+        color: var(--cv-text);
+        @apply placeholder-stone-400;
+    }
+}
+
+@layer components {
+    .min-h-screen.bg-gray-100,
+    .bg-gray-100 {
+        background: var(--cv-surface-muted);
+    }
+
+    .app-shell.min-h-screen.bg-gray-100 {
+        background:
+            linear-gradient(color-mix(in srgb, var(--cv-bg) 88%, transparent), color-mix(in srgb, var(--cv-bg) 92%, transparent)),
+            var(--cv-bg-image),
+            var(--cv-bg);
+        background-attachment: fixed;
+        background-position: center;
+        background-size: cover;
+    }
+
+    .bg-white,
+    .bg-white\/60 {
+        background: var(--cv-surface);
+    }
+
+    .bg-gray-50,
+    .hover\:bg-gray-50:hover,
+    .focus\:bg-gray-50:focus {
+        background: var(--cv-surface-soft);
+    }
+
+    .bg-gray-800,
+    .bg-gray-900 {
+        background: var(--cv-accent);
+    }
+
+    .hover\:bg-gray-800:hover,
+    .hover\:bg-gray-700:hover,
+    .focus\:bg-gray-700:focus {
+        background: var(--cv-accent-hover);
+    }
+
+    .text-gray-900,
+    .text-gray-800 {
+        color: var(--cv-text);
+    }
+
+    .text-gray-700,
+    .text-gray-600 {
+        color: var(--cv-text-muted);
+    }
+
+    .text-gray-500,
+    .text-gray-400 {
+        color: color-mix(in srgb, var(--cv-text-muted) 72%, transparent);
+    }
+
+    .hover\:text-gray-900:hover,
+    .hover\:text-gray-800:hover,
+    .hover\:text-gray-700:hover,
+    .focus\:text-gray-800:focus,
+    .focus\:text-gray-700:focus {
+        color: var(--cv-text);
+    }
+
+    .border-gray-100,
+    .border-gray-200,
+    .border-gray-300,
+    .hover\:border-gray-300:hover,
+    .focus\:border-gray-300:focus {
+        border-color: var(--cv-border);
+    }
+
+    .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+    .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+        border-color: var(--cv-border);
+    }
+
+    .ring-gray-100 {
+        --tw-ring-color: color-mix(in srgb, var(--cv-border) 70%, transparent);
+    }
+
+    .shadow,
+    .shadow-sm,
+    .shadow-lg,
+    .shadow-xl {
+        --tw-shadow-color: rgb(120 72 28 / 0.14);
+    }
+
+    .dark .min-h-screen.bg-gray-100 {
+        background: var(--cv-bg);
+    }
+
+    .dark .app-shell.min-h-screen.bg-gray-100 {
+        background:
+            linear-gradient(color-mix(in srgb, var(--cv-bg) 88%, transparent), color-mix(in srgb, var(--cv-bg) 92%, transparent)),
+            var(--cv-bg-image),
+            var(--cv-bg);
+        background-attachment: fixed;
+        background-position: center;
+        background-size: cover;
+    }
+
+    .dark .bg-white,
+    .dark .bg-white\/60 {
+        background: var(--cv-surface);
+    }
+
+    .dark .bg-gray-50,
+    .dark .hover\:bg-gray-50:hover,
+    .dark .focus\:bg-gray-50:focus {
+        background: var(--cv-surface-soft);
+    }
+
+    .dark .bg-gray-100,
+    .dark .hover\:bg-gray-100:hover,
+    .dark .focus\:bg-gray-100:focus {
+        background: var(--cv-surface-muted);
+    }
+
+    .dark .bg-gray-800,
+    .dark .bg-gray-900 {
+        background: var(--cv-accent);
+    }
+
+    .dark .hover\:bg-gray-800:hover,
+    .dark .hover\:bg-gray-700:hover,
+    .dark .focus\:bg-gray-700:focus {
+        background: var(--cv-accent-hover);
+    }
+
+    .dark .text-gray-900,
+    .dark .text-gray-800 {
+        color: var(--cv-text);
+    }
+
+    .dark .text-gray-700,
+    .dark .text-gray-600 {
+        color: var(--cv-text-muted);
+    }
+
+    .dark .text-gray-500,
+    .dark .text-gray-400 {
+        color: color-mix(in srgb, var(--cv-text-muted) 78%, transparent);
+    }
+
+    .dark .hover\:text-gray-900:hover,
+    .dark .hover\:text-gray-800:hover,
+    .dark .hover\:text-gray-700:hover,
+    .dark .focus\:text-gray-800:focus,
+    .dark .focus\:text-gray-700:focus {
+        color: var(--cv-text);
+    }
+
+    .dark .border-gray-100,
+    .dark .border-gray-200,
+    .dark .border-gray-300,
+    .dark .hover\:border-gray-300:hover,
+    .dark .focus\:border-gray-300:focus {
+        border-color: var(--cv-border);
+    }
+
+    .dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+    .dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+        border-color: var(--cv-border);
+    }
+
+    .dark .ring-gray-100 {
+        --tw-ring-color: color-mix(in srgb, var(--cv-border) 75%, transparent);
+    }
+
+    .dark .shadow,
+    .dark .shadow-sm,
+    .dark .shadow-lg,
+    .dark .shadow-xl {
+        --tw-shadow-color: rgb(0 0 0 / 0.34);
+        --tw-shadow: var(--tw-shadow-colored);
+    }
+
+    .dark table {
+        @apply text-slate-100;
+    }
+
+    .dark dialog {
+        background: var(--cv-surface);
+        color: var(--cv-text);
+    }
+}

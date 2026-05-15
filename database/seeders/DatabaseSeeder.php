@@ -3,10 +3,12 @@
 namespace Database\Seeders;
 
 use App\Models\CvTemplate;
+use App\Models\ApplicationTheme;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
 {
@@ -17,6 +19,19 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        Role::findOrCreate('admin');
+        Role::findOrCreate('cliente');
+
+        User::where('email', 'ingjosue.cardona@gmail.com')
+            ->first()
+            ?->syncRoles(['admin']);
+
+        User::where('email', '!=', 'ingjosue.cardona@gmail.com')
+            ->get()
+            ->each
+            ->syncRoles(['cliente']);
+
+        ApplicationTheme::ensureDefaultThemes();
         CvTemplate::ensureDefaultTemplates();
 
         Service::updateOrCreate(

@@ -6,6 +6,8 @@ const require = createRequire(import.meta.url);
 
 /** @type {import('tailwindcss').Config} */
 export default {
+    darkMode: 'class',
+
     presets: [
         require('./vendor/wireui/wireui/tailwind.config.js'),
     ],

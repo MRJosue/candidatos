@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\ApplicationTheme;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,6 +19,10 @@ class ProfileController extends Controller
     {
         return view('profile.edit', [
             'user' => $request->user(),
+            'themes' => ApplicationTheme::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(),
         ]);
     }
 
@@ -35,6 +40,25 @@ class ProfileController extends Controller
         $request->user()->save();
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
+    }
+
+    public function updateAppearance(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'application_theme_id' => ['nullable', 'exists:application_themes,id'],
+            'theme_mode' => ['required', 'in:system,light,dark'],
+        ]);
+
+        if (! empty($validated['application_theme_id'])) {
+            ApplicationTheme::query()
+                ->whereKey($validated['application_theme_id'])
+                ->where('is_active', true)
+                ->firstOrFail();
+        }
+
+        $request->user()->forceFill($validated)->save();
+
+        return Redirect::route('profile.edit')->with('status', 'appearance-updated');
     }
 
     /**
