@@ -11,7 +11,7 @@ class ApplicationTheme extends Model
 {
     use HasFactory;
 
-    public const DEFAULT_SLUG = 'arena';
+    public const DEFAULT_SLUG = 'cv-studio';
 
     public const TOKENS = [
         'bg',
@@ -47,26 +47,26 @@ class ApplicationTheme extends Model
     {
         return [
             'light_palette' => [
-                'bg' => '#fbf3e7',
-                'surface' => '#fffaf3',
-                'surface-muted' => '#f5eadc',
-                'surface-soft' => '#fff7ed',
-                'border' => '#ead8c2',
-                'text' => '#2f261f',
-                'text-muted' => '#6f5b49',
-                'accent' => '#b45309',
-                'accent-hover' => '#92400e',
+                'bg' => '#f5f8fc',
+                'surface' => '#ffffff',
+                'surface-muted' => '#edf3f9',
+                'surface-soft' => '#f7f9fc',
+                'border' => '#d7e1ee',
+                'text' => '#172033',
+                'text-muted' => '#5f6f89',
+                'accent' => '#3157d5',
+                'accent-hover' => '#1f3f9f',
             ],
             'dark_palette' => [
-                'bg' => '#17110d',
-                'surface' => '#211814',
-                'surface-muted' => '#2b211d',
-                'surface-soft' => '#32261f',
-                'border' => '#4a372c',
-                'text' => '#f6eadb',
-                'text-muted' => '#d4bda7',
-                'accent' => '#f59e0b',
-                'accent-hover' => '#fbbf24',
+                'bg' => '#0f1726',
+                'surface' => '#172033',
+                'surface-muted' => '#1f2d46',
+                'surface-soft' => '#263754',
+                'border' => '#3b4c68',
+                'text' => '#f5f8fc',
+                'text-muted' => '#b9c6d8',
+                'accent' => '#6f8cff',
+                'accent-hover' => '#9db2ff',
             ],
         ];
     }
@@ -79,17 +79,22 @@ class ApplicationTheme extends Model
 
         $palettes = self::defaultPalettes();
 
-        self::updateOrCreate(
+        $theme = self::updateOrCreate(
             ['slug' => self::DEFAULT_SLUG],
             [
-                'name' => 'Arena',
-                'description' => 'Tema calido base de CV Studio.',
+                'name' => 'CV Studio',
+                'description' => 'Tema claro base inspirado en la identidad visual de CV Studio.',
                 'light_palette' => $palettes['light_palette'],
                 'dark_palette' => $palettes['dark_palette'],
                 'is_active' => true,
                 'is_default' => true,
             ],
         );
+
+        self::query()
+            ->whereKeyNot($theme->getKey())
+            ->where('is_default', true)
+            ->update(['is_default' => false]);
     }
 
     public static function default(): self
@@ -112,9 +117,9 @@ class ApplicationTheme extends Model
         $palettes = self::defaultPalettes();
 
         return new self([
-            'name' => 'Arena',
+            'name' => 'CV Studio',
             'slug' => self::DEFAULT_SLUG,
-            'description' => 'Tema calido base de CV Studio.',
+            'description' => 'Tema claro base inspirado en la identidad visual de CV Studio.',
             'light_palette' => $palettes['light_palette'],
             'dark_palette' => $palettes['dark_palette'],
             'is_active' => true,

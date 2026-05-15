@@ -12,27 +12,27 @@ summary::-webkit-details-marker {
 
 @layer base {
     :root {
-        --cv-bg: #fbf3e7;
-        --cv-surface: #fffaf3;
-        --cv-surface-muted: #f5eadc;
-        --cv-surface-soft: #fff7ed;
-        --cv-border: #ead8c2;
-        --cv-text: #2f261f;
-        --cv-text-muted: #6f5b49;
-        --cv-accent: #b45309;
-        --cv-accent-hover: #92400e;
+        --cv-bg: #f5f8fc;
+        --cv-surface: #ffffff;
+        --cv-surface-muted: #edf3f9;
+        --cv-surface-soft: #f7f9fc;
+        --cv-border: #d7e1ee;
+        --cv-text: #172033;
+        --cv-text-muted: #5f6f89;
+        --cv-accent: #3157d5;
+        --cv-accent-hover: #1f3f9f;
     }
 
     html.dark {
-        --cv-bg: #17110d;
-        --cv-surface: #211814;
-        --cv-surface-muted: #2b211d;
-        --cv-surface-soft: #32261f;
-        --cv-border: #4a372c;
-        --cv-text: #f6eadb;
-        --cv-text-muted: #d4bda7;
-        --cv-accent: #f59e0b;
-        --cv-accent-hover: #fbbf24;
+        --cv-bg: #0f1726;
+        --cv-surface: #172033;
+        --cv-surface-muted: #1f2d46;
+        --cv-surface-soft: #263754;
+        --cv-border: #3b4c68;
+        --cv-text: #f5f8fc;
+        --cv-text-muted: #b9c6d8;
+        --cv-accent: #6f8cff;
+        --cv-accent-hover: #9db2ff;
     }
 
     html {
@@ -355,7 +355,7 @@ summary::-webkit-details-marker {
     .shadow-sm,
     .shadow-lg,
     .shadow-xl {
-        --tw-shadow-color: rgb(120 72 28 / 0.14);
+        --tw-shadow-color: color-mix(in srgb, var(--cv-text) 14%, transparent);
     }
 
     .dark .min-h-screen.bg-gray-100 {
