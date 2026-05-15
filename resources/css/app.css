@@ -78,8 +78,10 @@ summary::-webkit-details-marker {
 
 @layer components {
     .app-nav {
+        position: relative;
+        z-index: 60;
         border-color: var(--cv-border);
-        background: color-mix(in srgb, var(--cv-surface) 88%, transparent);
+        background: color-mix(in srgb, var(--cv-surface) 94%, transparent);
         color: var(--cv-text);
         backdrop-filter: blur(12px);
     }
@@ -142,9 +144,15 @@ summary::-webkit-details-marker {
     }
 
     .app-user-dropdown {
-        border-color: color-mix(in srgb, var(--cv-border) 70%, transparent);
-        background: var(--cv-surface);
-        --tw-ring-color: color-mix(in srgb, var(--cv-border) 70%, transparent);
+        z-index: 90;
+        border: 1px solid color-mix(in srgb, var(--cv-border) 85%, var(--cv-accent) 15%);
+        background: color-mix(in srgb, var(--cv-surface) 98%, white 2%);
+        --tw-ring-color: color-mix(in srgb, var(--cv-accent) 18%, transparent);
+        box-shadow:
+            0 18px 42px color-mix(in srgb, var(--cv-text) 18%, transparent),
+            0 4px 10px color-mix(in srgb, var(--cv-text) 10%, transparent);
+        color: var(--cv-text);
+        overflow: hidden;
     }
 
     .app-user-dropdown-section,
@@ -163,8 +171,8 @@ summary::-webkit-details-marker {
 
     .app-menu-select {
         --tw-ring-color: color-mix(in srgb, var(--cv-accent) 55%, transparent);
-        border-color: var(--cv-border);
-        background: var(--cv-surface);
+        border-color: color-mix(in srgb, var(--cv-border) 85%, var(--cv-accent) 15%);
+        background: color-mix(in srgb, var(--cv-surface) 94%, white 6%);
         color: var(--cv-text);
     }
 
@@ -178,7 +186,7 @@ summary::-webkit-details-marker {
 
     .app-dropdown-link:hover,
     .app-dropdown-link:focus {
-        background: var(--cv-surface-soft);
+        background: color-mix(in srgb, var(--cv-accent) 10%, var(--cv-surface));
         color: var(--cv-text);
     }
 
@@ -228,8 +236,8 @@ summary::-webkit-details-marker {
 
     .app-dashboard .bg-white,
     .app-dashboard .bg-white\/60 {
-        background: color-mix(in srgb, var(--cv-surface) 72%, transparent);
-        backdrop-filter: blur(14px);
+        background: color-mix(in srgb, var(--cv-surface) 78%, transparent);
+        backdrop-filter: blur(10px);
     }
 
     .app-dashboard .hover\:bg-gray-50:hover,
@@ -255,7 +263,14 @@ summary::-webkit-details-marker {
 
     .dark .app-dashboard .bg-white,
     .dark .app-dashboard .bg-white\/60 {
-        background: color-mix(in srgb, var(--cv-surface) 78%, transparent);
+        background: color-mix(in srgb, var(--cv-surface) 84%, transparent);
+    }
+
+    .dark .app-user-dropdown {
+        background: color-mix(in srgb, var(--cv-surface) 96%, black 4%);
+        box-shadow:
+            0 18px 42px rgb(0 0 0 / 0.48),
+            0 4px 10px rgb(0 0 0 / 0.32);
     }
 
     .min-h-screen.bg-gray-100,

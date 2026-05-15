@@ -86,7 +86,7 @@
                         x-cloak
                         x-show="userMenuOpen"
                         x-transition.origin.top.right
-                        class="app-user-dropdown absolute end-0 z-50 mt-2 w-56 rounded-md py-1 shadow-lg ring-1"
+                        class="app-user-dropdown absolute end-0 mt-3 w-64 rounded-lg py-1 ring-1"
                     >
                         <form method="POST" action="{{ route('profile.appearance.update') }}" class="app-user-dropdown-section border-b px-4 py-3">
                             @csrf

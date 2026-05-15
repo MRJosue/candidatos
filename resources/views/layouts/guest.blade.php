@@ -3,6 +3,9 @@
     $applicationTheme = Auth::user()?->applicationTheme ?? \App\Models\ApplicationTheme::default();
     $appearanceMode = Auth::user()?->theme_mode ?? 'system';
     $backgroundImageUrl = $applicationTheme->backgroundImageUrl();
+    $backgroundImageCss = $backgroundImageUrl
+        ? 'url('.json_encode($backgroundImageUrl, JSON_UNESCAPED_SLASHES).')'
+        : 'none';
 @endphp
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-app-theme="{{ $applicationTheme->slug }}">
     <head>
@@ -42,7 +45,7 @@
                 @foreach ($applicationTheme->paletteFor('light') as $token => $value)
                     --cv-{{ $token }}: {{ $value }};
                 @endforeach
-                --cv-bg-image: {{ $backgroundImageUrl ? "url('".$backgroundImageUrl."')" : 'none' }};
+                --cv-bg-image: {!! $backgroundImageCss !!};
             }
 
             html.dark[data-app-theme="{{ $applicationTheme->slug }}"] {
