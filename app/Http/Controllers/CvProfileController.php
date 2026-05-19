@@ -228,8 +228,10 @@ class CvProfileController extends Controller
 
         $profile = $cvProfile->load(['template', 'experiences', 'education', 'skills']);
 
+        $paper = $profile->template?->slug === 'act-digital' ? 'a4' : 'letter';
+
         return Pdf::loadView('cv.pdf', compact('profile'))
-            ->setPaper('letter')
+            ->setPaper($paper)
             ->download(str($profile->title)->slug().'.pdf');
     }
 

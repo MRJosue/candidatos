@@ -32,13 +32,20 @@
         ['label' => 'LinkedIn', 'value' => $profile->linkedin_url, 'href' => $profile->linkedin_url, 'icon' => 'in'],
         ['label' => 'Portafolio', 'value' => $profile->portfolio_url, 'href' => $profile->portfolio_url, 'icon' => 'www'],
     ])->filter(fn ($item) => filled($item['value']))->values();
+    $actLogoPath = public_path('images/cv-templates/act-digital-logo.png');
+    $actRulePath = public_path('images/cv-templates/act-blue-rule.png');
+    $actLogoData = file_exists($actLogoPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($actLogoPath)) : null;
+    $actRuleData = file_exists($actRulePath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($actRulePath)) : null;
 @endphp
 <!doctype html>
 <html lang="es">
 <head>
     <meta charset="utf-8">
     <style>
-        @page { size: letter; margin: 18px 22px; }
+        @page {
+            size: {{ $templateSlug === 'act-digital' ? 'a4' : 'letter' }};
+            margin: {{ $templateSlug === 'act-digital' ? '14px 34px 42px 64px' : '18px 22px' }};
+        }
         * { box-sizing: border-box; }
         html {
             margin: 0;
@@ -211,6 +218,142 @@
         }
         .main .spotlight { border: 1px solid #d7dee8; background: #fbfaf7; padding: 7px 9px; margin-bottom: 8px; }
 
+        .pdf-act-digital {
+            width: 696px;
+            color: #262626;
+            font-family: Arial, DejaVu Sans, sans-serif;
+            font-size: 10px;
+            line-height: 1.28;
+        }
+        .pdf-act-digital .pdf-page { width: 696px; }
+        .template-act { position: relative; padding-top: 18px; }
+        .template-act .act-top {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14px;
+        }
+        .template-act .act-top td { vertical-align: top; }
+        .template-act .act-name {
+            color: #808080;
+            font-size: 20px;
+            line-height: 1.05;
+            font-weight: 700;
+        }
+        .template-act .act-role {
+            color: #808080;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+        .template-act .act-logo {
+            width: 86px;
+            height: auto;
+        }
+        .template-act .act-contact {
+            color: #6f6f6f;
+            font-size: 8.5px;
+            line-height: 1.32;
+            margin-top: 4px;
+            text-align: right;
+        }
+        .template-act .act-section {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            margin-bottom: 8px;
+            page-break-inside: avoid;
+        }
+        .template-act .act-section td {
+            padding: 0;
+            vertical-align: middle;
+        }
+        .template-act .act-section .act-section-mark {
+            width: 58px;
+            background: #00b0f0;
+            height: 19px;
+        }
+        .template-act .act-section .act-section-title {
+            color: #808080;
+            font-family: "Trebuchet MS", Arial, DejaVu Sans, sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.1;
+            padding-left: 8px;
+            text-transform: uppercase;
+        }
+        .template-act .act-copy {
+            color: #262626;
+            font-family: Cambria, Georgia, DejaVu Serif, serif;
+            font-size: 10px;
+            line-height: 1.34;
+            margin: 0 0 8px;
+            text-align: justify;
+        }
+        .template-act .act-subhead {
+            font-weight: 700;
+            margin: 7px 0 2px;
+        }
+        .template-act .act-skill-line {
+            margin: 0 0 4px;
+        }
+        .template-act .act-entry {
+            margin: 0 0 9px;
+            page-break-inside: avoid;
+        }
+        .template-act .act-entry-title {
+            font-size: 11px;
+            font-weight: 400;
+            line-height: 1.22;
+        }
+        .template-act .act-entry-meta {
+            font-size: 10.5px;
+            line-height: 1.24;
+            margin-top: 1px;
+        }
+        .template-act .act-entry ul {
+            margin: 4px 0 0 14px;
+        }
+        .template-act .act-skill-table {
+            width: 82%;
+            border-collapse: collapse;
+            margin-top: 3px;
+        }
+        .template-act .act-skill-table th {
+            background: #bfbfbf;
+            border-right: 1px solid #7a7a7a;
+            font-size: 11px;
+            padding: 3px 7px;
+            text-align: left;
+            text-transform: uppercase;
+        }
+        .template-act .act-skill-table th:last-child,
+        .template-act .act-skill-table td:last-child {
+            border-right: 1px solid #7a7a7a;
+        }
+        .template-act .act-skill-table td {
+            background: #f2f2f2;
+            border-right: 1px solid #7a7a7a;
+            font-size: 9.5px;
+            line-height: 1.28;
+            padding: 5px 8px;
+            vertical-align: top;
+            width: 50%;
+        }
+        .template-act .act-skill-table ul {
+            margin: 0 0 0 11px;
+            padding: 0;
+        }
+        .template-act .act-footer-rule {
+            bottom: -24px;
+            left: -64px;
+            position: fixed;
+            width: 794px;
+        }
+        .template-act .act-footer-rule img {
+            display: block;
+            height: 9px;
+            width: 100%;
+        }
+
         @media screen {
             html {
                 background: #e5e7eb;
@@ -230,7 +373,109 @@
 </head>
 <body class="pdf-{{ $templateSlug }}">
 <div class="pdf-page">
-@if ($templateSlug === 'creativo-sidebar')
+@if ($templateSlug === 'act-digital')
+    <div class="template-act">
+        <table class="act-top">
+            <tr>
+                <td style="width: 68%; padding-right: 16px;">
+                    <h1 class="act-name">{{ $profile->full_name }}</h1>
+                    @if ($profile->headline)<p class="act-role">{{ $profile->headline }}</p>@endif
+                    @if ($profile->tagline)<p class="act-role">{{ $profile->tagline }}</p>@endif
+                </td>
+                <td style="width: 32%; text-align: right;">
+                    @if ($actLogoData)
+                        <img class="act-logo" src="{{ $actLogoData }}" alt="ACT Digital">
+                    @endif
+                    @if ($contactItems->isNotEmpty())
+                        <div class="act-contact">
+                            @foreach ($contactItems as $item)
+                                <p>{{ $item['value'] }}</p>
+                            @endforeach
+                        </div>
+                    @endif
+                </td>
+            </tr>
+        </table>
+
+        @if ($profile->summary || $profile->objective)
+            <table class="act-section"><tr><td class="act-section-mark"></td><td class="act-section-title">Professional Summary</td></tr></table>
+            @if ($profile->summary)<p class="act-copy">{{ $profile->summary }}</p>@endif
+            @if ($profile->objective)<p class="act-copy">{{ $profile->objective }}</p>@endif
+        @endif
+
+        @if ($technicalSkills->isNotEmpty())
+            <p class="act-subhead">SKILLS</p>
+            @foreach ($skillGroups as $category => $skills)
+                <p class="act-skill-line"><strong>{{ $category }}:</strong><br>{{ $skills->map(fn ($skill) => $skill->name)->join(', ') }}</p>
+            @endforeach
+        @endif
+
+        @foreach ($mainSectionOrder as $section)
+            @if ($section === 'experiences' && $profile->experiences->isNotEmpty())
+                <table class="act-section"><tr><td class="act-section-mark"></td><td class="act-section-title">Experience</td></tr></table>
+                @foreach ($profile->experiences as $item)
+                    <div class="act-entry">
+                        <p class="act-entry-title">{{ $item->position }}</p>
+                        <p class="act-entry-meta">{{ $item->company }}@if($item->location), {{ $item->location }}@endif</p>
+                        <p class="act-entry-meta">Dates: {{ $item->start_date?->format('Y') }} - {{ $item->is_current ? 'Actual' : $item->end_date?->format('Y') }}</p>
+                        @if ($item->description)
+                            <ul>@foreach ($lines($item->description) as $line)<li>{{ $line }}</li>@endforeach</ul>
+                        @endif
+                    </div>
+                @endforeach
+            @elseif ($section === 'education' && $profile->education->isNotEmpty())
+                <table class="act-section"><tr><td class="act-section-mark"></td><td class="act-section-title">Education</td></tr></table>
+                @foreach ($profile->education as $item)
+                    <div class="act-entry">
+                        <p class="act-entry-title">{{ $item->degree }}@if($item->field), {{ $item->field }}@endif</p>
+                        <p class="act-entry-meta">{{ $item->institution }}</p>
+                        <p class="act-entry-meta">Dates: {{ $item->start_date?->format('Y') }}@if($item->end_date) - {{ $item->end_date?->format('Y') }}@endif</p>
+                        @if ($item->location)<p class="act-entry-meta">{{ $item->location }}</p>@endif
+                        @if ($item->description)<p class="act-entry-meta">{{ $item->description }}</p>@endif
+                    </div>
+                @endforeach
+            @endif
+        @endforeach
+
+        @if ($technicalSkills->isNotEmpty() || $languageSkills->isNotEmpty() || $softSkills->isNotEmpty())
+            <table class="act-section"><tr><td class="act-section-mark"></td><td class="act-section-title">Habilidades Técnicas y Certificaciones</td></tr></table>
+            <table class="act-skill-table">
+                <tr>
+                    <th>Software</th>
+                    <th>Lenguajes</th>
+                </tr>
+                <tr>
+                    <td>
+                        <ul>
+                            @foreach ($technicalSkills as $skill)<li>{{ $skill->name }}</li>@endforeach
+                            @foreach ($softSkills as $skill)<li>{{ $skill->name }}</li>@endforeach
+                        </ul>
+                    </td>
+                    <td>
+                        @if ($languageSkills->isNotEmpty())
+                            @foreach ($languageSkills as $skill)
+                                <p>{{ $skill->name }}@if($skill->level): {{ $skill->level }}/5 @endif</p>
+                            @endforeach
+                        @else
+                            <p>&nbsp;</p>
+                        @endif
+                    </td>
+                </tr>
+            </table>
+        @endif
+
+        @if ($profile->awards || $profile->leadership_activities || $profile->interests)
+            <table class="act-section"><tr><td class="act-section-mark"></td><td class="act-section-title">Additional Information</td></tr></table>
+            @if ($profile->awards)<p class="act-entry-meta"><strong>Reconocimientos:</strong> {{ $lines($profile->awards)->join(', ') }}</p>@endif
+            @if ($profile->leadership_activities)<p class="act-entry-meta"><strong>Actividades:</strong> {{ $lines($profile->leadership_activities)->join(', ') }}</p>@endif
+            @if ($profile->interests)<p class="act-entry-meta"><strong>Intereses:</strong> {{ $lines($profile->interests)->join(', ') }}</p>@endif
+        @endif
+
+        @if ($actRuleData)
+            <div class="act-footer-rule"><img src="{{ $actRuleData }}" alt=""></div>
+        @endif
+    </div>
+@elseif ($templateSlug === 'creativo-sidebar')
     <table class="template-sidebar">
         <tr>
             <td class="sidebar">

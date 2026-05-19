@@ -40,6 +40,15 @@ class CvTemplate extends Model
             'currency' => 'MXN',
             'is_active' => true,
         ],
+        'act-digital' => [
+            'name' => 'ACT Digital',
+            'description' => 'Formato corporativo inspirado en ACT Digital, con logo, acentos azules y secciones tabulares.',
+            'preview_image_path' => 'images/cv-templates/act-digital-logo.png',
+            'is_premium' => false,
+            'price_cents' => 0,
+            'currency' => 'MXN',
+            'is_active' => true,
+        ],
     ];
 
     protected $fillable = [
