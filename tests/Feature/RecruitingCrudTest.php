@@ -443,7 +443,7 @@ class RecruitingCrudTest extends TestCase
                 'email' => 'ana@example.com',
             ])
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('talents.show', $talent));
+            ->assertRedirect(route('talents.index'));
 
         $this->assertSame('CV Ana', $talent->refresh()->cvProfile->title);
     }
@@ -473,7 +473,7 @@ class RecruitingCrudTest extends TestCase
         $this->assertSame($talent->id, $profile->refresh()->talent_id);
     }
 
-    public function test_recruiter_returns_to_cv_show_after_updating_assigned_cv(): void
+    public function test_recruiter_returns_to_talents_after_updating_assigned_cv(): void
     {
         $user = User::factory()->create();
         $talent = $user->talents()->create([
@@ -498,7 +498,7 @@ class RecruitingCrudTest extends TestCase
                 'headline' => 'Desarrolladora backend PHP',
             ])
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('cv.show', $profile));
+            ->assertRedirect(route('talents.index'));
 
         $this->assertSame('CV Andrea', $profile->refresh()->title);
     }

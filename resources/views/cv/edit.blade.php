@@ -18,23 +18,19 @@
                 'applyAction' => route('cv.apply-document-import', $profile),
             ])
 
-            <section class="bg-white p-6 rounded shadow-sm">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Datos principales</h3>
-                <form method="POST" action="{{ route('cv.update', $profile) }}" class="space-y-4">
-                    @method('PUT')
-                    @include('cv._form')
-                </form>
-            </section>
+            <form method="POST" action="{{ route('cv.update', $profile) }}" class="space-y-6">
+                @method('PUT')
 
-            <section class="bg-white p-6 rounded shadow-sm">
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-900">Secciones del CV</h3>
-                    <p class="text-sm text-gray-500">Edita cada seccion directamente. En experiencia y educacion usa el formato: Titulo | Organizacion | Periodo.</p>
-                </div>
+                <section class="bg-white p-6 rounded shadow-sm space-y-5">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Datos principales</h3>
+                    @include('cv._form', ['showSubmitButton' => false])
+                </section>
 
-                <form method="POST" action="{{ route('cv.sections.update', $profile) }}" class="mt-5 space-y-5">
-                    @csrf
-                    @method('PUT')
+                <section class="bg-white p-6 rounded shadow-sm">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">Secciones del CV</h3>
+                        <p class="text-sm text-gray-500">Edita cada seccion directamente. En experiencia y educacion usa el formato: Titulo | Organizacion | Periodo.</p>
+                    </div>
 
                     <label class="block">
                         <span class="text-sm font-medium text-gray-700">Experiencia</span>
@@ -64,9 +60,10 @@
                     @error('experiences_text')
                         <p class="text-sm text-red-700">{{ $message }}</p>
                     @enderror
-                    <button class="px-4 py-2 bg-gray-900 text-white rounded">Guardar secciones</button>
-                </form>
-            </section>
+                </section>
+
+                <button class="px-4 py-2 bg-gray-900 text-white rounded">Guardar</button>
+            </form>
         </div>
     </div>
 </x-app-layout>

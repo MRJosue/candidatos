@@ -118,7 +118,7 @@ class CvProfileController extends Controller
         });
 
         return redirect()
-            ->route($talent ? 'talents.show' : 'cv.show', $talent ?: $profile)
+            ->route('talents.index')
             ->with('status', 'CV creado.');
     }
 
@@ -160,13 +160,21 @@ class CvProfileController extends Controller
 
         $talent = $this->validatedTalent($request);
 
-        $cvProfile->update([
-            ...$this->profileDataForStorage($request->validated()),
-            'talent_id' => $talent?->id,
-        ]);
+        $sectionData = $this->validatedSectionText($request);
+
+        DB::transaction(function () use ($cvProfile, $request, $talent, $sectionData): void {
+            $cvProfile->update([
+                ...$this->profileDataForStorage($request->validated()),
+                'talent_id' => $talent?->id,
+            ]);
+
+            if ($this->hasSectionTextInput($request)) {
+                $this->replaceSectionsFromText($cvProfile, $sectionData);
+            }
+        });
 
         return redirect()
-            ->route('cv.show', $cvProfile)
+            ->route('talents.index')
             ->with('status', 'CV actualizado.');
     }
 
@@ -294,21 +302,9 @@ class CvProfileController extends Controller
     {
         $this->authorize('update', $cvProfile);
 
-        $data = $request->validate([
-            'experiences_text' => ['nullable', 'string', 'max:12000'],
-            'education_text' => ['nullable', 'string', 'max:8000'],
-            'skills_text' => ['nullable', 'string', 'max:4000'],
-            'languages_text' => ['nullable', 'string', 'max:4000'],
-            'soft_skills_text' => ['nullable', 'string', 'max:4000'],
-        ]);
+        $data = $this->validatedSectionText($request);
 
-        DB::transaction(function () use ($cvProfile, $data): void {
-            $this->replaceExperiences($cvProfile, $this->parseExperienceBlocks($data['experiences_text'] ?? ''));
-            $this->replaceEducation($cvProfile, $this->parseEducationBlocks($data['education_text'] ?? ''));
-            $this->replaceSkills($cvProfile, 'skill', $this->parseList($data['skills_text'] ?? ''));
-            $this->replaceSkills($cvProfile, 'language', $this->parseList($data['languages_text'] ?? ''));
-            $this->replaceSkills($cvProfile, 'soft_skill', $this->parseList($data['soft_skills_text'] ?? ''));
-        });
+        DB::transaction(fn () => $this->replaceSectionsFromText($cvProfile, $data));
 
         return redirect()
             ->route('cv.edit', $cvProfile)
@@ -399,6 +395,43 @@ class CvProfileController extends Controller
         }
 
         return $talent;
+    }
+
+    /**
+     * @return array<string, string|null>
+     */
+    private function validatedSectionText(Request $request): array
+    {
+        return $request->validate([
+            'experiences_text' => ['nullable', 'string', 'max:12000'],
+            'education_text' => ['nullable', 'string', 'max:8000'],
+            'skills_text' => ['nullable', 'string', 'max:4000'],
+            'languages_text' => ['nullable', 'string', 'max:4000'],
+            'soft_skills_text' => ['nullable', 'string', 'max:4000'],
+        ]);
+    }
+
+    private function hasSectionTextInput(Request $request): bool
+    {
+        return $request->hasAny([
+            'experiences_text',
+            'education_text',
+            'skills_text',
+            'languages_text',
+            'soft_skills_text',
+        ]);
+    }
+
+    /**
+     * @param  array<string, string|null>  $data
+     */
+    private function replaceSectionsFromText(CvProfile $cvProfile, array $data): void
+    {
+        $this->replaceExperiences($cvProfile, $this->parseExperienceBlocks($data['experiences_text'] ?? ''));
+        $this->replaceEducation($cvProfile, $this->parseEducationBlocks($data['education_text'] ?? ''));
+        $this->replaceSkills($cvProfile, 'skill', $this->parseList($data['skills_text'] ?? ''));
+        $this->replaceSkills($cvProfile, 'language', $this->parseList($data['languages_text'] ?? ''));
+        $this->replaceSkills($cvProfile, 'soft_skill', $this->parseList($data['soft_skills_text'] ?? ''));
     }
 
     private function profileDataFromTalent(Talent $talent): array

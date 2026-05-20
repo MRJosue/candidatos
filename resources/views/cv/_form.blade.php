@@ -87,4 +87,6 @@
 @if ($errors->any())
     <div class="text-sm text-red-700">{{ $errors->first() }}</div>
 @endif
-<button class="px-4 py-2 bg-gray-900 text-white rounded">Guardar</button>
+@if ($showSubmitButton ?? true)
+    <button class="px-4 py-2 bg-gray-900 text-white rounded">Guardar</button>
+@endif

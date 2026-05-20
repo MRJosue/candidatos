@@ -31,6 +31,7 @@ class CvDocumentImportTest extends TestCase
             ->assertSee('Analizar con IA')
             ->assertSee('Estamos procesando su solicitud.')
             ->assertSee('Secciones del CV')
+            ->assertDontSee('Guardar secciones')
             ->assertSee('name="cv_document"', false)
             ->assertSee(route('cv.import-document-ai', $profile), false)
             ->assertDontSee('Parser actual');
@@ -103,6 +104,51 @@ class CvDocumentImportTest extends TestCase
         $this->assertDatabaseHas('cv_skills', [
             'cv_profile_id' => $profile->id,
             'name' => 'Liderazgo',
+            'type' => 'soft_skill',
+        ]);
+    }
+
+    public function test_user_can_update_cv_profile_and_sections_with_one_save_button(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = CvProfile::create([
+            'user_id' => $user->id,
+            'title' => 'CV en proceso',
+            'full_name' => 'Nombre anterior',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $this->actingAs($user)
+            ->put(route('cv.update', $profile), [
+                'title' => 'CV Andrea',
+                'full_name' => 'Andrea Lopez',
+                'email' => 'andrea@example.com',
+                'experiences_text' => implode("\n", [
+                    'Tech Lead | Acme Software | 2021 - presente',
+                    'Descripcion del rol',
+                ]),
+                'education_text' => 'Ingenieria en Sistemas | Universidad Demo | 2017 - 2021',
+                'skills_text' => "Laravel\nPHP\nMySQL",
+                'languages_text' => "Espanol\nIngles",
+                'soft_skills_text' => "Liderazgo\nComunicacion",
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('talents.index'));
+
+        $this->assertDatabaseHas('cv_profiles', [
+            'id' => $profile->id,
+            'title' => 'CV Andrea',
+            'full_name' => 'Andrea Lopez',
+        ]);
+        $this->assertDatabaseHas('cv_experiences', [
+            'cv_profile_id' => $profile->id,
+            'position' => 'Tech Lead',
+            'company' => 'Acme Software',
+        ]);
+        $this->assertDatabaseHas('cv_skills', [
+            'cv_profile_id' => $profile->id,
+            'name' => 'Comunicacion',
             'type' => 'soft_skill',
         ]);
     }
