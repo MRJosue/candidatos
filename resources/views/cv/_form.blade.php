@@ -24,7 +24,7 @@
     </label>
     <label class="block">
         <span class="text-sm text-gray-700">Correo electrónico</span>
-        <input type="email" name="email" value="{{ old('email', $profile->email ?? auth()->user()->email) }}" class="mt-1 w-full rounded border-gray-300" required>
+        <input type="email" name="email" value="{{ old('email', $profile->email ?? '') }}" class="mt-1 w-full rounded border-gray-300">
     </label>
     <label class="block">
         <span class="text-sm text-gray-700">Teléfono</span>

@@ -66,22 +66,8 @@ class RecruitingCrudTest extends TestCase
                     [
                         'Ana',
                         'Lopez',
-                        'ana@example.com',
-                        '5551234567',
-                        'Ciudad de Mexico',
-                        'Backend Developer',
-                        'Backend Developer',
-                        'Senior',
                         'LinkedIn',
                         'active',
-                        'Inmediata',
-                        '45000',
-                        '55000',
-                        'MXN',
-                        'PHP, Laravel, MySQL',
-                        'Espanol, Ingles B2',
-                        'https://linkedin.com/in/ana',
-                        'Construye APIs y paneles internos.',
                         'Lista para entrevista.',
                         '2026-05-07',
                     ],
@@ -100,11 +86,12 @@ class RecruitingCrudTest extends TestCase
         $talent = $user->talents()->first();
 
         $this->assertSame('Ana', $talent->first_name);
-        $this->assertSame(['PHP', 'Laravel', 'MySQL'], $talent->technical_stack);
+        $this->assertSame('LinkedIn', $talent->source);
+        $this->assertSame('Lista para entrevista.', $talent->notes);
         $this->assertDatabaseHas('talents', [
             'recruiter_id' => $user->id,
-            'email' => 'ana@example.com',
-            'currency' => 'MXN',
+            'first_name' => 'Ana',
+            'status' => 'active',
         ]);
     }
 
@@ -484,6 +471,133 @@ class RecruitingCrudTest extends TestCase
         $this->assertSame($talent->id, $profile->refresh()->talent_id);
     }
 
+    public function test_recruiter_returns_to_cv_show_after_updating_assigned_cv(): void
+    {
+        $user = User::factory()->create();
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $profile = $user->cvProfiles()->create([
+            'talent_id' => $talent->id,
+            'title' => 'CV Ana',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana@example.com',
+        ]);
+
+        $this->actingAs($user)
+            ->put(route('cv.update', $profile), [
+                'talent_id' => $talent->id,
+                'title' => 'CV Andrea',
+                'full_name' => 'Andrea Lopez',
+                'email' => 'andrea@example.com',
+                'headline' => 'Desarrolladora backend PHP',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('cv.show', $profile));
+
+        $this->assertSame('CV Andrea', $profile->refresh()->title);
+    }
+
+    public function test_recruiter_can_create_cv_directly_from_talent(): void
+    {
+        $user = User::factory()->create();
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('talents.cv.store', $talent))
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $profile = $talent->refresh()->cvProfile;
+
+        $this->assertNotNull($profile);
+        $this->assertSame('CV Ana Lopez', $profile->title);
+        $this->assertSame('Ana Lopez', $profile->full_name);
+        $this->assertNull($profile->headline);
+    }
+
+    public function test_recruiter_cannot_assign_a_second_cv_to_same_talent(): void
+    {
+        $user = User::factory()->create();
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $assignedProfile = $user->cvProfiles()->create([
+            'talent_id' => $talent->id,
+            'title' => 'CV Actual',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana@example.com',
+        ]);
+        $newProfile = $user->cvProfiles()->create([
+            'title' => 'CV Nuevo',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana@example.com',
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('cv.talent.update', $newProfile), [
+                'talent_id' => $talent->id,
+            ])
+            ->assertSessionHasErrors('talent_id');
+
+        $this->assertSame($talent->id, $assignedProfile->refresh()->talent_id);
+        $this->assertNull($newProfile->refresh()->talent_id);
+    }
+
+    public function test_recruiter_can_download_selected_talent_cvs_as_zip(): void
+    {
+        $user = User::factory()->create();
+        $firstTalent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'email' => 'ana@example.com',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $secondTalent = $user->talents()->create([
+            'first_name' => 'Beto',
+            'last_name' => 'Ruiz',
+            'email' => 'beto@example.com',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+
+        $user->cvProfiles()->create([
+            'talent_id' => $firstTalent->id,
+            'title' => 'CV Ana',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana@example.com',
+        ]);
+        $user->cvProfiles()->create([
+            'talent_id' => $secondTalent->id,
+            'title' => 'CV Beto',
+            'full_name' => 'Beto Ruiz',
+            'email' => 'beto@example.com',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->post(route('talents.download-cvs'), [
+                'talent_ids' => [$firstTalent->id, $secondTalent->id],
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertDownload();
+
+        $this->assertStringStartsWith('PK', $response->streamedContent());
+    }
+
     public function test_public_talent_link_updates_talent_and_cv(): void
     {
         $user = User::factory()->create();
@@ -522,22 +636,8 @@ class RecruitingCrudTest extends TestCase
         $sheet->fromArray([
             'Nombre',
             'Apellido',
-            'Email',
-            'Telefono',
-            'Ubicacion',
-            'Headline',
-            'Puesto objetivo',
-            'Senioridad',
             'Fuente',
             'Estado',
-            'Disponibilidad',
-            'Expectativa minima',
-            'Expectativa maxima',
-            'Moneda',
-            'Stack tecnico',
-            'Idiomas',
-            'Links',
-            'Resumen tecnico',
             'Notas internas',
             'Ultimo contacto',
         ], null, 'A1');

@@ -66,7 +66,6 @@
                         </svg>
                         Descargar PDF
                     </a>
-                    <a href="{{ route('cv.edit', $profile) }}" class="inline-flex items-center rounded-md border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Editar</a>
                 </div>
             </div>
         </div>
@@ -113,12 +112,17 @@
     <div class="py-8"><div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-6">
         @if (session('status'))<div class="bg-emerald-50 text-emerald-800 p-4 rounded">{{ session('status') }}</div>@endif
         <section class="bg-white p-6 rounded shadow-sm">
-            <h3 class="text-2xl font-semibold">{{ $profile->full_name }}</h3>
-            <p class="text-gray-600">{{ $profile->headline }}</p>
-            @if ($profile->tagline)<p class="text-gray-500 italic">{{ $profile->tagline }}</p>@endif
-            <p class="mt-3">{{ $profile->summary }}</p>
-            @if ($profile->objective)<p class="mt-3"><strong>Objetivo:</strong> {{ $profile->objective }}</p>@endif
-            <p class="mt-3 text-sm text-gray-500">Plantilla: {{ $profile->template?->name ?? 'Sin plantilla' }}</p>
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <h3 class="text-2xl font-semibold">{{ $profile->full_name }}</h3>
+                    <p class="text-gray-600">{{ $profile->headline }}</p>
+                    @if ($profile->tagline)<p class="text-gray-500 italic">{{ $profile->tagline }}</p>@endif
+                    <p class="mt-3">{{ $profile->summary }}</p>
+                    @if ($profile->objective)<p class="mt-3"><strong>Objetivo:</strong> {{ $profile->objective }}</p>@endif
+                    <p class="mt-3 text-sm text-gray-500">Plantilla: {{ $profile->template?->name ?? 'Sin plantilla' }}</p>
+                </div>
+                <a href="{{ route('cv.edit', $profile) }}" class="inline-flex items-center self-start rounded-md border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Editar</a>
+            </div>
         </section>
 
         <div

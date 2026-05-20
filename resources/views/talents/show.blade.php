@@ -21,25 +21,17 @@
 
             <div class="grid lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2 bg-white p-6 rounded shadow-sm">
-                    <h3 class="font-semibold mb-4">Informacion tecnica</h3>
-                    <p class="text-gray-700 whitespace-pre-line">{{ $talent->technical_summary ?: 'Sin resumen tecnico.' }}</p>
-
-                    @if ($talent->technical_stack)
-                        <div class="flex flex-wrap gap-2 mt-5">
-                            @foreach ($talent->technical_stack as $skill)
-                                <span class="px-3 py-1 rounded bg-gray-100 text-sm text-gray-700">{{ $skill }}</span>
-                            @endforeach
-                        </div>
-                    @endif
+                    <h3 class="font-semibold mb-4">Notas internas</h3>
+                    <p class="text-gray-700 whitespace-pre-line">{{ $talent->notes ?: 'Sin notas internas.' }}</p>
                 </div>
 
                 <div class="bg-white p-6 rounded shadow-sm">
-                    <h3 class="font-semibold mb-4">Datos del talento</h3>
+                    <h3 class="font-semibold mb-4">Ficha minima</h3>
                     <dl class="space-y-3 text-sm">
-                        <div><dt class="text-gray-500">Email</dt><dd>{{ $talent->email ?? 'Sin email' }}</dd></div>
-                        <div><dt class="text-gray-500">Telefono</dt><dd>{{ $talent->phone ?? 'Sin telefono' }}</dd></div>
-                        <div><dt class="text-gray-500">Ubicacion</dt><dd>{{ $talent->location ?? 'Sin ubicacion' }}</dd></div>
-                        <div><dt class="text-gray-500">Disponibilidad</dt><dd>{{ $talent->availability ?? 'No definida' }}</dd></div>
+                        <div><dt class="text-gray-500">Estado</dt><dd class="capitalize">{{ $talent->status }}</dd></div>
+                        <div><dt class="text-gray-500">Fuente</dt><dd>{{ $talent->source ?? 'No definida' }}</dd></div>
+                        <div><dt class="text-gray-500">Ultimo contacto</dt><dd>{{ $talent->last_contacted_at?->format('d/m/Y') ?? 'No registrado' }}</dd></div>
+                        <div><dt class="text-gray-500">Contacto de CV</dt><dd>{{ $talent->cvProfile?->email ?? 'Sin CV asociado' }}</dd></div>
                     </dl>
                 </div>
             </div>

@@ -48,6 +48,36 @@ class CvPreviewTest extends TestCase
             ->assertDontSee('src="'.route('cv.preview', $profile).'"', false);
     }
 
+    public function test_cv_show_places_edit_link_inside_profile_summary_card(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = CvProfile::create([
+            'user_id' => $user->id,
+            'title' => 'CV Andrea Lopez',
+            'full_name' => 'Andrea Lopez',
+            'email' => 'andrea@example.com',
+            'headline' => 'Desarrolladora backend PHP',
+            'summary' => 'Experiencia en APIs REST y sistemas administrativos.',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('cv.show', $profile));
+
+        $html = $response->getContent();
+        $summaryCardStart = strpos($html, '<section class="bg-white p-6 rounded shadow-sm">');
+        $summaryCardEnd = strpos($html, '</section>', $summaryCardStart);
+        $summaryCardHtml = substr($html, $summaryCardStart, $summaryCardEnd - $summaryCardStart);
+        $headerHtml = substr($html, 0, $summaryCardStart);
+        $editHref = 'href="'.route('cv.edit', $profile).'"';
+
+        $response->assertOk();
+        $this->assertStringContainsString($editHref, $summaryCardHtml);
+        $this->assertStringNotContainsString($editHref, $headerHtml);
+    }
+
     public function test_act_digital_template_renders_for_preview(): void
     {
         $user = User::factory()->create();

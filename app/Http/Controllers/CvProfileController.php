@@ -7,9 +7,14 @@ use App\Http\Requests\UpdateCvProfileRequest;
 use App\Models\CvProfile;
 use App\Models\CvTemplate;
 use App\Models\Talent;
+use App\Services\CvAiDocumentImportService;
+use App\Services\CvDocumentImportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
+use Throwable;
 
 class CvProfileController extends Controller
 {
@@ -29,9 +34,12 @@ class CvProfileController extends Controller
      */
     public function create()
     {
+        $documentImport = session($this->createDocumentImportSessionKey());
+
         return view('cv.create', [
-            'profile' => new CvProfile(),
+            'profile' => $this->profileWithImportDefaults(new CvProfile, $documentImport),
             'templates' => CvTemplate::where('is_active', true)->orderBy('name')->get(),
+            'documentImport' => $documentImport,
         ]);
     }
 
@@ -43,20 +51,35 @@ class CvProfileController extends Controller
             return redirect()->route('cv.edit', $talent->cvProfile);
         }
 
+        $documentImport = session($this->createDocumentImportSessionKey());
+
         return view('cv.create', [
-            'profile' => new CvProfile([
+            'profile' => $this->profileWithImportDefaults(new CvProfile([
                 'talent_id' => $talent->id,
                 'title' => 'CV '.$talent->full_name,
                 'full_name' => $talent->full_name,
-                'email' => $talent->email,
-                'phone' => $talent->phone,
-                'location' => $talent->location,
-                'headline' => $talent->headline ?: $talent->target_position,
-                'summary' => $talent->technical_summary,
-            ]),
+            ]), $documentImport),
             'talent' => $talent,
             'templates' => CvTemplate::where('is_active', true)->orderBy('name')->get(),
+            'documentImport' => $documentImport,
         ]);
+    }
+
+    public function storeForTalent(Request $request, Talent $talent)
+    {
+        abort_unless($talent->recruiter_id === $request->user()->id, 403);
+
+        if ($talent->cvProfile) {
+            return redirect()
+                ->route('cv.edit', $talent->cvProfile)
+                ->with('status', 'Este talento ya tiene un CV asociado.');
+        }
+
+        $profile = $request->user()->cvProfiles()->create($this->profileDataFromTalent($talent));
+
+        return redirect()
+            ->route('cv.edit', $profile)
+            ->with('status', 'CV creado desde el talento. Puedes completarlo antes de descargarlo.');
     }
 
     /**
@@ -66,11 +89,25 @@ class CvProfileController extends Controller
     {
         $talent = $this->validatedTalent($request);
 
-        $profile = $request->user()->cvProfiles()->create([
-            ...$request->validated(),
-            'talent_id' => $talent?->id,
-            'section_order' => CvProfile::defaultSectionOrder(),
-        ]);
+        $profile = DB::transaction(function () use ($request, $talent): CvProfile {
+            $profile = $request->user()->cvProfiles()->create([
+                ...$this->profileDataForStorage($request->validated()),
+                'talent_id' => $talent?->id,
+                'section_order' => CvProfile::defaultSectionOrder(),
+            ]);
+
+            $import = session($this->createDocumentImportSessionKey());
+
+            if ($import) {
+                if ($request->boolean('apply_document_import')) {
+                    $this->applyImportedData($profile, $import['parsed'] ?? [], $this->validatedImportApplyOptions($request));
+                }
+
+                session()->forget($this->createDocumentImportSessionKey());
+            }
+
+            return $profile;
+        });
 
         return redirect()
             ->route($talent ? 'talents.show' : 'cv.show', $talent ?: $profile)
@@ -99,8 +136,10 @@ class CvProfileController extends Controller
         $this->authorize('update', $cvProfile);
 
         return view('cv.edit', [
-            'profile' => $cvProfile,
+            'profile' => $cvProfile->load(['experiences', 'education', 'skills']),
             'templates' => CvTemplate::where('is_active', true)->orderBy('name')->get(),
+            'documentImport' => session($this->documentImportSessionKey($cvProfile)),
+            'sectionText' => $this->sectionText($cvProfile),
         ]);
     }
 
@@ -114,12 +153,12 @@ class CvProfileController extends Controller
         $talent = $this->validatedTalent($request);
 
         $cvProfile->update([
-            ...$request->validated(),
+            ...$this->profileDataForStorage($request->validated()),
             'talent_id' => $talent?->id,
         ]);
 
         return redirect()
-            ->route($talent ? 'talents.show' : 'cv.show', $talent ?: $cvProfile)
+            ->route('cv.show', $cvProfile)
             ->with('status', 'CV actualizado.');
     }
 
@@ -138,13 +177,11 @@ class CvProfileController extends Controller
             $talent = $request->user()->talents()->findOrFail($talentId);
         }
 
-        DB::transaction(function () use ($cvProfile, $talent): void {
-            if ($talent) {
-                CvProfile::where('talent_id', $talent->id)
-                    ->whereKeyNot($cvProfile->id)
-                    ->update(['talent_id' => null]);
-            }
+        if ($talent && $talent->cvProfile()->whereKeyNot($cvProfile->id)->exists()) {
+            return back()->withErrors(['talent_id' => 'Este postulante ya tiene un CV asociado.']);
+        }
 
+        DB::transaction(function () use ($cvProfile, $talent): void {
             $cvProfile->update(['talent_id' => $talent?->id]);
         });
 
@@ -201,6 +238,99 @@ class CvProfileController extends Controller
         ]);
     }
 
+    public function importDocumentWithAi(
+        Request $request,
+        CvProfile $cvProfile,
+        CvDocumentImportService $importService,
+        CvAiDocumentImportService $aiImportService,
+    ) {
+        $this->authorize('update', $cvProfile);
+
+        $import = $this->analyzeDocumentImport($request, $importService, $aiImportService);
+
+        if ($import instanceof \Illuminate\Http\RedirectResponse) {
+            return $import;
+        }
+
+        session()->put($this->documentImportSessionKey($cvProfile), $import);
+
+        return redirect()
+            ->route('cv.edit', $cvProfile)
+            ->with('status', 'Analisis con IA listo. Revisa la previsualizacion antes de aplicar cambios.');
+    }
+
+    public function importDocumentForCreateWithAi(
+        Request $request,
+        CvDocumentImportService $importService,
+        CvAiDocumentImportService $aiImportService,
+    ) {
+        $import = $this->analyzeDocumentImport($request, $importService, $aiImportService);
+
+        if ($import instanceof \Illuminate\Http\RedirectResponse) {
+            return $import;
+        }
+
+        session()->put($this->createDocumentImportSessionKey(), $import);
+
+        $talent = filled($request->input('talent_id'))
+            ? $request->user()->talents()->find($request->integer('talent_id'))
+            : null;
+
+        return redirect()
+            ->route($talent ? 'talents.cv.create' : 'cv.create', $talent ?: [])
+            ->with('status', 'Analisis con IA listo. Revisa la previsualizacion antes de guardar el CV.');
+    }
+
+    public function updateSections(Request $request, CvProfile $cvProfile)
+    {
+        $this->authorize('update', $cvProfile);
+
+        $data = $request->validate([
+            'experiences_text' => ['nullable', 'string', 'max:12000'],
+            'education_text' => ['nullable', 'string', 'max:8000'],
+            'skills_text' => ['nullable', 'string', 'max:4000'],
+            'languages_text' => ['nullable', 'string', 'max:4000'],
+            'soft_skills_text' => ['nullable', 'string', 'max:4000'],
+        ]);
+
+        DB::transaction(function () use ($cvProfile, $data): void {
+            $this->replaceExperiences($cvProfile, $this->parseExperienceBlocks($data['experiences_text'] ?? ''));
+            $this->replaceEducation($cvProfile, $this->parseEducationBlocks($data['education_text'] ?? ''));
+            $this->replaceSkills($cvProfile, 'skill', $this->parseList($data['skills_text'] ?? ''));
+            $this->replaceSkills($cvProfile, 'language', $this->parseList($data['languages_text'] ?? ''));
+            $this->replaceSkills($cvProfile, 'soft_skill', $this->parseList($data['soft_skills_text'] ?? ''));
+        });
+
+        return redirect()
+            ->route('cv.edit', $cvProfile)
+            ->with('status', 'Secciones del CV actualizadas.');
+    }
+
+    public function applyDocumentImport(Request $request, CvProfile $cvProfile)
+    {
+        $this->authorize('update', $cvProfile);
+
+        $data = $this->validatedImportApplyOptions($request);
+
+        $import = session($this->documentImportSessionKey($cvProfile));
+
+        if (! $import) {
+            return redirect()
+                ->route('cv.edit', $cvProfile)
+                ->withErrors(['cv_document' => 'Primero carga un documento para revisar los datos detectados.']);
+        }
+
+        $parsed = $import['parsed'] ?? [];
+
+        DB::transaction(fn () => $this->applyImportedData($cvProfile, $parsed, $data));
+
+        session()->forget($this->documentImportSessionKey($cvProfile));
+
+        return redirect()
+            ->route('cv.edit', $cvProfile)
+            ->with('status', 'Datos detectados aplicados al CV. Puedes ajustar cualquier campo antes de descargar.');
+    }
+
     /**
      * Remove the specified resource from storage.
      */
@@ -247,10 +377,360 @@ class CvProfileController extends Controller
 
         $talent = $request->user()->talents()->findOrFail($data['talent_id']);
 
-        CvProfile::where('talent_id', $talent->id)
-            ->when($request->route('cvProfile'), fn ($query, CvProfile $profile) => $query->whereKeyNot($profile->id))
-            ->update(['talent_id' => null]);
+        $existingCvQuery = $talent->cvProfile();
+
+        if ($request->route('cvProfile')) {
+            $existingCvQuery->whereKeyNot($request->route('cvProfile')->id);
+        }
+
+        if ($existingCvQuery->exists()) {
+            throw ValidationException::withMessages([
+                'talent_id' => 'Este postulante ya tiene un CV asociado.',
+            ]);
+        }
 
         return $talent;
+    }
+
+    private function profileDataFromTalent(Talent $talent): array
+    {
+        return $this->profileDataForStorage([
+            'talent_id' => $talent->id,
+            'title' => 'CV '.$talent->full_name,
+            'full_name' => $talent->full_name,
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+    }
+
+    private function profileDataForStorage(array $data): array
+    {
+        $data['email'] = $data['email'] ?? '';
+
+        return $data;
+    }
+
+    private function documentImportSessionKey(CvProfile $cvProfile): string
+    {
+        return "cv_document_import.{$cvProfile->id}";
+    }
+
+    private function createDocumentImportSessionKey(): string
+    {
+        return 'cv_document_import.create.'.auth()->id();
+    }
+
+    private function profileWithImportDefaults(CvProfile $profile, ?array $import): CvProfile
+    {
+        $profileData = $import['parsed']['profile'] ?? null;
+
+        if (! is_array($profileData)) {
+            return $profile;
+        }
+
+        $defaults = $this->profileImportData($profileData);
+
+        if (filled($defaults['full_name'] ?? null) && blank($profile->title)) {
+            $defaults['title'] = 'CV '.$defaults['full_name'];
+        }
+
+        foreach ($defaults as $key => $value) {
+            if (blank($profile->{$key})) {
+                $profile->{$key} = $value;
+            }
+        }
+
+        return $profile;
+    }
+
+    private function analyzeDocumentImport(
+        Request $request,
+        CvDocumentImportService $importService,
+        CvAiDocumentImportService $aiImportService,
+    ): array|\Illuminate\Http\RedirectResponse {
+        $data = $request->validate([
+            'cv_document' => ['required', 'file', 'mimes:pdf,docx,txt', 'max:6144'],
+        ]);
+
+        try {
+            $text = $importService->extractText($data['cv_document']);
+
+            return [
+                'original_name' => $data['cv_document']->getClientOriginalName(),
+                'source' => 'ai',
+                'parsed' => [
+                    ...$aiImportService->analyze($text),
+                    'raw_text' => str($text)->limit(12000, '')->toString(),
+                ],
+            ];
+        } catch (RuntimeException $exception) {
+            return back()
+                ->withErrors(['cv_document_ai' => $exception->getMessage()])
+                ->withInput();
+        } catch (Throwable) {
+            return back()
+                ->withErrors(['cv_document_ai' => 'No se pudo analizar el documento con IA. Intenta de nuevo con un PDF con texto real, DOCX o TXT.'])
+                ->withInput();
+        }
+    }
+
+    private function validatedImportApplyOptions(Request $request): array
+    {
+        return $request->validate([
+            'apply_profile' => ['nullable', 'boolean'],
+            'apply_experiences' => ['nullable', 'boolean'],
+            'apply_education' => ['nullable', 'boolean'],
+            'apply_skills' => ['nullable', 'boolean'],
+            'apply_languages' => ['nullable', 'boolean'],
+            'apply_soft_skills' => ['nullable', 'boolean'],
+        ]);
+    }
+
+    private function applyImportedData(CvProfile $cvProfile, array $parsed, array $data): void
+    {
+        if ($data['apply_profile'] ?? false) {
+            $cvProfile->update($this->profileImportData($parsed['profile'] ?? []));
+        }
+
+        if ($data['apply_experiences'] ?? false) {
+            $this->replaceExperiences($cvProfile, $parsed['experiences'] ?? []);
+        }
+
+        if ($data['apply_education'] ?? false) {
+            $this->replaceEducation($cvProfile, $parsed['education'] ?? []);
+        }
+
+        if ($data['apply_skills'] ?? false) {
+            $this->replaceSkills($cvProfile, 'skill', $parsed['skills'] ?? []);
+        }
+
+        if ($data['apply_languages'] ?? false) {
+            $this->replaceSkills($cvProfile, 'language', $parsed['languages'] ?? []);
+        }
+
+        if ($data['apply_soft_skills'] ?? false) {
+            $this->replaceSkills($cvProfile, 'soft_skill', $parsed['soft_skills'] ?? []);
+        }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function sectionText(CvProfile $cvProfile): array
+    {
+        return [
+            'experiences' => $cvProfile->experiences
+                ->map(fn ($experience) => trim(implode("\n", array_filter([
+                    implode(' | ', array_filter([
+                        $experience->position,
+                        $experience->company,
+                        $this->periodFromDates($experience->start_date?->format('Y'), $experience->end_date?->format('Y'), $experience->is_current),
+                    ])),
+                    $experience->description,
+                ]))))
+                ->implode("\n\n"),
+            'education' => $cvProfile->education
+                ->map(fn ($education) => trim(implode("\n", array_filter([
+                    implode(' | ', array_filter([
+                        $education->degree,
+                        $education->institution,
+                        $this->periodFromDates($education->start_date?->format('Y'), $education->end_date?->format('Y'), false),
+                    ])),
+                    $education->description,
+                ]))))
+                ->implode("\n\n"),
+            'skills' => $cvProfile->skills->where('type', 'skill')->pluck('name')->implode("\n"),
+            'languages' => $cvProfile->skills->where('type', 'language')->pluck('name')->implode("\n"),
+            'soft_skills' => $cvProfile->skills->where('type', 'soft_skill')->pluck('name')->implode("\n"),
+        ];
+    }
+
+    /**
+     * @param  array<string, string|null>  $profile
+     * @return array<string, string>
+     */
+    private function profileImportData(array $profile): array
+    {
+        return collect([
+            'full_name' => $profile['full_name'] ?? null,
+            'email' => $profile['email'] ?? null,
+            'phone' => $profile['phone'] ?? null,
+            'location' => $profile['location'] ?? null,
+            'headline' => $profile['headline'] ?? null,
+            'summary' => $profile['summary'] ?? null,
+            'linkedin_url' => $profile['linkedin_url'] ?? null,
+            'portfolio_url' => $profile['portfolio_url'] ?? null,
+        ])->filter(fn ($value) => filled($value))->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @param  array<int, string>  $keys
+     */
+    private function importValue(array $item, array $keys, string $fallback): string
+    {
+        foreach ($keys as $key) {
+            if (filled($item[$key] ?? null)) {
+                return (string) $item[$key];
+            }
+        }
+
+        return $fallback;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $experiences
+     */
+    private function replaceExperiences(CvProfile $cvProfile, array $experiences): void
+    {
+        $cvProfile->experiences()->delete();
+
+        foreach (array_values($experiences) as $index => $experience) {
+            if (! is_array($experience)) {
+                continue;
+            }
+
+            $dates = $this->periodDates($experience['period'] ?? null, true);
+
+            $cvProfile->experiences()->create([
+                'position' => $this->importValue($experience, ['position', 'title'], 'Puesto por revisar'),
+                'company' => $this->importValue($experience, ['company', 'organization'], 'Empresa por revisar'),
+                'start_date' => $dates['start_date'],
+                'end_date' => $dates['end_date'],
+                'is_current' => $dates['is_current'],
+                'description' => $experience['description'] ?? null,
+                'sort_order' => $index,
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $educationItems
+     */
+    private function replaceEducation(CvProfile $cvProfile, array $educationItems): void
+    {
+        $cvProfile->education()->delete();
+
+        foreach (array_values($educationItems) as $index => $education) {
+            if (! is_array($education)) {
+                continue;
+            }
+
+            $dates = $this->periodDates($education['period'] ?? null, false);
+
+            $cvProfile->education()->create([
+                'degree' => $this->importValue($education, ['degree', 'title'], 'Estudio por revisar'),
+                'institution' => $this->importValue($education, ['institution', 'organization'], 'Institucion por revisar'),
+                'start_date' => $dates['start_date'],
+                'end_date' => $dates['end_date'],
+                'description' => $education['description'] ?? null,
+                'sort_order' => $index,
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<int, string>  $items
+     */
+    private function replaceSkills(CvProfile $cvProfile, string $type, array $items): void
+    {
+        $cvProfile->skills()->where('type', $type)->delete();
+
+        foreach (array_values($items) as $index => $item) {
+            if (! filled($item)) {
+                continue;
+            }
+
+            $cvProfile->skills()->create([
+                'name' => trim((string) $item),
+                'type' => $type,
+                'category' => $type === 'language' ? 'Idioma' : null,
+                'sort_order' => $index,
+            ]);
+        }
+    }
+
+    /**
+     * @return array<int, array<string, string|null>>
+     */
+    private function parseExperienceBlocks(?string $text): array
+    {
+        return $this->parseBlocks($text, ['position', 'company']);
+    }
+
+    /**
+     * @return array<int, array<string, string|null>>
+     */
+    private function parseEducationBlocks(?string $text): array
+    {
+        return $this->parseBlocks($text, ['degree', 'institution']);
+    }
+
+    /**
+     * @param  array<int, string>  $keys
+     * @return array<int, array<string, string|null>>
+     */
+    private function parseBlocks(?string $text, array $keys): array
+    {
+        $blocks = preg_split("/\n{2,}/u", trim((string) $text)) ?: [];
+
+        return collect($blocks)
+            ->map(fn ($block) => trim($block))
+            ->filter()
+            ->map(function ($block) use ($keys) {
+                $lines = collect(preg_split('/\R/u', $block) ?: [])
+                    ->map(fn ($line) => trim($line))
+                    ->filter()
+                    ->values();
+                $header = $lines->shift() ?? '';
+                $parts = array_pad(array_map('trim', explode('|', $header, 3)), 3, null);
+
+                return [
+                    $keys[0] => $parts[0] ?: null,
+                    $keys[1] => $parts[1] ?: null,
+                    'period' => $parts[2] ?: null,
+                    'description' => $lines->implode("\n") ?: null,
+                ];
+            })
+            ->filter(fn ($item) => filled($item[$keys[0]]) || filled($item[$keys[1]]))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function parseList(?string $text): array
+    {
+        return collect(preg_split('/[\n,;]+/u', (string) $text) ?: [])
+            ->map(fn ($item) => trim($item))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function periodFromDates(?string $startYear, ?string $endYear, bool $isCurrent): ?string
+    {
+        if (! $startYear && ! $endYear && ! $isCurrent) {
+            return null;
+        }
+
+        return trim(($startYear ?: '').' - '.($isCurrent ? 'presente' : ($endYear ?: '')));
+    }
+
+    /**
+     * @return array{start_date: ?string, end_date: ?string, is_current: bool}
+     */
+    private function periodDates(?string $period, bool $requiresStartDate): array
+    {
+        preg_match_all('/(?:19|20)\d{2}/', $period ?? '', $matches);
+        $years = $matches[0] ?? [];
+        $isCurrent = (bool) preg_match('/actual|presente|present/i', $period ?? '');
+
+        return [
+            'start_date' => isset($years[0]) ? "{$years[0]}-01-01" : ($requiresStartDate ? now()->startOfYear()->toDateString() : null),
+            'end_date' => (! $isCurrent && isset($years[1])) ? "{$years[1]}-12-31" : null,
+            'is_current' => $isCurrent,
+        ];
     }
 }

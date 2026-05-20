@@ -53,10 +53,14 @@
                             <select name="talent_id" class="mt-1 w-full rounded border-gray-300">
                                 <option value="">Sin asignar</option>
                                 @foreach ($talents as $talent)
-                                    <option value="{{ $talent->id }}" @selected($profile->talent_id === $talent->id)>
+                                    <option
+                                        value="{{ $talent->id }}"
+                                        @selected($profile->talent_id === $talent->id)
+                                        @disabled($talent->cvProfile && $talent->cvProfile->id !== $profile->id)
+                                    >
                                         {{ $talent->full_name }}
                                         @if ($talent->cvProfile && $talent->cvProfile->id !== $profile->id)
-                                            - reemplaza: {{ $talent->cvProfile->title }}
+                                            - ya tiene CV: {{ $talent->cvProfile->title }}
                                         @endif
                                     </option>
                                 @endforeach

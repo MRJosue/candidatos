@@ -26,7 +26,7 @@ class StoreCvProfileRequest extends FormRequest
             'cv_template_id' => ['nullable', 'exists:cv_templates,id'],
             'title' => ['required', 'string', 'max:120'],
             'full_name' => ['required', 'string', 'max:160'],
-            'email' => ['required', 'email', 'max:160'],
+            'email' => ['nullable', 'email', 'max:160'],
             'phone' => ['nullable', 'string', 'max:40'],
             'location' => ['nullable', 'string', 'max:160'],
             'headline' => ['nullable', 'string', 'max:180'],

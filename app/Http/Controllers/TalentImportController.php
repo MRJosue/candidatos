@@ -26,22 +26,8 @@ class TalentImportController extends Controller
     private const COLUMNS = [
         'first_name' => ['label' => 'Nombre', 'required' => true, 'sample' => 'Andrea'],
         'last_name' => ['label' => 'Apellido', 'required' => true, 'sample' => 'Lopez'],
-        'email' => ['label' => 'Email', 'required' => false, 'sample' => 'andrea.lopez@example.com'],
-        'phone' => ['label' => 'Telefono', 'required' => false, 'sample' => '5551234567'],
-        'location' => ['label' => 'Ubicacion', 'required' => false, 'sample' => 'Ciudad de Mexico'],
-        'headline' => ['label' => 'Headline', 'required' => false, 'sample' => 'Desarrolladora backend PHP'],
-        'target_position' => ['label' => 'Puesto objetivo', 'required' => false, 'sample' => 'Backend Developer'],
-        'seniority' => ['label' => 'Senioridad', 'required' => false, 'sample' => 'Semi Senior'],
         'source' => ['label' => 'Fuente', 'required' => false, 'sample' => 'LinkedIn'],
-        'status' => ['label' => 'Estado', 'required' => true, 'sample' => 'active'],
-        'availability' => ['label' => 'Disponibilidad', 'required' => false, 'sample' => '2 semanas'],
-        'salary_expectation_min' => ['label' => 'Expectativa minima', 'required' => false, 'sample' => '35000'],
-        'salary_expectation_max' => ['label' => 'Expectativa maxima', 'required' => false, 'sample' => '45000'],
-        'currency' => ['label' => 'Moneda', 'required' => true, 'sample' => 'MXN'],
-        'technical_stack' => ['label' => 'Stack tecnico', 'required' => false, 'sample' => 'PHP, Laravel, MySQL'],
-        'languages' => ['label' => 'Idiomas', 'required' => false, 'sample' => 'Espanol, Ingles B2'],
-        'links' => ['label' => 'Links', 'required' => false, 'sample' => 'https://linkedin.com/in/andrea'],
-        'technical_summary' => ['label' => 'Resumen tecnico', 'required' => false, 'sample' => 'Experiencia en APIs REST y sistemas administrativos.'],
+        'status' => ['label' => 'Estado', 'required' => false, 'sample' => 'active'],
         'notes' => ['label' => 'Notas internas', 'required' => false, 'sample' => 'Buen fit para vacantes remotas.'],
         'last_contacted_at' => ['label' => 'Ultimo contacto', 'required' => false, 'sample' => '2026-05-07'],
     ];
@@ -94,9 +80,8 @@ class TalentImportController extends Controller
             ['Campo', 'Obligatorio', 'Notas'],
             ['Nombre', 'Si', 'Texto, maximo 120 caracteres.'],
             ['Apellido', 'Si', 'Texto, maximo 120 caracteres.'],
-            ['Estado', 'Si', 'Valores permitidos: active, inactive, hired, rejected, paused.'],
-            ['Moneda', 'Si', 'Codigo de 3 letras, por ejemplo MXN o USD.'],
-            ['Stack tecnico, Idiomas y Links', 'No', 'Puedes separar varios valores con coma o salto de linea.'],
+            ['Estado', 'No', 'Si lo dejas vacio se guardara como active. Valores permitidos: active, inactive, hired, rejected, paused.'],
+            ['Datos profesionales', 'No aplica', 'Capturalos en el CV para evitar duplicar informacion del talento.'],
             ['Ultimo contacto', 'No', 'Usa formato YYYY-MM-DD o una fecha de Excel.'],
         ]);
         $instructions->getColumnDimension('A')->setWidth(30);
@@ -202,11 +187,7 @@ class TalentImportController extends Controller
 
     private function prepareRowData(array $data): array
     {
-        $data['currency'] = strtoupper((string) ($data['currency'] ?? ''));
-        $data['status'] = strtolower((string) ($data['status'] ?? ''));
-        $data['technical_stack'] = $this->splitList($data['technical_stack'] ?? null);
-        $data['languages'] = $this->splitList($data['languages'] ?? null);
-        $data['links'] = $this->splitList($data['links'] ?? null);
+        $data['status'] = strtolower((string) ($data['status'] ?? '')) ?: 'active';
         $data['last_contacted_at'] = $this->parseDate($data['last_contacted_at'] ?? null);
 
         return $data;
@@ -214,10 +195,6 @@ class TalentImportController extends Controller
 
     private function castRowData(array $data): array
     {
-        foreach (['salary_expectation_min', 'salary_expectation_max'] as $field) {
-            $data[$field] = filled($data[$field]) ? (int) $data[$field] : null;
-        }
-
         return $data;
     }
 
@@ -226,22 +203,8 @@ class TalentImportController extends Controller
         return [
             'first_name' => ['required', 'string', 'max:120'],
             'last_name' => ['required', 'string', 'max:120'],
-            'email' => ['nullable', 'email', 'max:160'],
-            'phone' => ['nullable', 'string', 'max:40'],
-            'location' => ['nullable', 'string', 'max:160'],
-            'headline' => ['nullable', 'string', 'max:180'],
-            'target_position' => ['nullable', 'string', 'max:160'],
-            'seniority' => ['nullable', 'string', 'max:80'],
             'source' => ['nullable', 'string', 'max:120'],
-            'status' => ['required', Rule::in(self::STATUSES)],
-            'availability' => ['nullable', 'string', 'max:120'],
-            'salary_expectation_min' => ['nullable', 'integer', 'min:0'],
-            'salary_expectation_max' => ['nullable', 'integer', 'min:0'],
-            'currency' => ['required', 'string', 'size:3'],
-            'technical_stack' => ['nullable', 'array'],
-            'languages' => ['nullable', 'array'],
-            'links' => ['nullable', 'array'],
-            'technical_summary' => ['nullable', 'string', 'max:4000'],
+            'status' => ['nullable', Rule::in(self::STATUSES)],
             'notes' => ['nullable', 'string', 'max:4000'],
             'last_contacted_at' => ['nullable', 'date'],
         ];

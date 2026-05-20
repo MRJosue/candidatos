@@ -22,6 +22,12 @@ return [
         'key' => env('RESEND_API_KEY'),
     ],
 
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+        'cv_import_model' => env('GEMINI_CV_IMPORT_MODEL', 'gemini-2.5-flash'),
+        'cv_import_fallback_models' => array_filter(array_map('trim', explode(',', env('GEMINI_CV_IMPORT_FALLBACK_MODELS', 'gemini-2.5-flash-lite')))),
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),

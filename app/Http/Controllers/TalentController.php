@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Talent;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Validation\Rule;
+use ZipArchive;
 
 class TalentController extends Controller
 {
@@ -82,6 +85,67 @@ class TalentController extends Controller
         return redirect()->route('talents.index')->with('status', 'Postulante eliminado.');
     }
 
+    public function downloadCvs(Request $request)
+    {
+        $data = $request->validate([
+            'talent_ids' => ['required', 'array', 'min:1'],
+            'talent_ids.*' => ['integer'],
+        ]);
+
+        $talents = $request->user()
+            ->talents()
+            ->with(['cvProfile.template', 'cvProfile.experiences', 'cvProfile.education', 'cvProfile.skills'])
+            ->whereIn('id', $data['talent_ids'])
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
+
+        $profiles = $talents->pluck('cvProfile')->filter();
+
+        if ($profiles->isEmpty()) {
+            return back()->withErrors(['talent_ids' => 'Selecciona al menos un talento con CV asociado.']);
+        }
+
+        $directory = storage_path('app/private/bulk-cv-downloads');
+        File::ensureDirectoryExists($directory);
+
+        $zipPath = $directory.'/cvs-'.now()->format('Ymd-His').'-'.str()->random(8).'.zip';
+        $zip = new ZipArchive;
+
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            return back()->withErrors(['talent_ids' => 'No se pudo preparar el archivo de descarga.']);
+        }
+
+        $usedNames = [];
+
+        foreach ($profiles as $profile) {
+            $paper = $profile->template?->slug === 'act-digital' ? 'a4' : 'letter';
+            $baseName = str($profile->title ?: $profile->full_name)->slug()->value() ?: 'cv-'.$profile->id;
+            $fileName = $baseName.'.pdf';
+            $counter = 2;
+
+            while (in_array($fileName, $usedNames, true)) {
+                $fileName = $baseName.'-'.$counter.'.pdf';
+                $counter++;
+            }
+
+            $usedNames[] = $fileName;
+
+            $zip->addFromString(
+                $fileName,
+                Pdf::loadView('cv.pdf', ['profile' => $profile])
+                    ->setPaper($paper)
+                    ->output()
+            );
+        }
+
+        $zip->close();
+
+        return response()
+            ->download($zipPath, 'cvs-talentos-'.now()->format('Ymd-His').'.zip')
+            ->deleteFileAfterSend(true);
+    }
+
     private function validatedData(Request $request): array
     {
         $data = $request->validate([
@@ -94,11 +158,11 @@ class TalentController extends Controller
             'target_position' => ['nullable', 'string', 'max:160'],
             'seniority' => ['nullable', 'string', 'max:80'],
             'source' => ['nullable', 'string', 'max:120'],
-            'status' => ['required', Rule::in(['active', 'inactive', 'hired', 'rejected', 'paused'])],
+            'status' => ['nullable', Rule::in(['active', 'inactive', 'hired', 'rejected', 'paused'])],
             'availability' => ['nullable', 'string', 'max:120'],
             'salary_expectation_min' => ['nullable', 'integer', 'min:0'],
             'salary_expectation_max' => ['nullable', 'integer', 'min:0'],
-            'currency' => ['required', 'string', 'size:3'],
+            'currency' => ['nullable', 'string', 'size:3'],
             'technical_stack' => ['nullable', 'string', 'max:1000'],
             'languages' => ['nullable', 'string', 'max:1000'],
             'links' => ['nullable', 'string', 'max:1000'],
@@ -107,6 +171,8 @@ class TalentController extends Controller
             'last_contacted_at' => ['nullable', 'date'],
         ]);
 
+        $data['status'] = $data['status'] ?? 'active';
+        $data['currency'] = strtoupper($data['currency'] ?? 'MXN');
         $data['technical_stack'] = $this->splitList($data['technical_stack'] ?? null);
         $data['languages'] = $this->splitList($data['languages'] ?? null);
         $data['links'] = $this->splitList($data['links'] ?? null);
