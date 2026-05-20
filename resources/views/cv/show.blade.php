@@ -37,7 +37,6 @@
                     <label class="block">
                         <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Tipo de CV para imprimir</span>
                         <select name="cv_template_id" onchange="this.form.submit()" class="mt-1 w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="">Clasico profesional</option>
                             @foreach ($templates as $template)
                                 @php
                                     $canUseTemplate = ! $template->is_premium || in_array($template->id, $purchasedTemplateIds, true) || $profile->cv_template_id === $template->id;
@@ -85,7 +84,7 @@
         <div class="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-4">
             <div>
                 <h3 class="text-base font-semibold text-gray-900">Vista previa del CV</h3>
-                <p class="text-sm text-gray-500">{{ $profile->template?->name ?? 'Clasico profesional'  }}</p>
+                <p class="text-sm text-gray-500">{{ $profile->template?->name ?? 'ACT Digital'  }}</p>
             </div>
             <div class="flex items-center gap-2">
                 <a href="{{ route('cv.download', $profile) }}" class="inline-flex items-center gap-2 rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800">

@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreCvProfileRequest extends FormRequest
 {
@@ -23,7 +24,10 @@ class StoreCvProfileRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'cv_template_id' => ['nullable', 'exists:cv_templates,id'],
+            'cv_template_id' => [
+                'nullable',
+                Rule::exists('cv_templates', 'id')->where('is_active', true),
+            ],
             'title' => ['required', 'string', 'max:120'],
             'full_name' => ['required', 'string', 'max:160'],
             'email' => ['nullable', 'email', 'max:160'],

@@ -2,6 +2,12 @@
 @if (filled(old('talent_id', $profile->talent_id ?? null)))
     <input type="hidden" name="talent_id" value="{{ old('talent_id', $profile->talent_id ?? null) }}">
 @endif
+@php
+    $selectedTemplateId = old(
+        'cv_template_id',
+        $profile->cv_template_id ?: $templates->firstWhere('slug', 'act-digital')?->id
+    );
+@endphp
 <div class="grid md:grid-cols-2 gap-4">
     <label class="block">
         <span class="text-sm text-gray-700">Titulo interno</span>
@@ -10,9 +16,8 @@
     <label class="block">
         <span class="text-sm text-gray-700">Plantilla</span>
         <select name="cv_template_id" class="mt-1 w-full rounded border-gray-300">
-            <option value="">Sin plantilla</option>
             @foreach ($templates as $template)
-                <option value="{{ $template->id }}" @selected(old('cv_template_id', $profile->cv_template_id ?? '') == $template->id)>
+                <option value="{{ $template->id }}" @selected($selectedTemplateId == $template->id)>
                     {{ $template->name }}{{ $template->is_premium ? ' - Premium' : '' }}
                 </option>
             @endforeach

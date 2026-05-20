@@ -418,8 +418,10 @@ class RecruitingCrudTest extends TestCase
         $this->actingAs($user)
             ->get(route('templates.index'))
             ->assertOk()
-            ->assertSee('Clasico profesional')
-            ->assertSee('Ejecutivo premium');
+            ->assertSee('ACT Digital')
+            ->assertSee('Academico bullet')
+            ->assertDontSee('Clasico profesional')
+            ->assertDontSee('Ejecutivo premium');
     }
 
     public function test_recruiter_can_create_and_assign_cv_from_talent(): void
@@ -589,6 +591,7 @@ class RecruitingCrudTest extends TestCase
         $response = $this->actingAs($user)
             ->post(route('talents.download-cvs'), [
                 'talent_ids' => [$firstTalent->id, $secondTalent->id],
+                'cv_template_slug' => 'act-digital',
             ]);
 
         $response

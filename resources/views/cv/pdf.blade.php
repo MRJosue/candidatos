@@ -1,5 +1,7 @@
 @php
-    $templateSlug = $profile->template?->slug ?? 'clasico-profesional';
+    $templateSlug = in_array($profile->template?->slug, ['academico-bullet', 'act-digital'], true)
+        ? $profile->template->slug
+        : 'act-digital';
     $lines = fn ($value) => collect(preg_split('/\r\n|\r|\n/', (string) $value))
         ->map(fn ($line) => trim($line))
         ->filter()
@@ -25,13 +27,7 @@
         ->unique()
         ->merge(collect($mainSectionKeys)->diff($sectionOrder['main']))
         ->values();
-    $contactItems = collect([
-        ['label' => 'Ubicación', 'value' => $profile->location, 'href' => null, 'icon' => null],
-        ['label' => 'Correo electrónico', 'value' => $profile->email, 'href' => $profile->email ? 'mailto:'.$profile->email : null, 'icon' => null],
-        ['label' => 'Teléfono', 'value' => $profile->phone, 'href' => null, 'icon' => null],
-        ['label' => 'LinkedIn', 'value' => $profile->linkedin_url, 'href' => $profile->linkedin_url, 'icon' => 'in'],
-        ['label' => 'Portafolio', 'value' => $profile->portfolio_url, 'href' => $profile->portfolio_url, 'icon' => 'www'],
-    ])->filter(fn ($item) => filled($item['value']))->values();
+    $contactItems = collect();
     $actLogoPath = public_path('images/cv-templates/act-digital-logo.png');
     $actRulePath = public_path('images/cv-templates/act-blue-rule.png');
     $actLogoData = file_exists($actLogoPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($actLogoPath)) : null;

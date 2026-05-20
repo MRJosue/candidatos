@@ -14,7 +14,7 @@ class CvTemplate extends Model
             'is_premium' => false,
             'price_cents' => 0,
             'currency' => 'MXN',
-            'is_active' => true,
+            'is_active' => false,
         ],
         'ejecutivo-premium' => [
             'name' => 'Ejecutivo premium',
@@ -22,7 +22,7 @@ class CvTemplate extends Model
             'is_premium' => true,
             'price_cents' => 29900,
             'currency' => 'MXN',
-            'is_active' => true,
+            'is_active' => false,
         ],
         'academico-bullet' => [
             'name' => 'Academico bullet',
@@ -38,7 +38,7 @@ class CvTemplate extends Model
             'is_premium' => true,
             'price_cents' => 29900,
             'currency' => 'MXN',
-            'is_active' => true,
+            'is_active' => false,
         ],
         'act-digital' => [
             'name' => 'ACT Digital',
@@ -86,5 +86,13 @@ class CvTemplate extends Model
         foreach (self::DEFAULT_TEMPLATES as $slug => $template) {
             self::updateOrCreate(['slug' => $slug], $template);
         }
+    }
+
+    public static function defaultTemplate(): ?self
+    {
+        return self::query()
+            ->where('slug', 'act-digital')
+            ->where('is_active', true)
+            ->first();
     }
 }

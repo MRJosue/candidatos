@@ -116,6 +116,7 @@ class CvPreviewTest extends TestCase
             ->assertOk()
             ->assertSee('template-act', false)
             ->assertSee('ACT Digital', false)
+            ->assertDontSee('abdiel@example.com')
             ->assertSee('Professional Summary')
             ->assertSee('Habilidades Técnicas y Certificaciones');
     }

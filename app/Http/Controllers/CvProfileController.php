@@ -12,6 +12,7 @@ use App\Services\CvDocumentImportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Throwable;
@@ -37,7 +38,9 @@ class CvProfileController extends Controller
         $documentImport = session($this->createDocumentImportSessionKey());
 
         return view('cv.create', [
-            'profile' => $this->profileWithImportDefaults(new CvProfile, $documentImport),
+            'profile' => $this->profileWithImportDefaults(new CvProfile([
+                'cv_template_id' => CvTemplate::defaultTemplate()?->id,
+            ]), $documentImport),
             'templates' => CvTemplate::where('is_active', true)->orderBy('name')->get(),
             'documentImport' => $documentImport,
         ]);
@@ -58,6 +61,7 @@ class CvProfileController extends Controller
                 'talent_id' => $talent->id,
                 'title' => 'CV '.$talent->full_name,
                 'full_name' => $talent->full_name,
+                'cv_template_id' => CvTemplate::defaultTemplate()?->id,
             ]), $documentImport),
             'talent' => $talent,
             'templates' => CvTemplate::where('is_active', true)->orderBy('name')->get(),
@@ -88,11 +92,13 @@ class CvProfileController extends Controller
     public function store(StoreCvProfileRequest $request)
     {
         $talent = $this->validatedTalent($request);
+        $data = $request->validated();
 
-        $profile = DB::transaction(function () use ($request, $talent): CvProfile {
+        $profile = DB::transaction(function () use ($request, $talent, $data): CvProfile {
             $profile = $request->user()->cvProfiles()->create([
-                ...$this->profileDataForStorage($request->validated()),
+                ...$this->profileDataForStorage($data),
                 'talent_id' => $talent?->id,
+                'cv_template_id' => $data['cv_template_id'] ?? CvTemplate::defaultTemplate()?->id,
                 'section_order' => CvProfile::defaultSectionOrder(),
             ]);
 
@@ -193,12 +199,13 @@ class CvProfileController extends Controller
         $this->authorize('update', $cvProfile);
 
         $data = $request->validate([
-            'cv_template_id' => ['nullable', 'exists:cv_templates,id'],
+            'cv_template_id' => [
+                'required',
+                Rule::exists('cv_templates', 'id')->where('is_active', true),
+            ],
         ]);
 
-        $template = filled($data['cv_template_id'] ?? null)
-            ? CvTemplate::findOrFail($data['cv_template_id'])
-            : null;
+        $template = CvTemplate::findOrFail($data['cv_template_id']);
 
         $hasPurchase = $template
             ? $request->user()->purchases()
@@ -358,7 +365,7 @@ class CvProfileController extends Controller
 
         $profile = $cvProfile->load(['template', 'experiences', 'education', 'skills']);
 
-        $paper = $profile->template?->slug === 'act-digital' ? 'a4' : 'letter';
+        $paper = $profile->template?->slug === 'academico-bullet' ? 'letter' : 'a4';
 
         return Pdf::loadView('cv.pdf', compact('profile'))
             ->setPaper($paper)
@@ -399,6 +406,7 @@ class CvProfileController extends Controller
             'title' => 'CV '.$talent->full_name,
             'full_name' => $talent->full_name,
             'section_order' => CvProfile::defaultSectionOrder(),
+            'cv_template_id' => CvTemplate::defaultTemplate()?->id,
         ]);
     }
 

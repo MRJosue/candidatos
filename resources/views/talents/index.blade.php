@@ -23,17 +23,30 @@
                 @csrf
             </form>
 
-            <div class="mb-3 flex items-center justify-between gap-3">
+            <div class="mb-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <p id="selected-talents-count" class="text-sm text-gray-500">0 talentos seleccionados</p>
-                <button
-                    id="download-selected-cvs"
-                    type="submit"
-                    form="bulk-cv-download"
-                    class="px-4 py-2 bg-gray-900 text-white rounded text-sm disabled:opacity-50"
-                    disabled
-                >
-                    Descargar CVs seleccionados
-                </button>
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
+                    <label class="block">
+                        <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Formato de descarga</span>
+                        <select
+                            name="cv_template_slug"
+                            form="bulk-cv-download"
+                            class="mt-1 w-full rounded border-gray-300 text-sm shadow-sm sm:w-56"
+                        >
+                            <option value="act-digital" selected>ACT Digital</option>
+                            <option value="academico-bullet">Academico bullet</option>
+                        </select>
+                    </label>
+                    <button
+                        id="download-selected-cvs"
+                        type="submit"
+                        form="bulk-cv-download"
+                        class="px-4 py-2 bg-gray-900 text-white rounded text-sm disabled:opacity-50"
+                        disabled
+                    >
+                        Descargar CVs seleccionados
+                    </button>
+                </div>
             </div>
 
             <div class="bg-white rounded shadow-sm overflow-x-auto">

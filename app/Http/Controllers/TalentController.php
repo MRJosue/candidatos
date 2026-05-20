@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Talent;
+use App\Models\CvTemplate;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -90,7 +91,16 @@ class TalentController extends Controller
         $data = $request->validate([
             'talent_ids' => ['required', 'array', 'min:1'],
             'talent_ids.*' => ['integer'],
+            'cv_template_slug' => ['nullable', Rule::in(['act-digital', 'academico-bullet'])],
         ]);
+
+        CvTemplate::ensureDefaultTemplates();
+
+        $templateSlug = $data['cv_template_slug'] ?? 'act-digital';
+        $template = CvTemplate::query()
+            ->where('slug', $templateSlug)
+            ->where('is_active', true)
+            ->firstOrFail();
 
         $talents = $request->user()
             ->talents()
@@ -119,7 +129,9 @@ class TalentController extends Controller
         $usedNames = [];
 
         foreach ($profiles as $profile) {
-            $paper = $profile->template?->slug === 'act-digital' ? 'a4' : 'letter';
+            $profile->setRelation('template', $template);
+
+            $paper = $template->slug === 'act-digital' ? 'a4' : 'letter';
             $baseName = str($profile->title ?: $profile->full_name)->slug()->value() ?: 'cv-'.$profile->id;
             $fileName = $baseName.'.pdf';
             $counter = 2;
