@@ -68,7 +68,7 @@
             <form method="POST" action="{{ $applyAction }}" class="space-y-4">
                 @csrf
                 @include('cv._document_import_options')
-                <button class="px-4 py-2 bg-indigo-600 text-white rounded">Aplicar IA al CV</button>
+                <button class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-gray-800">Aplicar IA al CV</button>
             </form>
         @endif
     </section>

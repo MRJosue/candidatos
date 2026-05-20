@@ -10,8 +10,8 @@ php artisan breeze:install blade
 php artisan vendor:publish --provider="Spatie\Permission\PermissionServiceProvider"
 php artisan vendor:publish --tag="cashier-migrations"
 php artisan vendor:publish --provider="Barryvdh\DomPDF\ServiceProvider"
-npm install --cache .npm-cache
-npm run build
+pnpm install --frozen-lockfile
+pnpm run build
 php artisan migrate --seed
 php artisan serve
 ```
