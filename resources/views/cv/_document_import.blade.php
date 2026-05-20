@@ -26,7 +26,12 @@
                 required
             >
         </label>
-        <button class="px-4 py-2 bg-indigo-600 text-white rounded disabled:cursor-not-allowed disabled:opacity-70" x-bind:disabled="processing">
+        <button
+            type="submit"
+            class="inline-flex min-h-[38px] items-center justify-center whitespace-nowrap rounded px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+            style="background-color: var(--cv-accent, #4f46e5); color: #ffffff;"
+            x-bind:disabled="processing"
+        >
             Analizar con IA
         </button>
         @error('cv_document_ai')
