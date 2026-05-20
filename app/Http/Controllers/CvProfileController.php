@@ -10,8 +10,10 @@ use App\Models\Talent;
 use App\Services\CvAiDocumentImportService;
 use App\Services\CvDocumentImportService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -255,7 +257,7 @@ class CvProfileController extends Controller
 
         $import = $this->analyzeDocumentImport($request, $importService, $aiImportService);
 
-        if ($import instanceof \Illuminate\Http\RedirectResponse) {
+        if ($import instanceof RedirectResponse) {
             return $import;
         }
 
@@ -273,7 +275,7 @@ class CvProfileController extends Controller
     ) {
         $import = $this->analyzeDocumentImport($request, $importService, $aiImportService);
 
-        if ($import instanceof \Illuminate\Http\RedirectResponse) {
+        if ($import instanceof RedirectResponse) {
             return $import;
         }
 
@@ -454,7 +456,7 @@ class CvProfileController extends Controller
         Request $request,
         CvDocumentImportService $importService,
         CvAiDocumentImportService $aiImportService,
-    ): array|\Illuminate\Http\RedirectResponse {
+    ): array|RedirectResponse {
         $data = $request->validate([
             'cv_document' => ['required', 'file', 'mimes:pdf,docx,txt', 'max:6144'],
         ]);
@@ -471,10 +473,28 @@ class CvProfileController extends Controller
                 ],
             ];
         } catch (RuntimeException $exception) {
+            Log::warning('CV AI document import failed.', [
+                'cv_profile_id' => $request->route('cvProfile')?->id,
+                'user_id' => $request->user()?->id,
+                'file_name' => $data['cv_document']->getClientOriginalName(),
+                'file_mime' => $data['cv_document']->getClientMimeType(),
+                'file_size' => $data['cv_document']->getSize(),
+                'message' => $exception->getMessage(),
+            ]);
+
             return back()
                 ->withErrors(['cv_document_ai' => $exception->getMessage()])
                 ->withInput();
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            Log::error('Unexpected CV AI document import error.', [
+                'cv_profile_id' => $request->route('cvProfile')?->id,
+                'user_id' => $request->user()?->id,
+                'file_name' => $data['cv_document']->getClientOriginalName(),
+                'file_mime' => $data['cv_document']->getClientMimeType(),
+                'file_size' => $data['cv_document']->getSize(),
+                'exception' => $exception,
+            ]);
+
             return back()
                 ->withErrors(['cv_document_ai' => 'No se pudo analizar el documento con IA. Intenta de nuevo con un PDF con texto real, DOCX o TXT.'])
                 ->withInput();

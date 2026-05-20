@@ -21,6 +21,16 @@ pnpm run dev
 php artisan serve
 ```
 
+## Datos demo de reclutamiento
+
+Para cargar talentos, companias, vacantes y postulaciones de prueba solo para usuarios con rol `admin`:
+
+```bash
+composer seed-demo-recruiting
+```
+
+El seeder es idempotente: puedes ejecutarlo mas de una vez y actualizara los mismos registros demo sin duplicarlos.
+
 ## Build de estilos
 
 El proyecto usa solo `pnpm`. No uses `npm install` ni commits de `package-lock.json`.

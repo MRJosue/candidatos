@@ -41,6 +41,16 @@ Antes de migrar, crea la base de datos MySQL:
 CREATE DATABASE cvstudio CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
+## Checklist de servidor
+
+Para importar CVs con IA en produccion:
+
+- Configura `GEMINI_API_KEY` en `.env`.
+- Verifica que PHP tenga habilitadas las extensiones `fileinfo`, `mbstring` y `zip`.
+- Asegura permisos de escritura y lectura para `storage/`, `bootstrap/cache/` y el directorio temporal de PHP (`upload_tmp_dir`).
+- Si cambias `.env` o config en produccion, ejecuta `php artisan config:clear` o vuelve a cachear con `php artisan config:cache`.
+- Revisa `storage/logs/laravel.log` si aparece el error generico de analisis; ahi se registra el detalle real del fallo.
+
 ## Estructura principal
 
 ```text

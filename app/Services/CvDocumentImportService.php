@@ -24,11 +24,12 @@ class CvDocumentImportService
     public function extractText(UploadedFile $file): string
     {
         $extension = strtolower($file->getClientOriginalExtension());
+        $path = $this->readableUploadPath($file);
 
         return match ($extension) {
-            'txt' => $this->normalizeText((string) file_get_contents($file->getRealPath())),
-            'docx' => $this->extractDocxText($file->getRealPath()),
-            'pdf' => $this->extractPdfText($file->getRealPath()),
+            'txt' => $this->extractTxtText($path),
+            'docx' => $this->extractDocxText($path),
+            'pdf' => $this->extractPdfText($path),
             default => throw new RuntimeException('Formato de CV no soportado.'),
         };
     }
@@ -70,8 +71,34 @@ class CvDocumentImportService
         ];
     }
 
+    private function readableUploadPath(UploadedFile $file): string
+    {
+        $path = $file->getRealPath() ?: $file->getPathname();
+
+        if (! is_string($path) || $path === '' || ! is_readable($path)) {
+            throw new RuntimeException('No se pudo leer el archivo subido. Revisa permisos de storage y el directorio temporal de PHP.');
+        }
+
+        return $path;
+    }
+
+    private function extractTxtText(string $path): string
+    {
+        $text = file_get_contents($path);
+
+        if ($text === false) {
+            throw new RuntimeException('No se pudo leer el TXT subido.');
+        }
+
+        return $this->normalizeText($text);
+    }
+
     private function extractDocxText(string $path): string
     {
+        if (! class_exists(ZipArchive::class)) {
+            throw new RuntimeException('El servidor no tiene habilitada la extension PHP zip, necesaria para leer DOCX.');
+        }
+
         $zip = new ZipArchive;
 
         if ($zip->open($path) !== true) {

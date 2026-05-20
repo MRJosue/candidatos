@@ -57,6 +57,12 @@
             "@php artisan config:clear --ansi",
             "@php artisan test"
         ],
+        "seed:demo-recruiting": [
+            "@php artisan db:seed --class=AdminRecruitingDemoSeeder"
+        ],
+        "seed-demo-recruiting": [
+            "@php artisan db:seed --class=AdminRecruitingDemoSeeder"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
