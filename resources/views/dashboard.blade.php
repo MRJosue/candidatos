@@ -49,7 +49,7 @@
                         <span class="rounded bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">Docs</span>
                     </div>
                     <p class="mt-2 text-3xl font-semibold text-gray-900">{{ $cvCount }}</p>
-                    <p class="mt-1 text-xs text-gray-400">{{ $purchaseCount }} plantillas premium</p>
+                    <p class="mt-1 text-xs text-gray-400">documentos de candidatos</p>
                 </a>
             </div>
 
@@ -133,7 +133,7 @@
                 </div>
             </div>
 
-            <div class="grid gap-3 md:grid-cols-3">
+            <div class="grid gap-3 md:grid-cols-2">
                 <a href="{{ route('companies.index') }}" class="rounded border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">
                     Companias
                     <span class="ml-2 text-gray-400">{{ $companyCount }}</span>
@@ -141,10 +141,6 @@
                 <a href="{{ route('applications.index') }}" class="rounded border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">
                     Postulaciones
                     <span class="ml-2 text-gray-400">{{ $applicationCount }}</span>
-                </a>
-                <a href="{{ route('templates.index') }}" class="rounded border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">
-                    Plantillas premium
-                    <span class="ml-2 text-gray-400">{{ $purchaseCount }}</span>
                 </a>
             </div>
         </div>

@@ -17,7 +17,6 @@ class DashboardController extends Controller
             'activeVacancyCount' => $user->vacancies()->where('status', 'open')->count(),
             'applicationCount' => $user->jobApplications()->count(),
             'cvCount' => $user->cvProfiles()->count(),
-            'purchaseCount' => $user->purchases()->where('status', 'paid')->count(),
             'companyCount' => $user->companies()->count(),
             'positionCount' => $user->positions()->count(),
             'recentTalents' => $user->talents()
