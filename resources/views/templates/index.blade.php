@@ -8,9 +8,11 @@
                         <h3 class="font-semibold text-lg">{{ $template->name }}</h3>
                         <p class="text-gray-600 mt-2">{{ $template->description }}</p>
                     </div>
-                    <span class="text-sm px-2 py-1 rounded {{ $template->is_premium ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800' }}">
-                        {{ $template->is_premium ? '$'.number_format($template->price_cents / 100, 2).' '.$template->currency : 'Gratis' }}
-                    </span>
+                    @if ($template->is_premium)
+                        <span class="text-sm px-2 py-1 rounded bg-amber-100 text-amber-800">
+                            ${{ number_format($template->price_cents / 100, 2) }} {{ $template->currency }}
+                        </span>
+                    @endif
                 </div>
                 <div class="mt-4 flex gap-3">
                     <a href="{{ route('templates.show', $template) }}" class="text-indigo-700">Ver detalle</a>
