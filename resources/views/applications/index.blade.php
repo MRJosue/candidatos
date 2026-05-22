@@ -155,7 +155,6 @@
                                         form="bulk-application-cv-download"
                                         class="application-checkbox rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                                         aria-label="Seleccionar postulacion de {{ $application->talent->full_name }}"
-                                        @disabled(! $applicationCv)
                                     >
                                 </td>
                                 <td class="px-6 py-4">
@@ -205,21 +204,18 @@
             const selectedCount = document.getElementById('selected-applications-count');
 
             const refreshBulkState = () => {
-                const enabledCheckboxes = checkboxes.filter((checkbox) => ! checkbox.disabled);
-                const checkedCheckboxes = enabledCheckboxes.filter((checkbox) => checkbox.checked);
+                const checkedCheckboxes = checkboxes.filter((checkbox) => checkbox.checked);
 
                 downloadButton.disabled = checkedCheckboxes.length === 0;
                 selectedCount.textContent = `${checkedCheckboxes.length} postulacion${checkedCheckboxes.length === 1 ? '' : 'es'} seleccionada${checkedCheckboxes.length === 1 ? '' : 's'}`;
-                selectAll.checked = enabledCheckboxes.length > 0 && checkedCheckboxes.length === enabledCheckboxes.length;
-                selectAll.indeterminate = checkedCheckboxes.length > 0 && checkedCheckboxes.length < enabledCheckboxes.length;
-                selectAll.disabled = enabledCheckboxes.length === 0;
+                selectAll.checked = checkboxes.length > 0 && checkedCheckboxes.length === checkboxes.length;
+                selectAll.indeterminate = checkedCheckboxes.length > 0 && checkedCheckboxes.length < checkboxes.length;
+                selectAll.disabled = checkboxes.length === 0;
             };
 
             selectAll.addEventListener('change', () => {
                 checkboxes.forEach((checkbox) => {
-                    if (! checkbox.disabled) {
-                        checkbox.checked = selectAll.checked;
-                    }
+                    checkbox.checked = selectAll.checked;
                 });
 
                 refreshBulkState();

@@ -58,24 +58,24 @@
             "@php artisan test"
         ],
         "seed:demo-recruiting": [
-            "@php artisan db:seed --class=AdminRecruitingDemoSeeder"
+            "@php artisan db:seed --class=AdminRecruitingDemoSeeder --force"
         ],
         "seed:demo-user": [
-            "@php artisan db:seed --class=DemoUserSeeder"
+            "@php artisan db:seed --class=DemoUserSeeder --force"
         ],
         "seed:demo-full": [
-            "@php artisan db:seed --class=DemoUserSeeder",
-            "@php artisan db:seed --class=AdminRecruitingDemoSeeder"
+            "@php artisan db:seed --class=DemoUserSeeder --force",
+            "@php artisan db:seed --class=AdminRecruitingDemoSeeder --force"
         ],
         "seed-demo-recruiting": [
-            "@php artisan db:seed --class=AdminRecruitingDemoSeeder"
+            "@php artisan db:seed --class=AdminRecruitingDemoSeeder --force"
         ],
         "seed-demo-user": [
-            "@php artisan db:seed --class=DemoUserSeeder"
+            "@php artisan db:seed --class=DemoUserSeeder --force"
         ],
         "seed-demo-full": [
-            "@php artisan db:seed --class=DemoUserSeeder",
-            "@php artisan db:seed --class=AdminRecruitingDemoSeeder"
+            "@php artisan db:seed --class=DemoUserSeeder --force",
+            "@php artisan db:seed --class=AdminRecruitingDemoSeeder --force"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
