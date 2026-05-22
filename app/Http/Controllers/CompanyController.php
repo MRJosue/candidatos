@@ -22,7 +22,7 @@ class CompanyController extends Controller
     public function create()
     {
         return view('companies.create', [
-            'company' => new Company(),
+            'company' => new Company,
         ]);
     }
 
@@ -82,6 +82,7 @@ class CompanyController extends Controller
                     ->ignore($company),
             ],
             'industry' => ['nullable', 'string', 'max:120'],
+            'email' => ['nullable', 'email', 'max:160'],
             'website_url' => ['nullable', 'url', 'max:255'],
             'location' => ['nullable', 'string', 'max:160'],
             'notes' => ['nullable', 'string', 'max:3000'],

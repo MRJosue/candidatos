@@ -7,9 +7,10 @@
         <p><strong>Fecha:</strong> {{ $appointment->scheduled_at->format('d/m/Y H:i') }} {{ $appointment->timezone }}</p>
         <p><strong>Estatus:</strong> {{ $appointment->status }}</p>
         <p>{{ $appointment->notes }}</p>
-        <div class="flex gap-3">
+        <div class="flex flex-wrap gap-3">
             <a href="{{ route('appointments.edit', $appointment) }}" class="text-indigo-700">Editar</a>
-            <form method="POST" action="{{ route('appointments.destroy', $appointment) }}">@csrf @method('DELETE')<button class="text-red-700">Cancelar</button></form>
+            <form method="POST" action="{{ route('appointments.send-invitations', $appointment) }}">@csrf <button class="text-indigo-700">Reenviar invitacion</button></form>
+            <form method="POST" action="{{ route('appointments.destroy', $appointment) }}" onsubmit="return confirm('Eliminar esta cita?')">@csrf @method('DELETE')<button class="text-red-700">Eliminar</button></form>
         </div>
     </div></div>
 </x-app-layout>

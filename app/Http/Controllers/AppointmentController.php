@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreAppointmentRequest;
+use App\Mail\AppointmentInvitation;
 use App\Models\Appointment;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Mail;
 
 class AppointmentController extends Controller
 {
@@ -60,8 +62,17 @@ class AppointmentController extends Controller
         $data['status'] = 'scheduled';
 
         $appointment = $request->user()->appointments()->create($data);
+        $delivery = $this->sendAppointmentInvitations($appointment);
 
-        return redirect()->route('appointments.show', $appointment)->with('status', 'Cita agendada.');
+        $message = $delivery['sent'] > 0
+            ? "Cita agendada. Invitacion enviada a {$delivery['sent']} destinatario(s)."
+            : 'Cita agendada. No se envio correo porque falta email del candidato o la empresa.';
+
+        if ($delivery['failed'] > 0) {
+            $message .= " No se pudo enviar a {$delivery['failed']} destinatario(s).";
+        }
+
+        return redirect()->route('appointments.show', $appointment)->with('status', $message);
     }
 
     /**
@@ -108,9 +119,64 @@ class AppointmentController extends Controller
     {
         abort_unless($appointment->user_id === auth()->id(), 403);
 
-        $appointment->update(['status' => 'cancelled']);
+        $appointment->delete();
 
-        return redirect()->route('appointments.index')->with('status', 'Cita cancelada.');
+        return redirect()->route('appointments.index')->with('status', 'Cita eliminada.');
+    }
+
+    public function sendInvitations(Appointment $appointment)
+    {
+        abort_unless($appointment->user_id === auth()->id(), 403);
+
+        $delivery = $this->sendAppointmentInvitations($appointment);
+
+        if ($delivery['sent'] > 0) {
+            $message = "Invitacion reenviada a {$delivery['sent']} destinatario(s).";
+
+            if ($delivery['failed'] > 0) {
+                $message .= " No se pudo enviar a {$delivery['failed']} destinatario(s).";
+            }
+
+            return back()->with('status', $message);
+        }
+
+        return back()->with(
+            'status',
+            $delivery['failed'] > 0
+                ? "No se pudo reenviar la invitacion a {$delivery['failed']} destinatario(s). Revisa la configuracion SMTP."
+                : 'No se pudo reenviar: falta email del candidato o la empresa.'
+        );
+    }
+
+    /**
+     * @return array{sent: int, failed: int}
+     */
+    private function sendAppointmentInvitations(Appointment $appointment): array
+    {
+        $appointment->loadMissing(['talent', 'vacancy.company', 'vacancy.position', 'user']);
+
+        $recipients = collect([
+            $appointment->talent?->email,
+            $appointment->vacancy?->company?->email,
+        ])->filter()->unique()->values();
+
+        $sent = 0;
+        $failed = 0;
+
+        $recipients->each(function (string $email) use ($appointment, &$sent, &$failed): void {
+            try {
+                Mail::to($email)->send(new AppointmentInvitation($appointment));
+                $sent++;
+            } catch (\Throwable $exception) {
+                report($exception);
+                $failed++;
+            }
+        });
+
+        return [
+            'sent' => $sent,
+            'failed' => $failed,
+        ];
     }
 
     private function formOptions(Request $request): array

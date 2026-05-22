@@ -128,6 +128,7 @@ class RecruitingCrudTest extends TestCase
         $response = $this->actingAs($user)->post(route('companies.store'), [
             'name' => 'Acme',
             'industry' => 'Software',
+            'email' => 'contacto@acme.test',
             'website_url' => 'https://example.com',
             'location' => 'Mexico',
             'notes' => 'Cliente estrategico',
@@ -141,11 +142,13 @@ class RecruitingCrudTest extends TestCase
 
         $this->assertSame('Acme', $company->name);
         $this->assertSame('Software', $company->industry);
+        $this->assertSame('contacto@acme.test', $company->email);
 
         $this->actingAs($user)
             ->put(route('companies.update', $company), [
                 'name' => 'Acme Labs',
                 'industry' => 'Tecnologia',
+                'email' => 'talento@acme.test',
                 'website_url' => 'https://example.com',
                 'location' => 'Guadalajara',
                 'notes' => 'Cliente recurrente',
@@ -156,6 +159,7 @@ class RecruitingCrudTest extends TestCase
         $company->refresh();
 
         $this->assertSame('Acme Labs', $company->name);
+        $this->assertSame('talento@acme.test', $company->email);
         $this->assertSame('Guadalajara', $company->location);
 
         $this->actingAs($user)

@@ -10,6 +10,10 @@
         <input name="industry" value="{{ old('industry', $company->industry) }}" class="mt-1 w-full rounded border-gray-300">
     </label>
     <label class="block">
+        <span class="text-sm text-gray-700">Email</span>
+        <input type="email" name="email" value="{{ old('email', $company->email) }}" class="mt-1 w-full rounded border-gray-300">
+    </label>
+    <label class="block">
         <span class="text-sm text-gray-700">Sitio web</span>
         <input type="url" name="website_url" value="{{ old('website_url', $company->website_url) }}" class="mt-1 w-full rounded border-gray-300">
     </label>

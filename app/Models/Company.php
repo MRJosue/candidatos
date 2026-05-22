@@ -12,6 +12,7 @@ class Company extends Model
         'recruiter_id',
         'name',
         'industry',
+        'email',
         'website_url',
         'location',
         'notes',

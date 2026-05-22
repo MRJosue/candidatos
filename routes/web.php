@@ -123,6 +123,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/purchases', [PurchaseController::class, 'index'])->name('purchases.index');
     Route::post('/templates/{template}/purchase', [PurchaseController::class, 'store'])->name('templates.purchase');
 
+    Route::post('/appointments/{appointment}/send-invitations', [AppointmentController::class, 'sendInvitations'])->name('appointments.send-invitations');
     Route::resource('appointments', AppointmentController::class);
 });
 

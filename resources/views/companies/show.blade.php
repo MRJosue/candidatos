@@ -29,6 +29,7 @@
                     <h3 class="font-semibold mb-4">Datos de compania</h3>
                     <dl class="space-y-3 text-sm">
                         <div><dt class="text-gray-500">Industria</dt><dd>{{ $company->industry ?? 'Sin industria' }}</dd></div>
+                        <div><dt class="text-gray-500">Email</dt><dd>{{ $company->email ?? 'Sin email' }}</dd></div>
                         <div><dt class="text-gray-500">Sitio web</dt><dd>{{ $company->website_url ?? 'Sin sitio web' }}</dd></div>
                         <div><dt class="text-gray-500">Ubicacion</dt><dd>{{ $company->location ?? 'Sin ubicacion' }}</dd></div>
                     </dl>

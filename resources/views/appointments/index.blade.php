@@ -154,6 +154,15 @@
                                         <div class="flex justify-end gap-3">
                                             <a href="{{ route('appointments.show', $appointment) }}" class="text-indigo-600">Ver</a>
                                             <a href="{{ route('appointments.edit', $appointment) }}" class="text-indigo-600">Editar</a>
+                                            <form method="POST" action="{{ route('appointments.send-invitations', $appointment) }}">
+                                                @csrf
+                                                <button class="text-indigo-600">Reenviar</button>
+                                            </form>
+                                            <form method="POST" action="{{ route('appointments.destroy', $appointment) }}" onsubmit="return confirm('Eliminar esta cita?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button class="text-red-700">Eliminar</button>
+                                            </form>
                                         </div>
                                     </td>
                                 </tr>

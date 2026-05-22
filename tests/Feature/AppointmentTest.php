@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Mail\AppointmentInvitation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class AppointmentTest extends TestCase
@@ -47,14 +49,22 @@ class AppointmentTest extends TestCase
 
     public function test_recruiter_can_create_appointment_for_talent_and_vacancy(): void
     {
+        Mail::fake();
+
         $user = User::factory()->create();
         $talent = $user->talents()->create([
             'first_name' => 'Ana',
             'last_name' => 'Lopez',
+            'email' => 'ana@example.com',
             'status' => 'active',
             'currency' => 'MXN',
         ]);
+        $company = $user->companies()->create([
+            'name' => 'Acme',
+            'email' => 'rrhh@acme.test',
+        ]);
         $vacancy = $user->vacancies()->create([
+            'company_id' => $company->id,
             'title' => 'Backend Developer',
             'status' => 'open',
             'currency' => 'MXN',
@@ -77,6 +87,77 @@ class AppointmentTest extends TestCase
         $this->assertSame($talent->id, $appointment->talent_id);
         $this->assertSame($vacancy->id, $appointment->vacancy_id);
         $this->assertSame('scheduled', $appointment->status);
+
+        Mail::assertSent(AppointmentInvitation::class, 2);
+        Mail::assertSent(AppointmentInvitation::class, fn ($mail) => $mail->hasTo('ana@example.com'));
+        Mail::assertSent(AppointmentInvitation::class, fn ($mail) => $mail->hasTo('rrhh@acme.test'));
+    }
+
+    public function test_recruiter_can_resend_appointment_invitation_to_talent_and_company(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create();
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'email' => 'ana@example.com',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $company = $user->companies()->create([
+            'name' => 'Acme',
+            'email' => 'rrhh@acme.test',
+        ]);
+        $vacancy = $user->vacancies()->create([
+            'company_id' => $company->id,
+            'title' => 'Backend Developer',
+            'status' => 'open',
+            'currency' => 'MXN',
+        ]);
+        $appointment = $user->appointments()->create([
+            'talent_id' => $talent->id,
+            'vacancy_id' => $vacancy->id,
+            'scheduled_at' => now()->addDay(),
+            'timezone' => 'America/Mexico_City',
+            'status' => 'scheduled',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('appointments.send-invitations', $appointment))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status', 'Invitacion reenviada a 2 destinatario(s).');
+
+        Mail::assertSent(AppointmentInvitation::class, 2);
+    }
+
+    public function test_recruiter_can_delete_appointment(): void
+    {
+        $user = User::factory()->create();
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $vacancy = $user->vacancies()->create([
+            'title' => 'Backend Developer',
+            'status' => 'open',
+            'currency' => 'MXN',
+        ]);
+        $appointment = $user->appointments()->create([
+            'talent_id' => $talent->id,
+            'vacancy_id' => $vacancy->id,
+            'scheduled_at' => now()->addDay(),
+            'timezone' => 'America/Mexico_City',
+            'status' => 'scheduled',
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('appointments.destroy', $appointment))
+            ->assertRedirect(route('appointments.index'));
+
+        $this->assertNull($appointment->fresh());
     }
 
     public function test_index_shows_calendar_tab_with_current_appointments(): void
@@ -161,6 +242,8 @@ class AppointmentTest extends TestCase
             ->assertSee('Acme')
             ->assertSee('Agendada')
             ->assertSee('Ver')
-            ->assertSee('Editar');
+            ->assertSee('Editar')
+            ->assertSee('Reenviar')
+            ->assertSee('Eliminar');
     }
 }
