@@ -10,6 +10,8 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Str;
+use Symfony\Component\Mime\Email;
+use Symfony\Component\Mime\Part\DataPart;
 
 class AppointmentInvitation extends Mailable
 {
@@ -23,7 +25,13 @@ class AppointmentInvitation extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Invitacion a cita: '.$this->appointment->talent?->full_name
+            subject: 'Invitacion a cita: '.$this->appointment->talent?->full_name,
+            using: [
+                function (Email $message): void {
+                    $message->getHeaders()->addTextHeader('Content-Class', 'urn:content-classes:calendarmessage');
+                    $message->addPart($this->calendarPart());
+                },
+            ],
         );
     }
 
@@ -39,12 +47,7 @@ class AppointmentInvitation extends Mailable
      */
     public function attachments(): array
     {
-        return [
-            Attachment::fromData(
-                fn () => $this->calendarInvite(),
-                'cita-'.$this->appointment->id.'.ics'
-            )->withMime('text/calendar'),
-        ];
+        return [];
     }
 
     private function calendarInvite(): string
@@ -54,8 +57,8 @@ class AppointmentInvitation extends Mailable
         $summary = 'Cita con '.$this->appointment->talent?->full_name;
         $company = $this->appointment->vacancy?->display_company;
         $host = parse_url(config('app.url'), PHP_URL_HOST) ?: 'candidatos.icu';
-        $organizerEmail = $this->appointment->user?->email ?: config('mail.from.address');
-        $organizerName = $this->appointment->user?->name ?: config('mail.from.name', config('app.name'));
+        $organizerEmail = config('mail.from.address');
+        $organizerName = config('mail.from.name', config('app.name'));
         $location = $this->appointment->vacancy?->location ?: $company;
         $description = collect([
             'Candidato: '.$this->appointment->talent?->full_name,
@@ -93,6 +96,19 @@ class AppointmentInvitation extends Mailable
             ->filter(fn (?string $line) => filled($line))
             ->map(fn (string $line) => $this->foldCalendarLine($line))
             ->implode("\r\n")."\r\n";
+    }
+
+    private function calendarPart(): DataPart
+    {
+        $fileName = 'cita-'.$this->appointment->id.'.ics';
+        $part = new DataPart($this->calendarInvite(), $fileName, 'text/calendar');
+
+        $part->getHeaders()->setHeaderBody('Parameterized', 'Content-Type', 'text/calendar');
+        $part->getHeaders()->setHeaderParameter('Content-Type', 'method', 'REQUEST');
+        $part->getHeaders()->setHeaderParameter('Content-Type', 'charset', 'UTF-8');
+        $part->getHeaders()->setHeaderParameter('Content-Type', 'name', $fileName);
+
+        return $part;
     }
 
     /**

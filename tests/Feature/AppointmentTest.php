@@ -169,6 +169,11 @@ class AppointmentTest extends TestCase
 
     public function test_calendar_invitation_contains_google_calendar_event_fields(): void
     {
+        config([
+            'mail.from.address' => 'sistema@candidatos.icu',
+            'mail.from.name' => 'CVStudio',
+        ]);
+
         $user = User::factory()->create([
             'name' => 'Reclutador',
             'email' => 'reclutador@example.com',
@@ -213,7 +218,7 @@ class AppointmentTest extends TestCase
         $this->assertStringContainsString('DTSTART:20260619T175800Z', $unfoldedCalendar);
         $this->assertStringContainsString('DESCRIPTION:Candidato: Ana Lopez\nVacante: Backend Developer\nEmpresa: Acme\nNotas: Test', $unfoldedCalendar);
         $this->assertStringNotContainsString('\\\\n', $unfoldedCalendar);
-        $this->assertStringContainsString('ORGANIZER;CN="Reclutador":MAILTO:reclutador@example.com', $unfoldedCalendar);
+        $this->assertStringContainsString('ORGANIZER;CN="CVStudio":MAILTO:sistema@candidatos.icu', $unfoldedCalendar);
         $this->assertStringContainsString('ATTENDEE;CN="Ana Lopez";ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;', $unfoldedCalendar);
         $this->assertStringContainsString('MAILTO:ana@example.com', $unfoldedCalendar);
         $this->assertStringContainsString('MAILTO:rrhh@acme.test', $unfoldedCalendar);
