@@ -211,6 +211,8 @@ class AppointmentTest extends TestCase
         $this->assertStringContainsString("BEGIN:VCALENDAR\r\n", $calendar);
         $this->assertStringContainsString("METHOD:REQUEST\r\n", $calendar);
         $this->assertStringContainsString('DTSTART:20260619T175800Z', $unfoldedCalendar);
+        $this->assertStringContainsString('DESCRIPTION:Candidato: Ana Lopez\nVacante: Backend Developer\nEmpresa: Acme\nNotas: Test', $unfoldedCalendar);
+        $this->assertStringNotContainsString('\\\\n', $unfoldedCalendar);
         $this->assertStringContainsString('ORGANIZER;CN="Reclutador":MAILTO:reclutador@example.com', $unfoldedCalendar);
         $this->assertStringContainsString('ATTENDEE;CN="Ana Lopez";ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;', $unfoldedCalendar);
         $this->assertStringContainsString('MAILTO:ana@example.com', $unfoldedCalendar);

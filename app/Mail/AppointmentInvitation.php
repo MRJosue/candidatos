@@ -62,7 +62,7 @@ class AppointmentInvitation extends Mailable
             'Vacante: '.$this->appointment->vacancy?->display_title,
             $company ? 'Empresa: '.$company : null,
             $this->appointment->notes ? 'Notas: '.$this->appointment->notes : null,
-        ])->filter()->implode('\\n');
+        ])->filter()->implode("\n");
 
         $lines = [
             'BEGIN:VCALENDAR',
