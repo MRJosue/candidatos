@@ -64,6 +64,11 @@
             </div>
         </div>
 
+        <div class="rounded border border-gray-200 p-4 text-sm">
+            <h4 class="font-semibold text-gray-900">Premios y reconocimientos</h4>
+            <p class="mt-3 text-gray-600 whitespace-pre-line">{{ collect($parsed['awards'] ?? [])->join("\n") ?: 'No se detectaron cursos, premios o reconocimientos.' }}</p>
+        </div>
+
         @if (isset($applyAction))
             <form method="POST" action="{{ $applyAction }}" class="space-y-4">
                 @csrf

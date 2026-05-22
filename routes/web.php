@@ -90,6 +90,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/talents/{talent}/cv/create', [CvProfileController::class, 'createForTalent'])->name('talents.cv.create');
     Route::post('/talents/{talent}/cv', [CvProfileController::class, 'storeForTalent'])->name('talents.cv.store');
     Route::get('/applications/export', [JobApplicationController::class, 'export'])->name('applications.export');
+    Route::post('/applications/download-cvs', [JobApplicationController::class, 'downloadCvs'])->name('applications.download-cvs');
     Route::resource('applications', JobApplicationController::class);
     Route::resource('companies', CompanyController::class);
     Route::resource('vacancies', VacancyController::class);

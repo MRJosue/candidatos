@@ -16,6 +16,7 @@ class Talent extends Model
         'recruiter_id',
         'user_id',
         'public_token',
+        'public_link_submitted_at',
         'first_name',
         'last_name',
         'email',
@@ -45,6 +46,7 @@ class Talent extends Model
             'languages' => 'array',
             'links' => 'array',
             'last_contacted_at' => 'datetime',
+            'public_link_submitted_at' => 'datetime',
         ];
     }
 

@@ -20,7 +20,9 @@
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Datos principales</h3>
                 <form method="POST" action="{{ route('cv.store') }}" class="space-y-4">
                     @include('cv._document_import_options')
-                    @include('cv._form')
+                    @include('cv._form', ['showSubmitButton' => false])
+                    @include('cv._sections_form', ['sectionText' => $sectionText ?? []])
+                    <button class="px-4 py-2 bg-gray-900 text-white rounded">Guardar</button>
                 </form>
             </section>
         </div>

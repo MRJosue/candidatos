@@ -388,6 +388,8 @@ class RecruitingCrudTest extends TestCase
             ->assertOk()
             ->assertSee('Limpiar filtros')
             ->assertSee('Exportar Excel')
+            ->assertSee('Descargar CVs seleccionados')
+            ->assertSee('Seleccionar todas las postulaciones')
             ->assertSee('Ana Lopez')
             ->assertDontSee('beto@example.com');
 
@@ -601,6 +603,51 @@ class RecruitingCrudTest extends TestCase
         $this->assertStringStartsWith('PK', $response->streamedContent());
     }
 
+    public function test_recruiter_can_download_selected_application_cvs_as_zip(): void
+    {
+        $user = User::factory()->create();
+        $company = $user->companies()->create(['name' => 'Acme']);
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'email' => 'ana@example.com',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $vacancy = $user->vacancies()->create([
+            'company_id' => $company->id,
+            'title' => 'Backend Developer',
+            'client_company' => $company->name,
+            'status' => 'open',
+            'currency' => 'MXN',
+        ]);
+        $profile = $user->cvProfiles()->create([
+            'talent_id' => $talent->id,
+            'title' => 'CV Ana',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana@example.com',
+        ]);
+        $application = $user->jobApplications()->create([
+            'talent_id' => $talent->id,
+            'vacancy_id' => $vacancy->id,
+            'cv_profile_id' => $profile->id,
+            'status' => 'active',
+            'stage' => 'review',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->post(route('applications.download-cvs'), [
+                'application_ids' => [$application->id],
+                'cv_template_slug' => 'act-digital',
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertDownload();
+
+        $this->assertStringStartsWith('PK', $response->streamedContent());
+    }
+
     public function test_public_talent_link_updates_talent_and_cv(): void
     {
         $user = User::factory()->create();
@@ -618,8 +665,10 @@ class RecruitingCrudTest extends TestCase
             'email' => 'ana.new@example.com',
             'headline' => 'Backend Developer',
             'technical_stack' => 'PHP, Laravel',
-            'cv_title' => 'CV actualizado',
+            'title' => 'CV actualizado',
+            'full_name' => 'Ana Lopez',
             'summary' => 'Perfil actualizado',
+            'skills_text' => "PHP\nLaravel",
         ])
             ->assertSessionHasNoErrors()
             ->assertRedirect(route('public-talents.edit', ['talent' => $talent->public_token]));
@@ -630,6 +679,43 @@ class RecruitingCrudTest extends TestCase
         $this->assertSame(['PHP', 'Laravel'], $talent->technical_stack);
         $this->assertSame('CV actualizado', $talent->cvProfile->title);
         $this->assertSame('Perfil actualizado', $talent->cvProfile->summary);
+        $this->assertNotNull($talent->public_link_submitted_at);
+        $this->assertDatabaseHas('cv_skills', [
+            'cv_profile_id' => $talent->cvProfile->id,
+            'name' => 'Laravel',
+            'type' => 'skill',
+        ]);
+    }
+
+    public function test_public_talent_link_can_only_be_saved_once(): void
+    {
+        $user = User::factory()->create();
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'email' => 'ana@example.com',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+
+        $payload = [
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'email' => 'ana.new@example.com',
+            'title' => 'CV Ana',
+            'full_name' => 'Ana Lopez',
+        ];
+
+        $this->put(route('public-talents.update', ['talent' => $talent->public_token]), $payload)
+            ->assertSessionHasNoErrors();
+
+        $this->put(route('public-talents.update', ['talent' => $talent->public_token]), [
+            ...$payload,
+            'email' => 'second@example.com',
+        ])
+            ->assertSessionHasErrors('public_link');
+
+        $this->assertSame('ana.new@example.com', $talent->refresh()->email);
     }
 
     private function talentImportFile(array $rows): UploadedFile

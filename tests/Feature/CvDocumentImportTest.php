@@ -28,7 +28,7 @@ class CvDocumentImportTest extends TestCase
             ->get(route('cv.edit', $profile))
             ->assertOk()
             ->assertSee('Crear CV con IA')
-            ->assertSee('Analizar con IA')
+            ->assertSee('Analizar cv')
             ->assertSee('Estamos procesando su solicitud.')
             ->assertSee('Secciones del CV')
             ->assertDontSee('Guardar secciones')
@@ -45,7 +45,7 @@ class CvDocumentImportTest extends TestCase
             ->get(route('cv.create'))
             ->assertOk()
             ->assertSee('Crear CV con IA')
-            ->assertSee('Analizar con IA')
+            ->assertSee('Analizar cv')
             ->assertSee('Estamos procesando su solicitud.')
             ->assertSee('Datos principales')
             ->assertSee('name="cv_document"', false)
@@ -189,6 +189,7 @@ class CvDocumentImportTest extends TestCase
                                 'skills' => ['Laravel', 'Gemini'],
                                 'languages' => ['Espanol', 'Ingles'],
                                 'soft_skills' => ['Liderazgo', 'Comunicacion'],
+                                'awards' => ['Curso de Arquitectura Laravel', 'Certificacion Scrum Master'],
                             ]),
                         ]],
                     ],
@@ -234,6 +235,7 @@ class CvDocumentImportTest extends TestCase
             ->assertSee('Previsualizacion de IA')
             ->assertSee('Andrea IA')
             ->assertSee('Tech Lead')
+            ->assertSee('Curso de Arquitectura Laravel')
             ->assertSee('Liderazgo');
 
         $this->actingAs($user)
@@ -252,6 +254,7 @@ class CvDocumentImportTest extends TestCase
             'full_name' => 'Andrea IA',
             'email' => 'andrea.ai@example.com',
             'location' => 'Ciudad de Mexico',
+            'awards' => "Curso de Arquitectura Laravel\nCertificacion Scrum Master",
         ]);
         $this->assertDatabaseHas('cv_experiences', [
             'cv_profile_id' => $profile->id,
@@ -312,6 +315,7 @@ class CvDocumentImportTest extends TestCase
                                 'skills' => ['Laravel', 'UX'],
                                 'languages' => ['Espanol', 'Ingles'],
                                 'soft_skills' => ['Comunicacion'],
+                                'awards' => ['Curso de Product Discovery'],
                             ]),
                         ]],
                     ],
@@ -334,6 +338,7 @@ class CvDocumentImportTest extends TestCase
             ->assertSee('Previsualizacion de IA')
             ->assertSee('Andrea Create IA')
             ->assertSee('Product Engineer')
+            ->assertSee('Curso de Product Discovery')
             ->assertSee('value="Andrea Create IA"', false);
 
         $this->actingAs($user)
@@ -359,6 +364,7 @@ class CvDocumentImportTest extends TestCase
 
         $profile = CvProfile::where('email', 'andrea.create@example.com')->firstOrFail();
 
+        $this->assertSame('Curso de Product Discovery', $profile->awards);
         $this->assertDatabaseHas('cv_experiences', [
             'cv_profile_id' => $profile->id,
             'position' => 'Product Engineer',

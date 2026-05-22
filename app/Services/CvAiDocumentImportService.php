@@ -38,7 +38,7 @@ class CvAiDocumentImportService
                         [
                             'role' => 'user',
                             'parts' => [[
-                                'text' => "Analiza este CV y devuelve JSON estructurado:\n\n".Str::limit($text, 24000, ''),
+                                'text' => "Analiza este CV y devuelve JSON estructurado. En awards incluye cursos, certificaciones, premios, reconocimientos y diplomados detectados, uno por elemento:\n\n".Str::limit($text, 24000, ''),
                             ]],
                         ],
                     ],
@@ -171,6 +171,7 @@ class CvAiDocumentImportService
             'skills' => $this->stringList($data['skills'] ?? []),
             'languages' => $this->stringList($data['languages'] ?? []),
             'soft_skills' => $this->stringList($data['soft_skills'] ?? []),
+            'awards' => $this->stringList($data['awards'] ?? []),
         ];
     }
 
@@ -204,7 +205,7 @@ class CvAiDocumentImportService
 
         return [
             'type' => 'object',
-            'required' => ['profile', 'experiences', 'education', 'skills', 'languages', 'soft_skills'],
+            'required' => ['profile', 'experiences', 'education', 'skills', 'languages', 'soft_skills', 'awards'],
             'properties' => [
                 'profile' => [
                     'type' => 'object',
@@ -228,6 +229,10 @@ class CvAiDocumentImportService
                     'items' => ['type' => 'string'],
                 ],
                 'soft_skills' => [
+                    'type' => 'array',
+                    'items' => ['type' => 'string'],
+                ],
+                'awards' => [
                     'type' => 'array',
                     'items' => ['type' => 'string'],
                 ],

@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\CvProfile;
+use App\Models\CvTemplate;
 use App\Models\JobApplication;
 use App\Models\Talent;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -14,6 +17,7 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use ZipArchive;
 
 class JobApplicationController extends Controller
 {
@@ -86,6 +90,89 @@ class JobApplicationController extends Controller
         }, 'postulaciones.xlsx', [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
+    }
+
+    public function downloadCvs(Request $request)
+    {
+        $data = $request->validate([
+            'application_ids' => ['required', 'array', 'min:1'],
+            'application_ids.*' => ['integer'],
+            'cv_template_slug' => ['nullable', Rule::in(['act-digital', 'academico-bullet'])],
+        ]);
+
+        CvTemplate::ensureDefaultTemplates();
+
+        $templateSlug = $data['cv_template_slug'] ?? 'act-digital';
+        $template = CvTemplate::query()
+            ->where('slug', $templateSlug)
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        $applications = $request->user()
+            ->jobApplications()
+            ->with([
+                'cvProfile.template',
+                'cvProfile.experiences',
+                'cvProfile.education',
+                'cvProfile.skills',
+                'talent.cvProfile.template',
+                'talent.cvProfile.experiences',
+                'talent.cvProfile.education',
+                'talent.cvProfile.skills',
+                'vacancy',
+            ])
+            ->whereIn('id', $data['application_ids'])
+            ->latest()
+            ->get();
+
+        $profiles = $applications
+            ->map(fn (JobApplication $application) => $application->cvProfile ?? $application->talent->cvProfile)
+            ->filter();
+
+        if ($profiles->isEmpty()) {
+            return back()->withErrors(['application_ids' => 'Selecciona al menos una postulacion con CV asociado.']);
+        }
+
+        $directory = storage_path('app/private/bulk-cv-downloads');
+        File::ensureDirectoryExists($directory);
+
+        $zipPath = $directory.'/cvs-postulaciones-'.now()->format('Ymd-His').'-'.str()->random(8).'.zip';
+        $zip = new ZipArchive;
+
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            return back()->withErrors(['application_ids' => 'No se pudo preparar el archivo de descarga.']);
+        }
+
+        $usedNames = [];
+
+        foreach ($profiles as $profile) {
+            $profile->setRelation('template', $template);
+
+            $paper = $template->slug === 'act-digital' ? 'a4' : 'letter';
+            $baseName = str($profile->title ?: $profile->full_name)->slug()->value() ?: 'cv-'.$profile->id;
+            $fileName = $baseName.'.pdf';
+            $counter = 2;
+
+            while (in_array($fileName, $usedNames, true)) {
+                $fileName = $baseName.'-'.$counter.'.pdf';
+                $counter++;
+            }
+
+            $usedNames[] = $fileName;
+
+            $zip->addFromString(
+                $fileName,
+                Pdf::loadView('cv.pdf', ['profile' => $profile])
+                    ->setPaper($paper)
+                    ->output()
+            );
+        }
+
+        $zip->close();
+
+        return response()
+            ->download($zipPath, 'cvs-postulaciones-'.now()->format('Ymd-His').'.zip')
+            ->deleteFileAfterSend(true);
     }
 
     public function create(Request $request)
@@ -239,7 +326,7 @@ class JobApplicationController extends Controller
     {
         return $request->user()
             ->jobApplications()
-            ->with(['talent', 'vacancy.company', 'vacancy.position', 'cvProfile'])
+            ->with(['talent.cvProfile', 'vacancy.company', 'vacancy.position', 'cvProfile'])
             ->when($filters['talent_id'], fn ($query, string $talentId) => $query->where('talent_id', $talentId))
             ->when($filters['vacancy_id'], fn ($query, string $vacancyId) => $query->where('vacancy_id', $vacancyId))
             ->when($filters['status'], fn ($query, string $status) => $query->where('status', $status))

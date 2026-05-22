@@ -31,7 +31,7 @@
             class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
             x-bind:disabled="processing"
         >
-            Analizar con IA
+            Analizar cv
         </button>
         @error('cv_document_ai')
             <p class="text-sm text-red-700 md:col-span-2">{{ $message }}</p>

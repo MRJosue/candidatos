@@ -45,6 +45,7 @@ class CvProfileController extends Controller
             ]), $documentImport),
             'templates' => CvTemplate::where('is_active', true)->orderBy('name')->get(),
             'documentImport' => $documentImport,
+            'sectionText' => $this->sectionTextFromImport($documentImport),
         ]);
     }
 
@@ -68,6 +69,7 @@ class CvProfileController extends Controller
             'talent' => $talent,
             'templates' => CvTemplate::where('is_active', true)->orderBy('name')->get(),
             'documentImport' => $documentImport,
+            'sectionText' => $this->sectionTextFromImport($documentImport),
         ]);
     }
 
@@ -96,7 +98,9 @@ class CvProfileController extends Controller
         $talent = $this->validatedTalent($request);
         $data = $request->validated();
 
-        $profile = DB::transaction(function () use ($request, $talent, $data): CvProfile {
+        $sectionData = $this->validatedSectionText($request);
+
+        $profile = DB::transaction(function () use ($request, $talent, $data, $sectionData): CvProfile {
             $profile = $request->user()->cvProfiles()->create([
                 ...$this->profileDataForStorage($data),
                 'talent_id' => $talent?->id,
@@ -109,9 +113,13 @@ class CvProfileController extends Controller
             if ($import) {
                 if ($request->boolean('apply_document_import')) {
                     $this->applyImportedData($profile, $import['parsed'] ?? [], $this->validatedImportApplyOptions($request));
+                } elseif ($this->hasSectionTextInput($request)) {
+                    $this->replaceSectionsFromText($profile, $sectionData);
                 }
 
                 session()->forget($this->createDocumentImportSessionKey());
+            } elseif ($this->hasSectionTextInput($request)) {
+                $this->replaceSectionsFromText($profile, $sectionData);
             }
 
             return $profile;
@@ -471,6 +479,11 @@ class CvProfileController extends Controller
         }
 
         $defaults = $this->profileImportData($profileData);
+        $awards = $this->awardsTextFromImport($import['parsed']['awards'] ?? null);
+
+        if (filled($awards)) {
+            $defaults['awards'] = $awards;
+        }
 
         if (filled($defaults['full_name'] ?? null) && blank($profile->title)) {
             $defaults['title'] = 'CV '.$defaults['full_name'];
@@ -549,7 +562,14 @@ class CvProfileController extends Controller
     private function applyImportedData(CvProfile $cvProfile, array $parsed, array $data): void
     {
         if ($data['apply_profile'] ?? false) {
-            $cvProfile->update($this->profileImportData($parsed['profile'] ?? []));
+            $profileData = $this->profileImportData($parsed['profile'] ?? []);
+            $awards = $this->awardsTextFromImport($parsed['awards'] ?? null);
+
+            if (filled($awards)) {
+                $profileData['awards'] = $awards;
+            }
+
+            $cvProfile->update($profileData);
         }
 
         if ($data['apply_experiences'] ?? false) {
@@ -606,6 +626,46 @@ class CvProfileController extends Controller
     }
 
     /**
+     * @return array<string, string>
+     */
+    private function sectionTextFromImport(?array $import): array
+    {
+        $parsed = $import['parsed'] ?? [];
+
+        if (! is_array($parsed)) {
+            return [];
+        }
+
+        return [
+            'experiences' => collect($parsed['experiences'] ?? [])
+                ->filter(fn ($experience) => is_array($experience))
+                ->map(fn ($experience) => trim(implode("\n", array_filter([
+                    implode(' | ', array_filter([
+                        $experience['position'] ?? $experience['title'] ?? null,
+                        $experience['company'] ?? $experience['organization'] ?? null,
+                        $experience['period'] ?? null,
+                    ])),
+                    $experience['description'] ?? null,
+                ]))))
+                ->implode("\n\n"),
+            'education' => collect($parsed['education'] ?? [])
+                ->filter(fn ($education) => is_array($education))
+                ->map(fn ($education) => trim(implode("\n", array_filter([
+                    implode(' | ', array_filter([
+                        $education['degree'] ?? $education['title'] ?? null,
+                        $education['institution'] ?? $education['organization'] ?? null,
+                        $education['period'] ?? null,
+                    ])),
+                    $education['description'] ?? null,
+                ]))))
+                ->implode("\n\n"),
+            'skills' => collect($parsed['skills'] ?? [])->filter()->implode("\n"),
+            'languages' => collect($parsed['languages'] ?? [])->filter()->implode("\n"),
+            'soft_skills' => collect($parsed['soft_skills'] ?? [])->filter()->implode("\n"),
+        ];
+    }
+
+    /**
      * @param  array<string, string|null>  $profile
      * @return array<string, string>
      */
@@ -618,9 +678,21 @@ class CvProfileController extends Controller
             'location' => $profile['location'] ?? null,
             'headline' => $profile['headline'] ?? null,
             'summary' => $profile['summary'] ?? null,
+            'awards' => is_array($profile['awards'] ?? null)
+                ? collect($profile['awards'])->filter()->implode("\n")
+                : ($profile['awards'] ?? null),
             'linkedin_url' => $profile['linkedin_url'] ?? null,
             'portfolio_url' => $profile['portfolio_url'] ?? null,
         ])->filter(fn ($value) => filled($value))->all();
+    }
+
+    private function awardsTextFromImport(mixed $awards): ?string
+    {
+        $text = is_array($awards)
+            ? collect($awards)->filter()->implode("\n")
+            : $awards;
+
+        return filled($text) ? (string) $text : null;
     }
 
     /**

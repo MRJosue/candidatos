@@ -55,14 +55,6 @@
         <span class="text-sm text-gray-700">Objetivo profesional</span>
         <textarea name="objective" rows="4" class="mt-1 w-full rounded border-gray-300">{{ old('objective', $profile->objective ?? '') }}</textarea>
     </label>
-    <label class="block">
-        <span class="text-sm text-gray-700">Titulo de habilidades</span>
-        <input name="skills_section_title" value="{{ old('skills_section_title', $profile->skills_section_title ?? 'Habilidades') }}" class="mt-1 w-full rounded border-gray-300">
-    </label>
-    <label class="block">
-        <span class="text-sm text-gray-700">Titulo de habilidades blandas</span>
-        <input name="soft_skills_section_title" value="{{ old('soft_skills_section_title', $profile->soft_skills_section_title ?? 'Habilidades blandas') }}" class="mt-1 w-full rounded border-gray-300">
-    </label>
     <label class="block md:col-span-2">
         <span class="text-sm text-gray-700">Premios y reconocimientos</span>
         <textarea name="awards" rows="4" class="mt-1 w-full rounded border-gray-300">{{ old('awards', $profile->awards ?? '') }}</textarea>
