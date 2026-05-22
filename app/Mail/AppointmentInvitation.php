@@ -17,7 +17,7 @@ class AppointmentInvitation extends Mailable
 
     public function __construct(public Appointment $appointment)
     {
-        $this->appointment->loadMissing(['talent', 'vacancy.company', 'vacancy.position', 'user']);
+        $this->appointment->loadMissing(['talent.cvProfile', 'vacancy.company', 'vacancy.position', 'user']);
     }
 
     public function envelope(): Envelope
@@ -43,7 +43,7 @@ class AppointmentInvitation extends Mailable
             Attachment::fromData(
                 fn () => $this->calendarInvite(),
                 'cita-'.$this->appointment->id.'.ics'
-            )->withMime('text/calendar; charset=UTF-8; method=REQUEST'),
+            )->withMime('text/calendar'),
         ];
     }
 
@@ -53,6 +53,10 @@ class AppointmentInvitation extends Mailable
         $endsAt = $startsAt->copy()->addHour();
         $summary = 'Cita con '.$this->appointment->talent?->full_name;
         $company = $this->appointment->vacancy?->display_company;
+        $host = parse_url(config('app.url'), PHP_URL_HOST) ?: 'candidatos.icu';
+        $organizerEmail = $this->appointment->user?->email ?: config('mail.from.address');
+        $organizerName = $this->appointment->user?->name ?: config('mail.from.name', config('app.name'));
+        $location = $this->appointment->vacancy?->location ?: $company;
         $description = collect([
             'Candidato: '.$this->appointment->talent?->full_name,
             'Vacante: '.$this->appointment->vacancy?->display_title,
@@ -67,20 +71,53 @@ class AppointmentInvitation extends Mailable
             'CALSCALE:GREGORIAN',
             'METHOD:REQUEST',
             'BEGIN:VEVENT',
-            'UID:appointment-'.$this->appointment->id.'@'.parse_url(config('app.url'), PHP_URL_HOST),
-            'DTSTAMP:'.$startsAt->format('Ymd\THis\Z'),
+            'UID:cv-studio-appointment-'.$this->appointment->id.'@'.$host,
+            'DTSTAMP:'.now()->timezone('UTC')->format('Ymd\THis\Z'),
+            $this->appointment->created_at ? 'CREATED:'.$this->appointment->created_at->copy()->timezone('UTC')->format('Ymd\THis\Z') : null,
+            $this->appointment->updated_at ? 'LAST-MODIFIED:'.$this->appointment->updated_at->copy()->timezone('UTC')->format('Ymd\THis\Z') : null,
             'DTSTART:'.$startsAt->format('Ymd\THis\Z'),
             'DTEND:'.$endsAt->format('Ymd\THis\Z'),
             'SUMMARY:'.$this->escapeCalendarText($summary),
             'DESCRIPTION:'.$this->escapeCalendarText($description),
-            'ORGANIZER;CN='.$this->escapeCalendarText($this->appointment->user?->name ?? config('app.name')).':MAILTO:'.$this->appointment->user?->email,
+            'LOCATION:'.$this->escapeCalendarText($location),
+            'ORGANIZER;CN='.$this->escapeCalendarParameter($organizerName).':MAILTO:'.$organizerEmail,
+            ...$this->attendeeLines(),
             'STATUS:CONFIRMED',
+            'TRANSP:OPAQUE',
             'SEQUENCE:0',
             'END:VEVENT',
             'END:VCALENDAR',
         ];
 
-        return implode("\r\n", $lines)."\r\n";
+        return collect($lines)
+            ->filter(fn (?string $line) => filled($line))
+            ->map(fn (string $line) => $this->foldCalendarLine($line))
+            ->implode("\r\n")."\r\n";
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function attendeeLines(): array
+    {
+        return collect([
+            [
+                'name' => $this->appointment->talent?->full_name,
+                'email' => $this->appointment->talent?->contact_email,
+            ],
+            [
+                'name' => $this->appointment->vacancy?->display_company,
+                'email' => $this->appointment->vacancy?->company?->email,
+            ],
+        ])
+            ->filter(fn (array $attendee) => filled($attendee['email']))
+            ->unique('email')
+            ->map(fn (array $attendee): string => 'ATTENDEE;CN='
+                .$this->escapeCalendarParameter($attendee['name'] ?? $attendee['email'])
+                .';ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:MAILTO:'
+                .$attendee['email'])
+            ->values()
+            ->all();
     }
 
     private function escapeCalendarText(?string $text): string
@@ -92,5 +129,29 @@ class AppointmentInvitation extends Mailable
             ->replace(',', '\\,')
             ->replace(';', '\\;')
             ->toString();
+    }
+
+    private function escapeCalendarParameter(?string $text): string
+    {
+        $escaped = Str::of($text ?? '')
+            ->replace('\\', '\\\\')
+            ->replace('"', '\"')
+            ->replace("\n", ' ')
+            ->replace("\r", '')
+            ->toString();
+
+        return '"'.$escaped.'"';
+    }
+
+    private function foldCalendarLine(string $line): string
+    {
+        $folded = '';
+
+        while (strlen($line) > 75) {
+            $folded .= substr($line, 0, 75)."\r\n ";
+            $line = substr($line, 75);
+        }
+
+        return $folded.$line;
     }
 }

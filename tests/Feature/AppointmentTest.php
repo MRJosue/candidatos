@@ -167,6 +167,57 @@ class AppointmentTest extends TestCase
         Mail::assertSent(AppointmentInvitation::class, fn ($mail) => $mail->hasTo('ana.cv@example.com'));
     }
 
+    public function test_calendar_invitation_contains_google_calendar_event_fields(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Reclutador',
+            'email' => 'reclutador@example.com',
+        ]);
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'email' => 'ana@example.com',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $company = $user->companies()->create([
+            'name' => 'Acme',
+            'email' => 'rrhh@acme.test',
+        ]);
+        $vacancy = $user->vacancies()->create([
+            'company_id' => $company->id,
+            'title' => 'Backend Developer',
+            'location' => 'Remoto',
+            'status' => 'open',
+            'currency' => 'MXN',
+        ]);
+        $appointment = $user->appointments()->create([
+            'talent_id' => $talent->id,
+            'vacancy_id' => $vacancy->id,
+            'scheduled_at' => '2026-06-19 11:58:00',
+            'timezone' => 'America/Mexico_City',
+            'status' => 'scheduled',
+            'notes' => 'Test',
+        ]);
+
+        $mail = new AppointmentInvitation($appointment);
+        $method = (new \ReflectionClass($mail))->getMethod('calendarInvite');
+        $method->setAccessible(true);
+
+        $calendar = $method->invoke($mail);
+
+        $unfoldedCalendar = str_replace("\r\n ", '', $calendar);
+
+        $this->assertStringContainsString("BEGIN:VCALENDAR\r\n", $calendar);
+        $this->assertStringContainsString("METHOD:REQUEST\r\n", $calendar);
+        $this->assertStringContainsString('DTSTART:20260619T175800Z', $unfoldedCalendar);
+        $this->assertStringContainsString('ORGANIZER;CN="Reclutador":MAILTO:reclutador@example.com', $unfoldedCalendar);
+        $this->assertStringContainsString('ATTENDEE;CN="Ana Lopez";ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;', $unfoldedCalendar);
+        $this->assertStringContainsString('MAILTO:ana@example.com', $unfoldedCalendar);
+        $this->assertStringContainsString('MAILTO:rrhh@acme.test', $unfoldedCalendar);
+        $this->assertStringContainsString("END:VCALENDAR\r\n", $calendar);
+    }
+
     public function test_recruiter_can_delete_appointment(): void
     {
         $user = User::factory()->create();
