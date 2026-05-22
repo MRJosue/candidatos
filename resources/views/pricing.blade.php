@@ -10,6 +10,45 @@
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
             <div class="rounded bg-white shadow-sm ring-1 ring-gray-100">
                 <div class="border-b border-gray-100 px-4 py-3">
+                    <h3 class="font-semibold text-gray-900">Planes</h3>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-100 text-sm">
+                        <thead>
+                            <tr class="text-left text-gray-900">
+                                <th class="px-4 py-3 font-semibold">Plan</th>
+                                <th class="px-4 py-3 font-semibold">Precio sin IVA</th>
+                                <th class="px-4 py-3 font-semibold">Total con IVA</th>
+                                <th class="px-4 py-3 font-semibold">CVs incluidos</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 text-gray-700">
+                            <tr>
+                                <td class="px-4 py-3 font-medium text-gray-900">Basico</td>
+                                <td class="px-4 py-3">$3,999</td>
+                                <td class="px-4 py-3 font-semibold text-gray-900">$4,639</td>
+                                <td class="px-4 py-3">600 CV/mes</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-3 font-medium text-gray-900">Profesional</td>
+                                <td class="px-4 py-3">$5,999</td>
+                                <td class="px-4 py-3 font-semibold text-gray-900">$6,959</td>
+                                <td class="px-4 py-3">1,500 CV/mes</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-3 font-medium text-gray-900">Alto volumen</td>
+                                <td class="px-4 py-3">$8,999</td>
+                                <td class="px-4 py-3 font-semibold text-gray-900">$10,439</td>
+                                <td class="px-4 py-3">3,000 CV/mes</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="rounded bg-white shadow-sm ring-1 ring-gray-100">
+                <div class="border-b border-gray-100 px-4 py-3">
                     <h3 class="font-semibold text-gray-900">Servicios por hora</h3>
                 </div>
 
