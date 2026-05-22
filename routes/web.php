@@ -67,6 +67,8 @@ Route::get('/gemini-test', function (Request $request) {
 })->middleware('auth')->name('gemini.test');
 
 Route::middleware('auth')->group(function () {
+    Route::view('/precios', 'pricing')->name('pricing');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::patch('/profile/appearance', [ProfileController::class, 'updateAppearance'])->name('profile.appearance.update');

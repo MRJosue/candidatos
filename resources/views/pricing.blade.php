@@ -1,0 +1,50 @@
+<x-app-layout>
+    <x-slot name="header">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Tarifas</p>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Precios actuales</h2>
+        </div>
+    </x-slot>
+
+    <div class="app-dashboard py-5">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+            <div class="rounded bg-white shadow-sm ring-1 ring-gray-100">
+                <div class="border-b border-gray-100 px-4 py-3">
+                    <h3 class="font-semibold text-gray-900">Servicios por hora</h3>
+                </div>
+
+                <div class="px-5 py-5">
+                    <ul class="list-disc space-y-3 ps-5 text-sm text-gray-700">
+                        <li>Soporte: <span class="font-semibold text-gray-900">$350 + IVA por hora</span></li>
+                        <li>Desarrollo/customizaciones: <span class="font-semibold text-gray-900">$850 + IVA por hora</span></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="rounded bg-white shadow-sm ring-1 ring-gray-100">
+                <div class="border-b border-gray-100 px-4 py-3">
+                    <h3 class="font-semibold text-gray-900">Servicios iniciales</h3>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-100 text-sm">
+                        <thead>
+                            <tr class="text-left text-gray-900">
+                                <th class="px-4 py-3 font-semibold">Concepto</th>
+                                <th class="px-4 py-3 font-semibold">Precio sin IVA</th>
+                                <th class="px-4 py-3 font-semibold">Total con IVA</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 text-gray-700">
+                            <tr>
+                                <td class="px-4 py-3">Instalacion inicial</td>
+                                <td class="px-4 py-3">$3,500</td>
+                                <td class="px-4 py-3 font-semibold text-gray-900">$4,060</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</x-app-layout>
