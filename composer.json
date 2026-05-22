@@ -60,7 +60,21 @@
         "seed:demo-recruiting": [
             "@php artisan db:seed --class=AdminRecruitingDemoSeeder"
         ],
+        "seed:demo-user": [
+            "@php artisan db:seed --class=DemoUserSeeder"
+        ],
+        "seed:demo-full": [
+            "@php artisan db:seed --class=DemoUserSeeder",
+            "@php artisan db:seed --class=AdminRecruitingDemoSeeder"
+        ],
         "seed-demo-recruiting": [
+            "@php artisan db:seed --class=AdminRecruitingDemoSeeder"
+        ],
+        "seed-demo-user": [
+            "@php artisan db:seed --class=DemoUserSeeder"
+        ],
+        "seed-demo-full": [
+            "@php artisan db:seed --class=DemoUserSeeder",
             "@php artisan db:seed --class=AdminRecruitingDemoSeeder"
         ],
         "post-autoload-dump": [

@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\CvTemplate;
 use App\Models\ApplicationTheme;
+use App\Models\CvTemplate;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -26,10 +26,15 @@ class DatabaseSeeder extends Seeder
             ->first()
             ?->syncRoles(['admin']);
 
-        User::where('email', '!=', 'ingjosue.cardona@gmail.com')
+        User::whereNotIn('email', [
+            'ingjosue.cardona@gmail.com',
+            'demo@example.com',
+        ])
             ->get()
             ->each
             ->syncRoles(['cliente']);
+
+        $this->call(DemoUserSeeder::class);
 
         ApplicationTheme::ensureDefaultThemes();
         CvTemplate::ensureDefaultTemplates();
