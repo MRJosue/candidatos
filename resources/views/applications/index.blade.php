@@ -159,7 +159,7 @@
                                 </td>
                                 <td class="px-6 py-4">
                                     <a href="{{ route('applications.show', $application) }}" class="font-medium text-indigo-600">{{ $application->talent->full_name }}</a>
-                                    <p class="text-sm text-gray-500">{{ $application->talent->email ?? 'Sin email' }}</p>
+                                    <p class="text-sm text-gray-500">{{ $application->contact_email ?? 'Sin email' }}</p>
                                 </td>
                                 <td class="px-6 py-4">
                                     <a href="{{ route('vacancies.show', $application->vacancy) }}" class="font-medium text-gray-900">{{ $application->vacancy->display_title }}</a>

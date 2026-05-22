@@ -23,7 +23,7 @@ class AppointmentController extends Controller
         $calendarEnd = $calendarMonth->endOfMonth()->endOfWeek(CarbonInterface::SUNDAY);
         $calendarAppointmentsByDate = $request->user()
             ->appointments()
-            ->with(['talent', 'vacancy.company', 'vacancy.position'])
+            ->with(['talent.cvProfile', 'vacancy.company', 'vacancy.position'])
             ->whereBetween('scheduled_at', [$calendarStart, $calendarEnd])
             ->where('status', '!=', 'cancelled')
             ->orderBy('scheduled_at')
@@ -33,7 +33,7 @@ class AppointmentController extends Controller
         return view('appointments.index', [
             'appointments' => $request->user()
                 ->appointments()
-                ->with(['talent', 'vacancy.company', 'vacancy.position'])
+                ->with(['talent.cvProfile', 'vacancy.company', 'vacancy.position'])
                 ->latest('scheduled_at')
                 ->paginate(20),
             'calendarAppointmentsByDate' => $calendarAppointmentsByDate,
@@ -83,7 +83,7 @@ class AppointmentController extends Controller
         abort_unless($appointment->user_id === auth()->id(), 403);
 
         return view('appointments.show', [
-            'appointment' => $appointment->load(['talent', 'vacancy.company', 'vacancy.position']),
+            'appointment' => $appointment->load(['talent.cvProfile', 'vacancy.company', 'vacancy.position']),
         ]);
     }
 
@@ -153,10 +153,10 @@ class AppointmentController extends Controller
      */
     private function sendAppointmentInvitations(Appointment $appointment): array
     {
-        $appointment->loadMissing(['talent', 'vacancy.company', 'vacancy.position', 'user']);
+        $appointment->loadMissing(['talent.cvProfile', 'vacancy.company', 'vacancy.position', 'user']);
 
         $recipients = collect([
-            $appointment->talent?->email,
+            $appointment->talent?->contact_email,
             $appointment->vacancy?->company?->email,
         ])->filter()->unique()->values();
 

@@ -125,7 +125,7 @@
                                         <a href="{{ route('appointments.show', $appointment) }}" class="font-medium text-indigo-600">
                                             {{ $appointment->talent?->full_name ?? 'Candidato no disponible' }}
                                         </a>
-                                        <p class="text-sm text-gray-500">{{ $appointment->talent?->email ?? 'Sin email' }}</p>
+                                        <p class="text-sm text-gray-500">{{ $appointment->talent?->contact_email ?? 'Sin email' }}</p>
                                     </td>
                                     <td class="px-6 py-4">
                                         @if ($appointment->vacancy)

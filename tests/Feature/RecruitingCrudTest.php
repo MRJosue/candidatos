@@ -417,6 +417,55 @@ class RecruitingCrudTest extends TestCase
         @unlink($path);
     }
 
+    public function test_applications_index_and_export_use_cv_email_when_talent_email_is_empty(): void
+    {
+        $user = User::factory()->create();
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $profile = $user->cvProfiles()->create([
+            'talent_id' => $talent->id,
+            'title' => 'CV Ana',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana.cv@example.com',
+        ]);
+        $vacancy = $user->vacancies()->create([
+            'title' => 'Backend Developer',
+            'status' => 'open',
+            'currency' => 'MXN',
+        ]);
+
+        $user->jobApplications()->create([
+            'talent_id' => $talent->id,
+            'vacancy_id' => $vacancy->id,
+            'cv_profile_id' => $profile->id,
+            'status' => 'active',
+            'stage' => 'review',
+            'last_activity_at' => '2026-05-07 12:50:00',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('applications.index'))
+            ->assertOk()
+            ->assertSee('ana.cv@example.com');
+
+        $response = $this->actingAs($user)->get(route('applications.export'));
+
+        $response->assertOk();
+
+        $path = tempnam(sys_get_temp_dir(), 'postulaciones').'.xlsx';
+        file_put_contents($path, $response->streamedContent());
+
+        $sheet = IOFactory::load($path)->getActiveSheet();
+
+        $this->assertSame('ana.cv@example.com', $sheet->getCell('B2')->getValue());
+
+        @unlink($path);
+    }
+
     public function test_templates_index_creates_default_templates_when_missing(): void
     {
         $user = User::factory()->create();

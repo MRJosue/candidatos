@@ -50,7 +50,7 @@ class JobApplicationController extends Controller
             ->map(fn (JobApplication $application): array => $this->exportRow($application))
             ->all();
 
-        if (! class_exists(\ZipArchive::class)) {
+        if (! class_exists(ZipArchive::class)) {
             return $this->streamExcelHtml($headers, $rows);
         }
 
@@ -362,7 +362,7 @@ class JobApplicationController extends Controller
     {
         $applications = $request->user()
             ->jobApplications()
-            ->with(['talent', 'vacancy.company', 'vacancy.position'])
+            ->with(['talent.cvProfile', 'vacancy.company', 'vacancy.position', 'cvProfile'])
             ->get();
 
         return [
@@ -443,7 +443,7 @@ class JobApplicationController extends Controller
     {
         return [
             $application->talent->full_name,
-            $application->talent->email,
+            $application->contact_email,
             $application->vacancy->display_title,
             $application->vacancy->display_company ?? 'Cliente confidencial',
             $application->status_label,

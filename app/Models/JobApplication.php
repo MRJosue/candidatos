@@ -104,6 +104,13 @@ class JobApplication extends Model
         return self::stageLabelFor($this->stage);
     }
 
+    public function getContactEmailAttribute(): ?string
+    {
+        return $this->talent?->email
+            ?: $this->cvProfile?->email
+            ?: $this->talent?->cvProfile?->email;
+    }
+
     public function recruiter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recruiter_id');

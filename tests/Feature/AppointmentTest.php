@@ -131,6 +131,42 @@ class AppointmentTest extends TestCase
         Mail::assertSent(AppointmentInvitation::class, 2);
     }
 
+    public function test_appointment_invitation_uses_cv_email_when_talent_email_is_empty(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create();
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $user->cvProfiles()->create([
+            'talent_id' => $talent->id,
+            'title' => 'CV Ana',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana.cv@example.com',
+        ]);
+        $vacancy = $user->vacancies()->create([
+            'title' => 'Backend Developer',
+            'status' => 'open',
+            'currency' => 'MXN',
+        ]);
+
+        $response = $this->actingAs($user)->post(route('appointments.store'), [
+            'talent_id' => $talent->id,
+            'vacancy_id' => $vacancy->id,
+            'scheduled_at' => now()->addDay()->format('Y-m-d H:i:s'),
+            'timezone' => 'America/Mexico_City',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+
+        Mail::assertSent(AppointmentInvitation::class, 1);
+        Mail::assertSent(AppointmentInvitation::class, fn ($mail) => $mail->hasTo('ana.cv@example.com'));
+    }
+
     public function test_recruiter_can_delete_appointment(): void
     {
         $user = User::factory()->create();
@@ -245,5 +281,40 @@ class AppointmentTest extends TestCase
             ->assertSee('Editar')
             ->assertSee('Reenviar')
             ->assertSee('Eliminar');
+    }
+
+    public function test_index_shows_cv_email_when_talent_email_is_empty(): void
+    {
+        $user = User::factory()->create();
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $user->cvProfiles()->create([
+            'talent_id' => $talent->id,
+            'title' => 'CV Ana',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana.cv@example.com',
+        ]);
+        $vacancy = $user->vacancies()->create([
+            'title' => 'Backend Developer',
+            'status' => 'open',
+            'currency' => 'MXN',
+        ]);
+
+        $user->appointments()->create([
+            'talent_id' => $talent->id,
+            'vacancy_id' => $vacancy->id,
+            'scheduled_at' => '2026-05-20 10:30:00',
+            'timezone' => 'America/Mexico_City',
+            'status' => 'scheduled',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('appointments.index'))
+            ->assertOk()
+            ->assertSee('ana.cv@example.com');
     }
 }
