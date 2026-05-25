@@ -53,7 +53,9 @@ class CvTranslationTest extends TestCase
                         'title' => 'Ana CV',
                         'full_name' => 'Ana Lopez',
                         'email' => 'ana@example.com',
+                        'phone' => 'null',
                         'headline' => 'Developer',
+                        'tagline' => 'N/A',
                         'summary' => 'Builds internal applications.',
                         'skills_section_title' => 'Skills',
                         'soft_skills_section_title' => 'Soft skills',
@@ -61,12 +63,14 @@ class CvTranslationTest extends TestCase
                     'experiences' => [[
                         'position' => 'Developer',
                         'company' => 'Acme',
+                        'location' => 'null',
                         'description' => 'Leads platform improvements.',
                         'tools_used' => 'Laravel, MySQL',
                     ]],
                     'education' => [],
                     'skills' => [[
                         'name' => 'Communication',
+                        'category' => 'null',
                         'type' => 'soft_skill',
                     ]],
                 ];
@@ -86,9 +90,13 @@ class CvTranslationTest extends TestCase
         $response->assertRedirect(route('cv.edit', $translatedProfile));
         $this->assertSame($talent->id, $translatedProfile->talent_id);
         $this->assertFalse($translatedProfile->is_primary);
+        $this->assertNull($translatedProfile->phone);
+        $this->assertNull($translatedProfile->tagline);
         $this->assertSame('Developer', $translatedProfile->experiences()->first()->position);
         $this->assertTrue($translatedProfile->experiences()->first()->is_current);
+        $this->assertNull($translatedProfile->experiences()->first()->location);
         $this->assertSame('Laravel, MySQL', $translatedProfile->experiences()->first()->tools_used);
         $this->assertSame('Communication', $translatedProfile->skills()->first()->name);
+        $this->assertNull($translatedProfile->skills()->first()->category);
     }
 }

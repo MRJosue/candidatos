@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CvProfile extends Model
 {
+    public const MAX_PER_TALENT = 2;
+
     public const SIDE_SECTIONS = ['software', 'skills', 'languages', 'soft_skills'];
 
     public const MAIN_SECTIONS = ['experiences', 'education'];

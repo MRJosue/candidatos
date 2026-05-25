@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Throwable;
 
@@ -54,6 +55,12 @@ class CvProfileController extends Controller
     {
         abort_unless($talent->recruiter_id === $request->user()->id, 403);
 
+        if (! $this->talentCanReceiveCv($talent)) {
+            return redirect()
+                ->route('talents.show', $talent)
+                ->withErrors(['talent_id' => 'Este talento ya tiene el maximo de 2 CVs.']);
+        }
+
         $documentImport = session($this->createDocumentImportSessionKey());
 
         return view('cv.create', [
@@ -76,11 +83,37 @@ class CvProfileController extends Controller
     {
         abort_unless($talent->recruiter_id === $request->user()->id, 403);
 
-        $profile = $request->user()->cvProfiles()->create($this->profileDataFromTalent($talent));
+        $data = $request->validate([
+            'language' => ['nullable', Rule::in(array_keys(CvProfile::languageOptions()))],
+        ]);
+        $language = $data['language'] ?? 'es';
+        $existingProfile = $talent->cvProfiles()
+            ->where('language', $language)
+            ->first();
+
+        if ($existingProfile) {
+            return redirect()
+                ->route('cv.show', $existingProfile)
+                ->with('status', 'Este talento ya tiene un CV en ese idioma.');
+        }
+
+        $spanishProfile = $talent->cvProfiles()
+            ->where('language', 'es')
+            ->first();
+
+        if ($language === 'en' && ! $spanishProfile) {
+            return back()->withErrors(['language' => 'Primero crea el CV en espanol antes de crear el CV en ingles.']);
+        }
+
+        if (! $this->talentCanReceiveCv($talent)) {
+            return back()->withErrors(['talent_id' => 'Este talento ya tiene el maximo de 2 CVs.']);
+        }
+
+        $profile = $request->user()->cvProfiles()->create($this->profileDataFromTalent($talent, $language, $spanishProfile));
 
         return redirect()
-            ->route('cv.edit', $profile)
-            ->with('status', 'CV creado desde el talento. Puedes completarlo antes de descargarlo.');
+            ->route('cv.show', $profile)
+            ->with('status', 'CV creado desde el talento. Puedes revisarlo en la vista de cards.');
     }
 
     /**
@@ -90,6 +123,8 @@ class CvProfileController extends Controller
     {
         $talent = $this->validatedTalent($request);
         $data = $request->validated();
+
+        $this->ensureTalentCanReceiveCv($talent);
 
         $sectionData = $this->validatedSectionText($request);
 
@@ -164,6 +199,8 @@ class CvProfileController extends Controller
 
         $talent = $this->validatedTalent($request);
 
+        $this->ensureTalentCanReceiveCv($talent, $cvProfile);
+
         $sectionData = $this->validatedSectionText($request);
 
         DB::transaction(function () use ($cvProfile, $request, $talent, $sectionData): void {
@@ -195,6 +232,7 @@ class CvProfileController extends Controller
 
         if ($talentId) {
             $talent = $request->user()->talents()->findOrFail($talentId);
+            $this->ensureTalentCanReceiveCv($talent, $cvProfile);
         }
 
         DB::transaction(function () use ($cvProfile, $talent): void {
@@ -261,6 +299,8 @@ class CvProfileController extends Controller
                 ->route('cv.edit', $existingTranslation)
                 ->with('status', 'Ya existia una version en ese idioma. Puedes revisarla y ajustarla.');
         }
+
+        $this->ensureTalentCanReceiveCv($cvProfile->talent, $cvProfile);
 
         try {
             $translated = $translationService->translate($cvProfile, $data['target_language']);
@@ -383,11 +423,16 @@ class CvProfileController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(CvProfile $cvProfile)
+    public function destroy(Request $request, CvProfile $cvProfile)
     {
         $this->authorize('delete', $cvProfile);
 
+        $talent = $cvProfile->talent;
         $cvProfile->delete();
+
+        if ($request->input('redirect_to') === 'talent' && $talent) {
+            return redirect()->route('talents.show', $talent)->with('status', 'CV eliminado.');
+        }
 
         return redirect()->route('cv.index')->with('status', 'CV eliminado.');
     }
@@ -401,11 +446,21 @@ class CvProfileController extends Controller
         ]);
     }
 
-    public function download(CvProfile $cvProfile)
+    public function download(Request $request, CvProfile $cvProfile)
     {
         $this->authorize('view', $cvProfile);
 
-        $profile = $cvProfile->load(['template', 'experiences', 'education', 'skills']);
+        $data = $request->validate([
+            'language' => ['nullable', Rule::in(array_keys(CvProfile::languageOptions()))],
+        ]);
+
+        $profile = $this->profileForDownloadLanguage($cvProfile, $data['language'] ?? null);
+
+        if (! $profile) {
+            return back()->withErrors(['language' => 'No hay un CV disponible en el idioma seleccionado.']);
+        }
+
+        $profile->load(['template', 'experiences', 'education', 'skills']);
 
         $paper = $profile->template?->slug === 'academico-bullet' ? 'letter' : 'a4';
 
@@ -427,6 +482,28 @@ class CvProfileController extends Controller
         $talent = $request->user()->talents()->findOrFail($data['talent_id']);
 
         return $talent;
+    }
+
+    private function talentCanReceiveCv(?Talent $talent, ?CvProfile $currentProfile = null): bool
+    {
+        if (! $talent) {
+            return true;
+        }
+
+        return $talent->cvProfiles()
+            ->when($currentProfile, fn ($query) => $query->whereKeyNot($currentProfile->id))
+            ->count() < CvProfile::MAX_PER_TALENT;
+    }
+
+    private function ensureTalentCanReceiveCv(?Talent $talent, ?CvProfile $currentProfile = null): void
+    {
+        if ($this->talentCanReceiveCv($talent, $currentProfile)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'talent_id' => 'Este talento ya tiene el maximo de 2 CVs.',
+        ]);
     }
 
     /**
@@ -469,13 +546,16 @@ class CvProfileController extends Controller
         $this->replaceSkills($cvProfile, 'soft_skill', $this->parseList($data['soft_skills_text'] ?? ''));
     }
 
-    private function profileDataFromTalent(Talent $talent): array
+    private function profileDataFromTalent(Talent $talent, string $language = 'es', ?CvProfile $sourceProfile = null): array
     {
+        $languageSuffix = $language === 'en' ? ' - Ingles' : '';
+
         return $this->profileDataForStorage([
             'talent_id' => $talent->id,
-            'title' => 'CV '.$talent->full_name,
+            'title' => 'CV '.$talent->full_name.$languageSuffix,
             'full_name' => $talent->full_name,
-            'language' => 'es',
+            'language' => $language,
+            'source_cv_profile_id' => $language === 'en' ? $sourceProfile?->id : null,
             'section_order' => CvProfile::defaultSectionOrder(),
             'cv_template_id' => CvTemplate::defaultTemplate()?->id,
             'is_primary' => ! $talent->cvProfiles()->exists(),
@@ -651,7 +731,8 @@ class CvProfileController extends Controller
                 'linkedin_url',
                 'portfolio_url',
             ])
-            ->filter(fn ($value) => $value !== null)
+            ->map(fn ($value) => $this->cleanTranslatedText($value))
+            ->filter(fn ($value) => filled($value))
             ->all();
 
         $newProfile = $source->user->cvProfiles()->create([
@@ -698,7 +779,11 @@ class CvProfileController extends Controller
                     'tools_used',
                     'sort_order',
                 ]),
-                ...collect($translatedExperience)->only(['company', 'position', 'location', 'description', 'tools_used'])->filter(fn ($value) => filled($value))->all(),
+                ...collect($translatedExperience)
+                    ->only(['company', 'position', 'location', 'description', 'tools_used'])
+                    ->map(fn ($value) => $this->cleanTranslatedText($value))
+                    ->filter(fn ($value) => filled($value))
+                    ->all(),
             ]);
         }
 
@@ -722,6 +807,7 @@ class CvProfileController extends Controller
                 ]),
                 ...collect($translatedEducation)
                     ->only(['institution', 'location', 'degree', 'field', 'gpa', 'honors', 'thesis', 'relevant_coursework', 'description'])
+                    ->map(fn ($value) => $this->cleanTranslatedText($value))
                     ->filter(fn ($value) => filled($value))
                     ->all(),
             ]);
@@ -732,11 +818,56 @@ class CvProfileController extends Controller
 
             $newProfile->skills()->create([
                 ...$skill->only(['name', 'category', 'type', 'level', 'sort_order']),
-                ...collect($translatedSkill)->only(['name', 'category', 'type'])->filter(fn ($value) => filled($value))->all(),
+                ...collect($translatedSkill)
+                    ->only(['name', 'category', 'type'])
+                    ->map(fn ($value) => $this->cleanTranslatedText($value))
+                    ->filter(fn ($value) => filled($value))
+                    ->all(),
             ]);
         }
 
         return $newProfile;
+    }
+
+    private function cleanTranslatedText(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        return preg_match('/^(?:null|n\/a|na|none|-|--)$/iu', $value) ? null : $value;
+    }
+
+    private function profileForDownloadLanguage(CvProfile $profile, ?string $language): ?CvProfile
+    {
+        if (! $language || ($profile->language ?: 'es') === $language) {
+            return $profile;
+        }
+
+        $rootId = $profile->source_cv_profile_id ?: $profile->id;
+
+        $variant = CvProfile::query()
+            ->where('user_id', $profile->user_id)
+            ->where('language', $language)
+            ->where(function ($query) use ($rootId): void {
+                $query->whereKey($rootId)
+                    ->orWhere('source_cv_profile_id', $rootId);
+            })
+            ->first();
+
+        if ($variant || ! $profile->talent_id) {
+            return $variant;
+        }
+
+        return CvProfile::query()
+            ->where('user_id', $profile->user_id)
+            ->where('talent_id', $profile->talent_id)
+            ->where('language', $language)
+            ->orderByDesc('is_primary')
+            ->latest()
+            ->first();
     }
 
     private function translatedTitle(CvProfile $source, string $targetLanguage): string
@@ -773,10 +904,10 @@ class CvProfileController extends Controller
                     $education->description,
                 ]))))
                 ->implode("\n\n"),
-            'software' => $cvProfile->skills->where('type', 'software')->pluck('name')->implode("\n"),
-            'skills' => $cvProfile->skills->where('type', 'skill')->pluck('name')->implode("\n"),
-            'languages' => $cvProfile->skills->where('type', 'language')->pluck('name')->implode("\n"),
-            'soft_skills' => $cvProfile->skills->where('type', 'soft_skill')->pluck('name')->implode("\n"),
+            'software' => $cvProfile->skills->where('type', 'software')->pluck('name')->implode('; '),
+            'skills' => $cvProfile->skills->where('type', 'skill')->pluck('name')->implode('; '),
+            'languages' => $cvProfile->skills->where('type', 'language')->pluck('name')->implode('; '),
+            'soft_skills' => $cvProfile->skills->where('type', 'soft_skill')->pluck('name')->implode('; '),
         ];
     }
 
@@ -815,10 +946,10 @@ class CvProfileController extends Controller
                     $education['description'] ?? null,
                 ]))))
                 ->implode("\n\n"),
-            'software' => collect($parsed['software'] ?? [])->filter()->implode("\n"),
-            'skills' => collect($parsed['skills'] ?? [])->filter()->implode("\n"),
-            'languages' => collect($parsed['languages'] ?? [])->filter()->implode("\n"),
-            'soft_skills' => collect($parsed['soft_skills'] ?? [])->filter()->implode("\n"),
+            'software' => collect($parsed['software'] ?? [])->filter()->implode('; '),
+            'skills' => collect($parsed['skills'] ?? [])->filter()->implode('; '),
+            'languages' => collect($parsed['languages'] ?? [])->filter()->implode('; '),
+            'soft_skills' => collect($parsed['soft_skills'] ?? [])->filter()->implode('; '),
         ];
     }
 

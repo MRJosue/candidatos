@@ -6,6 +6,7 @@ use App\Http\Requests\StoreCvExperienceRequest;
 use App\Http\Requests\UpdateCvExperienceRequest;
 use App\Models\CvExperience;
 use App\Models\CvProfile;
+use Illuminate\Support\Facades\DB;
 
 class CvExperienceController extends Controller
 {
@@ -45,6 +46,22 @@ class CvExperienceController extends Controller
         $cvProfile->experiences()->create($data);
 
         return redirect()->route('cv.show', $cvProfile)->with('status', 'Experiencia agregada.');
+    }
+
+    public function reverseOrder(CvProfile $cvProfile)
+    {
+        $this->authorize('update', $cvProfile);
+
+        $experiences = $cvProfile->experiences()->get();
+
+        DB::transaction(function () use ($experiences): void {
+            $experiences
+                ->reverse()
+                ->values()
+                ->each(fn (CvExperience $item, int $index) => $item->update(['sort_order' => $index + 1]));
+        });
+
+        return redirect()->route('cv.show', $cvProfile)->with('status', 'Orden de experiencia invertido.');
     }
 
     /**

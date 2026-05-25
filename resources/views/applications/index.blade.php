@@ -48,6 +48,17 @@
                 <p id="selected-applications-count" class="text-sm text-gray-500">0 postulaciones seleccionadas</p>
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
                     <label class="block">
+                        <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Idioma</span>
+                        <select
+                            name="cv_language"
+                            form="bulk-application-cv-download"
+                            class="mt-1 w-full rounded border-gray-300 text-sm shadow-sm sm:w-40"
+                        >
+                            <option value="es" selected>Español</option>
+                            <option value="en">Inglés</option>
+                        </select>
+                    </label>
+                    <label class="block">
                         <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Formato de descarga</span>
                         <select
                             name="cv_template_slug"
@@ -176,7 +187,8 @@
                                 <td class="px-6 py-4 text-right text-sm">
                                     <div class="flex items-center justify-end gap-4">
                                         @if ($applicationCv)
-                                            <a href="{{ route('cv.download', $applicationCv) }}" class="text-gray-700">Descargar CV</a>
+                                            <a href="{{ route('cv.download', ['cvProfile' => $applicationCv, 'language' => 'es']) }}" class="text-gray-700">Descargar ES</a>
+                                            <a href="{{ route('cv.download', ['cvProfile' => $applicationCv, 'language' => 'en']) }}" class="text-gray-700">Descargar EN</a>
                                         @endif
                                         <a href="{{ route('applications.edit', $application) }}" class="text-indigo-600">Editar</a>
                                     </div>

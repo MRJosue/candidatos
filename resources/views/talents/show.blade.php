@@ -42,7 +42,9 @@
                     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                         <h3 class="font-semibold">CV</h3>
                         <div class="flex flex-wrap items-center gap-2">
-                            <a href="{{ route('talents.cv.create', $talent) }}" class="px-3 py-2 bg-gray-900 text-white rounded text-sm">Crear CV</a>
+                            @if ($talent->cvProfiles->count() < \App\Models\CvProfile::MAX_PER_TALENT)
+                                <a href="{{ route('talents.cv.create', $talent) }}" class="px-3 py-2 bg-gray-900 text-white rounded text-sm">Crear CV</a>
+                            @endif
                             <button
                                 type="button"
                                 x-data="{ copied: false, link: @js(route('public-talents.edit', ['talent' => $talent->public_token])) }"
@@ -56,15 +58,28 @@
                     </div>
                     <div class="space-y-3">
                         @forelse ($talent->cvProfiles as $cvProfile)
-                            <a href="{{ route('cv.show', $cvProfile) }}" class="flex justify-between border-b pb-3 last:border-b-0">
-                                <span>
-                                    {{ $cvProfile->title }}
-                                    @if ($cvProfile->is_primary)
-                                        <span class="ml-2 rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">Principal</span>
-                                    @endif
-                                </span>
-                                <span class="text-sm text-gray-500">{{ $cvProfile->template?->name ?? 'Sin plantilla' }} · {{ $cvProfile->languageLabel() }}</span>
-                            </a>
+                            <div class="flex flex-col gap-3 border-b pb-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
+                                <a href="{{ route('cv.show', $cvProfile) }}" class="min-w-0">
+                                    <span class="font-medium text-indigo-700">
+                                        {{ $cvProfile->title }}
+                                        @if ($cvProfile->is_primary)
+                                            <span class="ml-2 rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">Principal</span>
+                                        @endif
+                                    </span>
+                                    <span class="block text-sm text-gray-500">{{ $cvProfile->template?->name ?? 'Sin plantilla' }} · {{ $cvProfile->languageLabel() }}</span>
+                                </a>
+                                <div class="flex flex-wrap items-center gap-3 text-sm">
+                                    <a href="{{ route('cv.edit', $cvProfile) }}" class="text-indigo-700">Editar</a>
+                                    <a href="{{ route('cv.download', ['cvProfile' => $cvProfile, 'language' => 'es']) }}" class="text-gray-700">Descargar ES</a>
+                                    <a href="{{ route('cv.download', ['cvProfile' => $cvProfile, 'language' => 'en']) }}" class="text-gray-700">Descargar EN</a>
+                                    <form method="POST" action="{{ route('cv.destroy', $cvProfile) }}" onsubmit="return confirm('¿Eliminar este CV? Esta accion no se puede deshacer.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <input type="hidden" name="redirect_to" value="talent">
+                                        <button class="text-red-700">Eliminar</button>
+                                    </form>
+                                </div>
+                            </div>
                         @empty
                             <p class="text-gray-500">Este talento aun no tiene CV asociado.</p>
                         @endforelse

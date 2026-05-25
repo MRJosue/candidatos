@@ -53,9 +53,13 @@
                             <select name="talent_id" class="mt-1 w-full rounded border-gray-300">
                                 <option value="">Sin asignar</option>
                                 @foreach ($talents as $talent)
+                                    @php
+                                        $cvCountExcludingCurrent = $talent->cvProfiles->reject(fn ($cvProfile) => $cvProfile->id === $profile->id)->count();
+                                    @endphp
                                     <option
                                         value="{{ $talent->id }}"
                                         @selected($profile->talent_id === $talent->id)
+                                        @disabled($cvCountExcludingCurrent >= \App\Models\CvProfile::MAX_PER_TALENT)
                                     >
                                         {{ $talent->full_name }}
                                         @if ($talent->cvProfiles->isNotEmpty())

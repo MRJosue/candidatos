@@ -284,6 +284,7 @@ class CvDocumentImportTest extends TestCase
             ->assertSee('Andrea IA')
             ->assertSee('Tech Lead')
             ->assertSee('Jira')
+            ->assertSee('Laravel; Gemini')
             ->assertSee('Curso de Arquitectura Laravel')
             ->assertSee('Liderazgo');
 

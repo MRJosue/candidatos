@@ -109,9 +109,11 @@ Route::middleware('auth')->group(function () {
     Route::patch('/cv/{cvProfile}/talent', [CvProfileController::class, 'assignTalent'])->name('cv.talent.update');
     Route::resource('cv', CvProfileController::class)->parameters(['cv' => 'cvProfile']);
 
+    Route::patch('/cv/{cvProfile}/experiences/reverse-order', [CvExperienceController::class, 'reverseOrder'])->name('cv.experiences.reverse-order');
     Route::resource('cv.experiences', CvExperienceController::class)
         ->shallow()
         ->parameters(['cv' => 'cvProfile', 'experiences' => 'cvExperience']);
+    Route::patch('/cv/{cvProfile}/education/reverse-order', [CvEducationController::class, 'reverseOrder'])->name('cv.education.reverse-order');
     Route::resource('cv.education', CvEducationController::class)
         ->shallow()
         ->parameters(['cv' => 'cvProfile', 'education' => 'cvEducation']);

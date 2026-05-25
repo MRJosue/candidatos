@@ -12,7 +12,7 @@ class CvPreviewTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_cv_show_embeds_preview_html_without_auth_iframe_navigation(): void
+    public function test_cv_show_removes_preview_modal_and_keeps_download(): void
     {
         $user = User::factory()->create();
 
@@ -37,10 +37,13 @@ class CvPreviewTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('data-cv-preview-open', false)
-            ->assertSee('id="cv-preview-dialog"', false)
-            ->assertSee('data-cv-preview-frame', false)
-            ->assertSee('id="cv-preview-html"', false)
+            ->assertDontSee('data-cv-preview-open', false)
+            ->assertDontSee('id="cv-preview-dialog"', false)
+            ->assertDontSee('data-cv-preview-frame', false)
+            ->assertDontSee('id="cv-preview-html"', false)
+            ->assertDontSee('Vista previa')
+            ->assertSee('Descargar PDF')
+            ->assertSee('action="'.route('cv.download', $profile).'"', false)
             ->assertSee('Josue Daniel Cardona')
             ->assertSee('action="'.route('skills.destroy', $skill).'"', false)
             ->assertSee('method="POST"', false)
@@ -149,6 +152,8 @@ class CvPreviewTest extends TestCase
             ->assertSee('Idiomas')
             ->assertSee('Ingles')
             ->assertSee('React')
+            ->assertDontSee('<li>React</li>', false)
+            ->assertDontSee('<li>Jira</li>', false)
             ->assertSee('Certificaciones')
             ->assertSee('Oracle Cloud Platform Application Integration 2025 Certified Professional');
     }

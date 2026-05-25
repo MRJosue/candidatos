@@ -95,6 +95,84 @@ class RecruitingCrudTest extends TestCase
         ]);
     }
 
+    public function test_recruiter_can_filter_talents_by_name_and_creation_date_text(): void
+    {
+        $user = User::factory()->create();
+        $matchingTalent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'email' => 'ana@example.com',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $matchingTalent->forceFill([
+            'created_at' => '2026-05-20 10:00:00',
+            'updated_at' => '2026-05-20 10:00:00',
+        ])->save();
+        $otherTalent = $user->talents()->create([
+            'first_name' => 'Beto',
+            'last_name' => 'Ruiz',
+            'email' => 'beto@example.com',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $otherTalent->forceFill([
+            'created_at' => '2026-05-21 10:00:00',
+            'updated_at' => '2026-05-21 10:00:00',
+        ])->save();
+
+        $this->actingAs($user)
+            ->get(route('talents.index', [
+                'name' => 'Ana',
+                'created_date' => '20/05/2026',
+            ]))
+            ->assertOk()
+            ->assertSee('Buscar nombre')
+            ->assertSee('dd/mm/aaaa')
+            ->assertSee('Crear postulacion')
+            ->assertSee('Crear nueva vacante')
+            ->assertSee('Crear CV en espanol')
+            ->assertDontSee('Crear CV en ingles')
+            ->assertDontSee('Abrir CV')
+            ->assertDontSee('Editar CV</a>', false)
+            ->assertDontSee('Nueva postulacion')
+            ->assertSee($matchingTalent->full_name)
+            ->assertDontSee('Beto Ruiz');
+    }
+
+    public function test_talents_index_shows_newest_records_first_by_id(): void
+    {
+        $user = User::factory()->create();
+
+        $oldestTalent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $middleTalent = $user->talents()->create([
+            'first_name' => 'Beto',
+            'last_name' => 'Ruiz',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $newestTalent = $user->talents()->create([
+            'first_name' => 'Carla',
+            'last_name' => 'Mendez',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('talents.index'))
+            ->assertOk()
+            ->assertSeeInOrder([
+                $newestTalent->full_name,
+                $middleTalent->full_name,
+                $oldestTalent->full_name,
+            ]);
+    }
+
     public function test_recruiter_can_download_talent_import_layout(): void
     {
         $user = User::factory()->create();
@@ -581,6 +659,90 @@ class RecruitingCrudTest extends TestCase
         $this->assertNull($profile->headline);
     }
 
+    public function test_recruiter_can_create_english_cv_only_after_spanish_cv_exists(): void
+    {
+        $user = User::factory()->create();
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('talents.cv.store', $talent), [
+                'language' => 'en',
+            ])
+            ->assertSessionHasErrors('language');
+
+        $spanishProfile = $user->cvProfiles()->create([
+            'talent_id' => $talent->id,
+            'title' => 'CV Ana',
+            'language' => 'es',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana@example.com',
+            'is_primary' => true,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->post(route('talents.cv.store', $talent), [
+                'language' => 'en',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $englishProfile = $talent->refresh()->cvProfiles()
+            ->where('language', 'en')
+            ->first();
+
+        $this->assertNotNull($englishProfile);
+        $response->assertRedirect(route('cv.show', $englishProfile));
+        $this->assertSame($spanishProfile->id, $englishProfile->source_cv_profile_id);
+    }
+
+    public function test_talent_actions_show_language_specific_cv_options(): void
+    {
+        $user = User::factory()->create();
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $spanishProfile = $user->cvProfiles()->create([
+            'talent_id' => $talent->id,
+            'title' => 'CV Ana ES',
+            'language' => 'es',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana@example.com',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('talents.index'))
+            ->assertOk()
+            ->assertSee('Editar CV espanol')
+            ->assertSee('Crear CV en ingles')
+            ->assertSee(route('cv.show', $spanishProfile), false)
+            ->assertDontSee('Abrir CV')
+            ->assertDontSee('Editar CV</a>', false);
+
+        $englishProfile = $user->cvProfiles()->create([
+            'talent_id' => $talent->id,
+            'title' => 'CV Ana EN',
+            'language' => 'en',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana@example.com',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('talents.index'))
+            ->assertOk()
+            ->assertSee('Editar CV espanol')
+            ->assertSee('Editar CV en ingles')
+            ->assertSee(route('cv.show', $spanishProfile), false)
+            ->assertSee(route('cv.show', $englishProfile), false)
+            ->assertDontSee('Crear CV en ingles');
+    }
+
     public function test_recruiter_can_assign_multiple_cvs_to_same_talent(): void
     {
         $user = User::factory()->create();
@@ -613,6 +775,46 @@ class RecruitingCrudTest extends TestCase
         $this->assertSame($talent->id, $assignedProfile->refresh()->talent_id);
         $this->assertSame($talent->id, $newProfile->refresh()->talent_id);
         $this->assertFalse($newProfile->is_primary);
+        $this->assertCount(2, $talent->refresh()->cvProfiles);
+    }
+
+    public function test_recruiter_cannot_assign_more_than_two_cvs_to_same_talent(): void
+    {
+        $user = User::factory()->create();
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+
+        $user->cvProfiles()->create([
+            'talent_id' => $talent->id,
+            'title' => 'CV Ana ES',
+            'language' => 'es',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana@example.com',
+        ]);
+        $user->cvProfiles()->create([
+            'talent_id' => $talent->id,
+            'title' => 'CV Ana EN',
+            'language' => 'en',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana@example.com',
+        ]);
+        $thirdProfile = $user->cvProfiles()->create([
+            'title' => 'CV Ana Extra',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana@example.com',
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('cv.talent.update', $thirdProfile), [
+                'talent_id' => $talent->id,
+            ])
+            ->assertSessionHasErrors('talent_id');
+
+        $this->assertNull($thirdProfile->refresh()->talent_id);
         $this->assertCount(2, $talent->refresh()->cvProfiles);
     }
 
@@ -658,6 +860,54 @@ class RecruitingCrudTest extends TestCase
             ->assertDownload();
 
         $this->assertStringStartsWith('PK', $response->streamedContent());
+    }
+
+    public function test_recruiter_can_download_selected_talent_cvs_by_language(): void
+    {
+        $user = User::factory()->create();
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'email' => 'ana@example.com',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+
+        $user->cvProfiles()->create([
+            'talent_id' => $talent->id,
+            'title' => 'CV Ana ES',
+            'language' => 'es',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana@example.com',
+        ]);
+        $user->cvProfiles()->create([
+            'talent_id' => $talent->id,
+            'title' => 'CV Ana EN',
+            'language' => 'en',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana@example.com',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->post(route('talents.download-cvs'), [
+                'talent_ids' => [$talent->id],
+                'cv_template_slug' => 'act-digital',
+                'cv_language' => 'en',
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertDownload();
+
+        $zipPath = tempnam(sys_get_temp_dir(), 'cvs-language-').'.zip';
+        file_put_contents($zipPath, $response->streamedContent());
+
+        $zip = new \ZipArchive;
+        $this->assertTrue($zip->open($zipPath));
+        $this->assertSame('cv-ana-en.pdf', $zip->getNameIndex(0));
+        $zip->close();
+
+        @unlink($zipPath);
     }
 
     public function test_recruiter_can_download_selected_application_cvs_as_zip(): void

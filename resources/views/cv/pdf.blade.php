@@ -13,6 +13,9 @@
     $skillGroups = $technicalSkills->groupBy(fn ($skill) => $skill->category ?: ($profile->skills_section_title ?: 'Habilidades'));
     $languageGroups = $languageSkills->groupBy(fn ($skill) => $skill->category ?: (($profile->language ?: 'es') === 'en' ? 'Languages' : 'Idiomas'));
     $softSkillGroups = $softSkills->groupBy(fn ($skill) => $skill->category ?: ($profile->soft_skills_section_title ?: 'Habilidades blandas'));
+    $skillLine = fn ($skills, bool $withLevel = false) => $skills
+        ->map(fn ($skill) => $skill->name.($withLevel && $skill->level ? ': '.$skill->level.'/5' : ''))
+        ->join('; ');
     $skillsTitle = $profile->skills_section_title ?: 'Habilidades';
     $softSkillsTitle = $profile->soft_skills_section_title ?: 'Habilidades blandas';
     $sectionOrder = $profile->normalizedSectionOrder();
@@ -566,9 +569,7 @@
             @if ($technicalSkills->isNotEmpty())
                 <div class="act-summary-skills">
                     <p>{{ $skillsTitle }}</p>
-                    <ul>
-                        @foreach ($technicalSkills as $skill)<li>{{ $skill->name }}</li>@endforeach
-                    </ul>
+                    <p class="act-skill-line">{{ $skillLine($technicalSkills) }}</p>
                 </div>
             @endif
         @endif
@@ -615,18 +616,14 @@
                 <tr>
                     <td class="act-software-col">
                         @if ($softwareSkills->isNotEmpty())
-                            <ul>
-                                @foreach ($softwareSkills as $skill)<li>{{ $skill->name }}</li>@endforeach
-                            </ul>
+                            <p>{{ $skillLine($softwareSkills) }}</p>
                         @else
                             <p>&nbsp;</p>
                         @endif
                     </td>
                     <td class="act-languages-col">
                         @if ($languageSkills->isNotEmpty())
-                            @foreach ($languageSkills as $skill)
-                                <p>{{ $skill->name }}@if($skill->level): {{ $skill->level }}/5 @endif</p>
-                            @endforeach
+                            <p>{{ $skillLine($languageSkills, true) }}</p>
                         @else
                             <p>&nbsp;</p>
                         @endif
@@ -682,25 +679,13 @@
                 @foreach ($sideSectionOrder as $section)
                     @if ($section === 'software' && $softwareSkills->isNotEmpty())
                         <h2>{{ $labels['software'] }}</h2>
-                        <div class="skill-list">
-                            @foreach ($softwareSkills as $skill)
-                                <p class="small">{{ $skill->name }}@if($skill->level) · {{ $skill->level }}/5 @endif</p>
-                                @if ($skill->level)
-                                    <div class="meter"><span style="width: {{ min(100, max(0, $skill->level * 20)) }}%;"></span></div>
-                                @endif
-                            @endforeach
-                        </div>
+                        <p class="small">{{ $skillLine($softwareSkills, true) }}</p>
                     @elseif ($section === 'skills' && $technicalSkills->isNotEmpty())
                         <h2>{{ $skillsTitle }}</h2>
                         @foreach ($skillGroups as $category => $skills)
                             <div class="skill-list">
                                 <p><strong>{{ $category }}</strong></p>
-                                @foreach ($skills as $skill)
-                                    <p class="small">{{ $skill->name }}@if($skill->level) · {{ $skill->level }}/5 @endif</p>
-                                    @if ($skill->level)
-                                        <div class="meter"><span style="width: {{ min(100, max(0, $skill->level * 20)) }}%;"></span></div>
-                                    @endif
-                                @endforeach
+                                <p class="small">{{ $skillLine($skills, true) }}</p>
                             </div>
                         @endforeach
                     @elseif ($section === 'languages' && $languageSkills->isNotEmpty())
@@ -708,12 +693,7 @@
                         @foreach ($languageGroups as $category => $skills)
                             <div class="skill-list">
                                 <p><strong>{{ $category }}</strong></p>
-                                @foreach ($skills as $skill)
-                                    <p class="small">{{ $skill->name }}@if($skill->level) · {{ $skill->level }}/5 @endif</p>
-                                    @if ($skill->level)
-                                        <div class="meter"><span style="width: {{ min(100, max(0, $skill->level * 20)) }}%;"></span></div>
-                                    @endif
-                                @endforeach
+                                <p class="small">{{ $skillLine($skills, true) }}</p>
                             </div>
                         @endforeach
                     @elseif ($section === 'soft_skills' && $softSkills->isNotEmpty())
@@ -721,12 +701,7 @@
                         @foreach ($softSkillGroups as $category => $skills)
                             <div class="skill-list">
                                 <p><strong>{{ $category }}</strong></p>
-                                @foreach ($skills as $skill)
-                                    <p class="small">{{ $skill->name }}@if($skill->level) · {{ $skill->level }}/5 @endif</p>
-                                    @if ($skill->level)
-                                        <div class="meter"><span style="width: {{ min(100, max(0, $skill->level * 20)) }}%;"></span></div>
-                                    @endif
-                                @endforeach
+                                <p class="small">{{ $skillLine($skills, true) }}</p>
                             </div>
                         @endforeach
                     @endif
@@ -837,21 +812,21 @@
         @foreach ($sideSectionOrder as $section)
             @if ($section === 'software' && $softwareSkills->isNotEmpty())
                 <h2>{{ $labels['software'] }}</h2>
-                <p>{{ $softwareSkills->map(fn ($skill) => $skill->name)->join(', ') }}</p>
+                <p>{{ $skillLine($softwareSkills) }}</p>
             @elseif ($section === 'skills' && $technicalSkills->isNotEmpty())
                 <h2>{{ $skillsTitle }}</h2>
                 @foreach ($skillGroups as $category => $skills)
-                    <p><strong>{{ $category }}:</strong> {{ $skills->map(fn ($skill) => $skill->name)->join(', ') }}</p>
+                    <p><strong>{{ $category }}:</strong> {{ $skillLine($skills) }}</p>
                 @endforeach
             @elseif ($section === 'languages' && $languageSkills->isNotEmpty())
                 <h2>{{ $labels['languages'] }}</h2>
                 @foreach ($languageGroups as $category => $skills)
-                    <p><strong>{{ $category }}:</strong> {{ $skills->map(fn ($skill) => $skill->name)->join(', ') }}</p>
+                    <p><strong>{{ $category }}:</strong> {{ $skillLine($skills, true) }}</p>
                 @endforeach
             @elseif ($section === 'soft_skills' && $softSkills->isNotEmpty())
                 <h2>{{ $softSkillsTitle }}</h2>
                 @foreach ($softSkillGroups as $category => $skills)
-                    <p><strong>{{ $category }}:</strong> {{ $skills->map(fn ($skill) => $skill->name)->join(', ') }}</p>
+                    <p><strong>{{ $category }}:</strong> {{ $skillLine($skills) }}</p>
                 @endforeach
             @endif
         @endforeach
@@ -931,30 +906,22 @@
                         @if ($section === 'software' && $softwareSkills->isNotEmpty())
                             <div class="side-block">
                                 <p class="label">{{ $labels['software'] }}</p>
-                                <div class="pill-row">
-                                    @foreach ($softwareSkills as $skill)<span class="skill">{{ $skill->name }}@if($skill->level) · {{ $skill->level }}/5 @endif</span>@endforeach
-                                </div>
+                                <p>{{ $skillLine($softwareSkills, true) }}</p>
                             </div>
                         @elseif ($section === 'skills' && $technicalSkills->isNotEmpty())
                             <div class="side-block">
                                 <p class="label">{{ $skillsTitle }}</p>
-                                <div class="pill-row">
-                                    @foreach ($technicalSkills as $skill)<span class="skill">{{ $skill->name }}@if($skill->level) · {{ $skill->level }}/5 @endif</span>@endforeach
-                                </div>
+                                <p>{{ $skillLine($technicalSkills, true) }}</p>
                             </div>
                         @elseif ($section === 'languages' && $languageSkills->isNotEmpty())
                             <div class="side-block">
                                 <p class="label">{{ $labels['languages'] }}</p>
-                                <div class="pill-row">
-                                    @foreach ($languageSkills as $skill)<span class="skill">{{ $skill->name }}@if($skill->level) · {{ $skill->level }}/5 @endif</span>@endforeach
-                                </div>
+                                <p>{{ $skillLine($languageSkills, true) }}</p>
                             </div>
                         @elseif ($section === 'soft_skills' && $softSkills->isNotEmpty())
                             <div class="side-block">
                                 <p class="label">{{ $softSkillsTitle }}</p>
-                                <div class="pill-row">
-                                    @foreach ($softSkills as $skill)<span class="skill">{{ $skill->name }}@if($skill->level) · {{ $skill->level }}/5 @endif</span>@endforeach
-                                </div>
+                                <p>{{ $skillLine($softSkills, true) }}</p>
                             </div>
                         @endif
                     @endforeach

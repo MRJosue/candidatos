@@ -40,7 +40,7 @@ class CvTranslationService
                             "Traduce este CV a {$targetLabel}.",
                             'Conserva nombres propios, empresas, universidades, URLs, emails, telefonos, software, tecnologias, frameworks y certificaciones oficiales.',
                             'Adapta cargos, resumen, responsabilidades, categorias, habilidades blandas y etiquetas naturales del CV al idioma destino.',
-                            'Devuelve la misma estructura JSON, con todos los campos presentes.',
+                            'Devuelve la misma estructura JSON, con todos los campos presentes. Si un campo no tiene informacion real, devuelvelo como cadena vacia, nunca como texto "null".',
                             json_encode($source, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                         ]),
                     ]],
@@ -149,16 +149,16 @@ class CvTranslationService
     {
         return [
             'profile' => collect($data['profile'] ?? [])
-                ->map(fn ($value) => is_string($value) ? trim($value) : null)
+                ->map(fn ($value) => $this->cleanText($value))
                 ->all(),
             'experiences' => collect($data['experiences'] ?? [])
                 ->filter(fn ($item) => is_array($item))
                 ->map(fn ($item) => [
-                    'position' => trim((string) ($item['position'] ?? '')),
-                    'company' => trim((string) ($item['company'] ?? '')),
-                    'location' => trim((string) ($item['location'] ?? '')),
-                    'description' => trim((string) ($item['description'] ?? '')),
-                    'tools_used' => trim((string) ($item['tools_used'] ?? '')),
+                    'position' => $this->cleanText($item['position'] ?? null),
+                    'company' => $this->cleanText($item['company'] ?? null),
+                    'location' => $this->cleanText($item['location'] ?? null),
+                    'description' => $this->cleanText($item['description'] ?? null),
+                    'tools_used' => $this->cleanText($item['tools_used'] ?? null),
                 ])
                 ->values()
                 ->all(),
@@ -174,19 +174,30 @@ class CvTranslationService
                     'thesis' => $item['thesis'] ?? '',
                     'relevant_coursework' => $item['relevant_coursework'] ?? '',
                     'description' => $item['description'] ?? '',
-                ])->map(fn ($value) => trim((string) $value))->all())
+                ])->map(fn ($value) => $this->cleanText($value))->all())
                 ->values()
                 ->all(),
             'skills' => collect($data['skills'] ?? [])
                 ->filter(fn ($item) => is_array($item))
                 ->map(fn ($item) => [
-                    'name' => trim((string) ($item['name'] ?? '')),
-                    'category' => trim((string) ($item['category'] ?? '')),
+                    'name' => $this->cleanText($item['name'] ?? null),
+                    'category' => $this->cleanText($item['category'] ?? null),
                     'type' => in_array($item['type'] ?? 'skill', ['software', 'skill', 'language', 'soft_skill'], true) ? $item['type'] : 'skill',
                 ])
                 ->values()
                 ->all(),
         ];
+    }
+
+    private function cleanText(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        return preg_match('/^(?:null|n\/a|na|none|-|--)$/iu', $value) ? null : $value;
     }
 
     private function schema(): array

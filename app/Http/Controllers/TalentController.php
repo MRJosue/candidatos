@@ -14,20 +14,56 @@ class TalentController extends Controller
 {
     public function index(Request $request)
     {
+        $filters = $request->validate([
+            'name' => ['nullable', 'string', 'max:160'],
+            'created_date' => ['nullable', 'string', 'max:40'],
+        ]);
+
+        $name = trim((string) ($filters['name'] ?? ''));
+        $createdDate = trim((string) ($filters['created_date'] ?? ''));
+        $normalizedCreatedDate = $this->normalizedDateSearch($createdDate);
+
         return view('talents.index', [
             'talents' => $request->user()
                 ->talents()
                 ->with(['cvProfile', 'cvProfiles', 'applications:id,talent_id,vacancy_id'])
                 ->withCount('applications')
-                ->orderBy('last_name')
-                ->orderBy('first_name')
-                ->paginate(15),
+                ->when($name !== '', function ($query) use ($name): void {
+                    collect(preg_split('/\s+/', $name) ?: [])
+                        ->filter()
+                        ->each(function (string $term) use ($query): void {
+                            $query->where(function ($query) use ($term): void {
+                                $query->where('first_name', 'like', "%{$term}%")
+                                    ->orWhere('last_name', 'like', "%{$term}%")
+                                    ->orWhere('email', 'like', "%{$term}%");
+                            });
+                        });
+                })
+                ->when($createdDate !== '', function ($query) use ($createdDate, $normalizedCreatedDate): void {
+                    $query->whereDate('created_at', 'like', '%'.($normalizedCreatedDate ?: $createdDate).'%');
+                })
+                ->orderByDesc('id')
+                ->paginate(15)
+                ->appends($request->query()),
             'vacancies' => $request->user()
                 ->vacancies()
                 ->with(['company', 'position'])
                 ->whereIn('status', ['open', 'paused'])
                 ->orderBy('title')
                 ->get(),
+            'filters' => [
+                'name' => $name,
+                'created_date' => $createdDate,
+            ],
+            'filterOptions' => [
+                'createdDates' => $request->user()
+                    ->talents()
+                    ->selectRaw('DATE(created_at) as created_date')
+                    ->whereNotNull('created_at')
+                    ->distinct()
+                    ->orderByDesc('created_date')
+                    ->pluck('created_date'),
+            ],
         ]);
     }
 
@@ -93,6 +129,7 @@ class TalentController extends Controller
             'talent_ids' => ['required', 'array', 'min:1'],
             'talent_ids.*' => ['integer'],
             'cv_template_slug' => ['nullable', Rule::in(['act-digital', 'academico-bullet'])],
+            'cv_language' => ['nullable', Rule::in(array_keys(\App\Models\CvProfile::languageOptions()))],
         ]);
 
         CvTemplate::ensureDefaultTemplates();
@@ -105,16 +142,19 @@ class TalentController extends Controller
 
         $talents = $request->user()
             ->talents()
-            ->with(['cvProfile.template', 'cvProfile.experiences', 'cvProfile.education', 'cvProfile.skills'])
+            ->with(['cvProfiles.template', 'cvProfiles.experiences', 'cvProfiles.education', 'cvProfiles.skills'])
             ->whereIn('id', $data['talent_ids'])
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get();
 
-        $profiles = $talents->pluck('cvProfile')->filter();
+        $language = $data['cv_language'] ?? null;
+        $profiles = $talents
+            ->map(fn (Talent $talent) => $this->profileForLanguage($talent, $language))
+            ->filter();
 
         if ($profiles->isEmpty()) {
-            return back()->withErrors(['talent_ids' => 'Selecciona al menos un talento con CV asociado.']);
+            return back()->withErrors(['talent_ids' => 'Selecciona al menos un talento con CV asociado en el idioma elegido.']);
         }
 
         $directory = storage_path('app/private/bulk-cv-downloads');
@@ -207,5 +247,28 @@ class TalentController extends Controller
             ->filter()
             ->values()
             ->all();
+    }
+
+    private function normalizedDateSearch(string $value): ?string
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            return $value;
+        }
+
+        if (preg_match('/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/', $value, $matches)) {
+            return sprintf('%04d-%02d-%02d', (int) $matches[3], (int) $matches[2], (int) $matches[1]);
+        }
+
+        return null;
+    }
+
+    private function profileForLanguage(Talent $talent, ?string $language): ?\App\Models\CvProfile
+    {
+        if (! $language) {
+            return $talent->cvProfiles->first();
+        }
+
+        return $talent->cvProfiles
+            ->first(fn ($profile) => ($profile->language ?: 'es') === $language);
     }
 }

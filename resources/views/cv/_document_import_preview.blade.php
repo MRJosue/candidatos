@@ -52,19 +52,19 @@
         <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
             <div class="rounded border border-gray-200 p-4">
                 <h4 class="font-semibold text-gray-900">Software</h4>
-                <p class="mt-3 text-gray-600">{{ collect($parsed['software'] ?? [])->join(', ') ?: 'No se detecto software.' }}</p>
+                <p class="mt-3 text-gray-600">{{ collect($parsed['software'] ?? [])->join('; ') ?: 'No se detecto software.' }}</p>
             </div>
             <div class="rounded border border-gray-200 p-4">
                 <h4 class="font-semibold text-gray-900">Habilidades</h4>
-                <p class="mt-3 text-gray-600">{{ collect($parsed['skills'] ?? [])->join(', ') ?: 'No se detectaron habilidades.' }}</p>
+                <p class="mt-3 text-gray-600">{{ collect($parsed['skills'] ?? [])->join('; ') ?: 'No se detectaron habilidades.' }}</p>
             </div>
             <div class="rounded border border-gray-200 p-4">
                 <h4 class="font-semibold text-gray-900">Idiomas</h4>
-                <p class="mt-3 text-gray-600">{{ collect($parsed['languages'] ?? [])->join(', ') ?: 'No se detectaron idiomas.' }}</p>
+                <p class="mt-3 text-gray-600">{{ collect($parsed['languages'] ?? [])->join('; ') ?: 'No se detectaron idiomas.' }}</p>
             </div>
             <div class="rounded border border-gray-200 p-4">
                 <h4 class="font-semibold text-gray-900">Habilidades blandas</h4>
-                <p class="mt-3 text-gray-600">{{ collect($parsed['soft_skills'] ?? [])->join(', ') ?: 'No se detectaron habilidades blandas.' }}</p>
+                <p class="mt-3 text-gray-600">{{ collect($parsed['soft_skills'] ?? [])->join('; ') ?: 'No se detectaron habilidades blandas.' }}</p>
             </div>
         </div>
 

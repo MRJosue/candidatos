@@ -6,6 +6,7 @@ use App\Http\Requests\StoreCvEducationRequest;
 use App\Http\Requests\UpdateCvEducationRequest;
 use App\Models\CvEducation;
 use App\Models\CvProfile;
+use Illuminate\Support\Facades\DB;
 
 class CvEducationController extends Controller
 {
@@ -42,6 +43,22 @@ class CvEducationController extends Controller
         $cvProfile->education()->create($request->validated());
 
         return redirect()->route('cv.show', $cvProfile)->with('status', 'Educacion agregada.');
+    }
+
+    public function reverseOrder(CvProfile $cvProfile)
+    {
+        $this->authorize('update', $cvProfile);
+
+        $education = $cvProfile->education()->get();
+
+        DB::transaction(function () use ($education): void {
+            $education
+                ->reverse()
+                ->values()
+                ->each(fn (CvEducation $item, int $index) => $item->update(['sort_order' => $index + 1]));
+        });
+
+        return redirect()->route('cv.show', $cvProfile)->with('status', 'Orden de educacion invertido.');
     }
 
     /**

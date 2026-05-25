@@ -98,6 +98,7 @@ class JobApplicationController extends Controller
             'application_ids' => ['required', 'array', 'min:1'],
             'application_ids.*' => ['integer'],
             'cv_template_slug' => ['nullable', Rule::in(['act-digital', 'academico-bullet'])],
+            'cv_language' => ['nullable', Rule::in(array_keys(CvProfile::languageOptions()))],
         ]);
 
         CvTemplate::ensureDefaultTemplates();
@@ -115,10 +116,10 @@ class JobApplicationController extends Controller
                 'cvProfile.experiences',
                 'cvProfile.education',
                 'cvProfile.skills',
-                'talent.cvProfile.template',
-                'talent.cvProfile.experiences',
-                'talent.cvProfile.education',
-                'talent.cvProfile.skills',
+                'talent.cvProfiles.template',
+                'talent.cvProfiles.experiences',
+                'talent.cvProfiles.education',
+                'talent.cvProfiles.skills',
                 'vacancy',
             ])
             ->whereIn('id', $data['application_ids'])
@@ -126,11 +127,11 @@ class JobApplicationController extends Controller
             ->get();
 
         $profiles = $applications
-            ->map(fn (JobApplication $application) => $application->cvProfile ?? $application->talent->cvProfile)
+            ->map(fn (JobApplication $application) => $this->applicationProfileForLanguage($application, $data['cv_language'] ?? null))
             ->filter();
 
         if ($profiles->isEmpty()) {
-            return back()->withErrors(['application_ids' => 'Selecciona al menos una postulacion con CV asociado.']);
+            return back()->withErrors(['application_ids' => 'Selecciona al menos una postulacion con CV asociado en el idioma elegido.']);
         }
 
         $directory = storage_path('app/private/bulk-cv-downloads');
@@ -479,5 +480,17 @@ class JobApplicationController extends Controller
         }, 'postulaciones.xls', [
             'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
         ]);
+    }
+
+    private function applicationProfileForLanguage(JobApplication $application, ?string $language): ?CvProfile
+    {
+        $profile = $application->cvProfile ?? $application->talent->cvProfile;
+
+        if (! $language || (($profile?->language ?: 'es') === $language)) {
+            return $profile;
+        }
+
+        return $application->talent->cvProfiles
+            ->first(fn (CvProfile $profile) => ($profile->language ?: 'es') === $language);
     }
 }
