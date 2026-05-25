@@ -26,7 +26,9 @@
         <select name="cv_profile_id" class="mt-1 w-full rounded border-gray-300">
             <option value="">Sin CV asociado</option>
             @foreach ($cvProfiles as $cvProfile)
-                <option value="{{ $cvProfile->id }}" @selected((string) old('cv_profile_id', $application->cv_profile_id) === (string) $cvProfile->id)>{{ $cvProfile->title }}</option>
+                <option value="{{ $cvProfile->id }}" @selected((string) old('cv_profile_id', $application->cv_profile_id) === (string) $cvProfile->id)>
+                    {{ $cvProfile->title }} - {{ $cvProfile->languageLabel() }}
+                </option>
             @endforeach
         </select>
     </label>

@@ -16,6 +16,7 @@ class CvExperience extends Model
         'end_date',
         'is_current',
         'description',
+        'tools_used',
         'sort_order',
     ];
 

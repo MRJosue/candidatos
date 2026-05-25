@@ -69,7 +69,16 @@ class Talent extends Model
 
     public function cvProfile(): HasOne
     {
-        return $this->hasOne(CvProfile::class);
+        return $this->hasOne(CvProfile::class)
+            ->orderByDesc('is_primary')
+            ->latest();
+    }
+
+    public function cvProfiles(): HasMany
+    {
+        return $this->hasMany(CvProfile::class)
+            ->orderByDesc('is_primary')
+            ->latest();
     }
 
     public function applications(): HasMany

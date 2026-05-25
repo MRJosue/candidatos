@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CvProfile extends Model
 {
-    public const SIDE_SECTIONS = ['skills', 'languages', 'soft_skills'];
+    public const SIDE_SECTIONS = ['software', 'skills', 'languages', 'soft_skills'];
 
     public const MAIN_SECTIONS = ['experiences', 'education'];
 
@@ -16,6 +16,8 @@ class CvProfile extends Model
         'user_id',
         'talent_id',
         'cv_template_id',
+        'language',
+        'source_cv_profile_id',
         'title',
         'full_name',
         'email',
@@ -59,6 +61,16 @@ class CvProfile extends Model
         return $this->belongsTo(CvTemplate::class, 'cv_template_id');
     }
 
+    public function sourceCvProfile(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'source_cv_profile_id');
+    }
+
+    public function translations(): HasMany
+    {
+        return $this->hasMany(self::class, 'source_cv_profile_id')->latest();
+    }
+
     public function experiences(): HasMany
     {
         return $this->hasMany(CvExperience::class)->orderBy('sort_order')->latest('start_date');
@@ -100,5 +112,18 @@ class CvProfile extends Model
             'side' => self::normalizeSectionOrder($sectionOrder['side'] ?? self::SIDE_SECTIONS, self::SIDE_SECTIONS),
             'main' => self::normalizeSectionOrder($sectionOrder['main'] ?? self::MAIN_SECTIONS, self::MAIN_SECTIONS),
         ];
+    }
+
+    public static function languageOptions(): array
+    {
+        return [
+            'es' => 'Español',
+            'en' => 'Inglés',
+        ];
+    }
+
+    public function languageLabel(): string
+    {
+        return self::languageOptions()[$this->language ?: 'es'] ?? strtoupper((string) $this->language);
     }
 }

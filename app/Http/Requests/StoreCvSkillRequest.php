@@ -26,7 +26,7 @@ class StoreCvSkillRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:120'],
             'category' => ['nullable', 'string', 'max:120'],
-            'type' => ['required', Rule::in(['skill', 'language', 'soft_skill'])],
+            'type' => ['required', Rule::in(['software', 'skill', 'language', 'soft_skill'])],
             'level' => ['nullable', 'integer', 'min:1', 'max:5'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:999'],
         ];

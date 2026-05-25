@@ -6,16 +6,17 @@
         ->map(fn ($line) => trim($line))
         ->filter()
         ->values();
+    $softwareSkills = $profile->skills->filter(fn ($skill) => $skill->type === 'software')->values();
     $technicalSkills = $profile->skills->filter(fn ($skill) => ($skill->type ?: 'skill') === 'skill')->values();
     $languageSkills = $profile->skills->filter(fn ($skill) => $skill->type === 'language')->values();
     $softSkills = $profile->skills->filter(fn ($skill) => $skill->type === 'soft_skill')->values();
     $skillGroups = $technicalSkills->groupBy(fn ($skill) => $skill->category ?: ($profile->skills_section_title ?: 'Habilidades'));
-    $languageGroups = $languageSkills->groupBy(fn ($skill) => $skill->category ?: 'Idiomas');
+    $languageGroups = $languageSkills->groupBy(fn ($skill) => $skill->category ?: (($profile->language ?: 'es') === 'en' ? 'Languages' : 'Idiomas'));
     $softSkillGroups = $softSkills->groupBy(fn ($skill) => $skill->category ?: ($profile->soft_skills_section_title ?: 'Habilidades blandas'));
     $skillsTitle = $profile->skills_section_title ?: 'Habilidades';
     $softSkillsTitle = $profile->soft_skills_section_title ?: 'Habilidades blandas';
     $sectionOrder = $profile->normalizedSectionOrder();
-    $sideSectionKeys = ['skills', 'languages', 'soft_skills'];
+    $sideSectionKeys = ['software', 'skills', 'languages', 'soft_skills'];
     $mainSectionKeys = ['experiences', 'education'];
     $sideSectionOrder = collect($sectionOrder['side'])
         ->filter(fn ($section) => in_array($section, $sideSectionKeys, true))
@@ -28,19 +29,132 @@
         ->merge(collect($mainSectionKeys)->diff($sectionOrder['main']))
         ->values();
     $contactItems = collect();
+    $language = $profile->language ?: 'es';
+    $labelSets = [
+        'es' => [
+            'html_lang' => 'es',
+            'professional_summary' => 'Resumen profesional',
+            'skills' => 'Habilidades',
+            'experience' => 'Experiencia',
+            'work_experience' => 'Experiencia de trabajo',
+            'education' => 'Educación',
+            'languages' => 'Idiomas',
+            'current' => 'Actual',
+            'dates' => 'Fechas',
+            'period' => 'Periodo',
+            'position' => 'Puesto',
+            'functions' => 'Funciones',
+            'tools_used' => 'Herramientas Utilizadas',
+            'technical_certifications' => 'Habilidades Técnicas y Certificaciones',
+            'software' => 'Software',
+            'programming_languages' => 'Lenguajes',
+            'additional_information' => 'Información adicional',
+            'awards' => 'Certificaciones',
+            'activities' => 'Actividades',
+            'interests' => 'Intereses',
+            'contact' => 'Contacto',
+            'objective' => 'Objetivo',
+            'leadership' => 'Liderazgo y actividades',
+            'honors' => 'Honores',
+            'thesis' => 'Tesis',
+            'relevant_coursework' => 'Cursos relevantes',
+            'gpa' => 'Promedio',
+        ],
+        'en' => [
+            'html_lang' => 'en',
+            'professional_summary' => 'Professional Summary',
+            'skills' => 'Skills',
+            'experience' => 'Experience',
+            'work_experience' => 'Work Experience',
+            'education' => 'Education',
+            'languages' => 'Languages',
+            'current' => 'Present',
+            'dates' => 'Dates',
+            'period' => 'Period',
+            'position' => 'Position',
+            'functions' => 'Responsibilities',
+            'tools_used' => 'Tools Used',
+            'technical_certifications' => 'Technical Skills and Certifications',
+            'software' => 'Software',
+            'programming_languages' => 'Languages',
+            'additional_information' => 'Additional Information',
+            'awards' => 'Certifications',
+            'activities' => 'Activities',
+            'interests' => 'Interests',
+            'contact' => 'Contact',
+            'objective' => 'Objective',
+            'leadership' => 'Leadership and Activities',
+            'honors' => 'Honors',
+            'thesis' => 'Thesis',
+            'relevant_coursework' => 'Relevant coursework',
+            'gpa' => 'GPA',
+        ],
+    ];
+    $labels = $labelSets[$language] ?? $labelSets['es'];
+    $looksLikeExperienceHeader = function (string $line): bool {
+        $parts = array_map('trim', explode('|', $line));
+
+        return count($parts) >= 3
+            && filled($parts[0] ?? null)
+            && filled($parts[1] ?? null)
+            && (bool) preg_match('/(?:19|20)\d{2}/', $parts[2] ?? '');
+    };
+    $actExperienceEntries = function ($experiences) use ($lines, $looksLikeExperienceHeader, $labels) {
+        return $experiences->flatMap(function ($experience) use ($lines, $looksLikeExperienceHeader, $labels) {
+            $basePeriod = trim(($experience->start_date?->format('m/Y') ?: '').' - '.($experience->is_current ? $labels['current'] : ($experience->end_date?->format('m/Y') ?: '')));
+            $entries = [];
+            $current = [
+                'company' => $experience->company,
+                'location' => $experience->location,
+                'position' => $experience->position,
+                'period' => $basePeriod,
+                'description' => [],
+                'tools_used' => $experience->tools_used,
+            ];
+
+            foreach ($lines($experience->description) as $line) {
+                if ($looksLikeExperienceHeader($line)) {
+                    $entries[] = $current;
+                    $parts = array_pad(array_map('trim', explode('|', $line, 3)), 3, null);
+                    $current = [
+                        'company' => $parts[1],
+                        'location' => null,
+                        'position' => $parts[0],
+                        'period' => $parts[2],
+                        'description' => [],
+                        'tools_used' => null,
+                    ];
+
+                    continue;
+                }
+
+                if (preg_match('/^herramientas(?:\s+utilizadas)?\s*:\s*(.+)$/iu', $line, $matches)) {
+                    $current['tools_used'] = trim($matches[1]);
+
+                    continue;
+                }
+
+                $current['description'][] = $line;
+            }
+
+            $entries[] = $current;
+
+            return $entries;
+        });
+    };
     $actLogoPath = public_path('images/cv-templates/act-digital-logo.png');
     $actRulePath = public_path('images/cv-templates/act-blue-rule.png');
     $actLogoData = file_exists($actLogoPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($actLogoPath)) : null;
     $actRuleData = file_exists($actRulePath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($actRulePath)) : null;
 @endphp
 <!doctype html>
-<html lang="es">
+<html lang="{{ $labels['html_lang'] }}">
 <head>
     <meta charset="utf-8">
     <style>
         @page {
             size: {{ $templateSlug === 'act-digital' ? 'a4' : 'letter' }};
-            margin: {{ $templateSlug === 'act-digital' ? '14px 34px 42px 64px' : '18px 22px' }};
+            margin: {{ $templateSlug === 'act-digital' ? '64px 34px 66px 64px' : '18px 22px' }};
         }
         * { box-sizing: border-box; }
         html {
@@ -222,11 +336,23 @@
             line-height: 1.28;
         }
         .pdf-act-digital .pdf-page { width: 696px; }
-        .template-act { position: relative; padding-top: 18px; }
+        .template-act { position: relative; padding-top: 6px; }
+        .act-page-header {
+            position: fixed;
+            right: 34px;
+            top: 12px;
+            text-align: right;
+            width: 120px;
+            z-index: 20;
+        }
+        .act-page-header img {
+            height: 54px;
+            width: auto;
+        }
         .template-act .act-top {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 14px;
+            margin-bottom: 12px;
         }
         .template-act .act-top td { vertical-align: top; }
         .template-act .act-name {
@@ -284,6 +410,19 @@
             margin: 0 0 8px;
             text-align: justify;
         }
+        .template-act .act-summary-skills {
+            margin: 8px 0 9px;
+        }
+        .template-act .act-summary-skills p {
+            font-size: 10.5px;
+            font-weight: 700;
+            line-height: 1.2;
+            margin: 0;
+            text-transform: uppercase;
+        }
+        .template-act .act-summary-skills ul {
+            margin: 1px 0 0 24px;
+        }
         .template-act .act-subhead {
             font-weight: 700;
             margin: 7px 0 2px;
@@ -306,7 +445,15 @@
             margin-top: 1px;
         }
         .template-act .act-entry ul {
-            margin: 4px 0 0 14px;
+            margin: 2px 0 5px 14px;
+        }
+        .template-act .act-entry-field {
+            font-size: 10.5px;
+            line-height: 1.28;
+            margin: 2px 0;
+        }
+        .template-act .act-entry-label {
+            font-weight: 700;
         }
         .template-act .act-skill-table {
             width: 82%;
@@ -332,22 +479,35 @@
             line-height: 1.28;
             padding: 5px 8px;
             vertical-align: top;
-            width: 50%;
         }
+        .template-act .act-skill-table .act-software-col { width: 26%; }
+        .template-act .act-skill-table .act-languages-col { width: 24%; }
+        .template-act .act-skill-table .act-certifications-col { width: 50%; }
         .template-act .act-skill-table ul {
             margin: 0 0 0 11px;
             padding: 0;
         }
-        .template-act .act-footer-rule {
-            bottom: -24px;
-            left: -64px;
+        .act-page-footer-rule {
+            bottom: 0;
+            left: 0;
             position: fixed;
             width: 794px;
+            z-index: 20;
         }
-        .template-act .act-footer-rule img {
+        .act-page-footer-rule img {
             display: block;
-            height: 9px;
+            height: 10px;
             width: 100%;
+        }
+        .act-page-footer-url {
+            bottom: 20px;
+            color: #6f6f6f;
+            font-size: 8.5px;
+            left: 64px;
+            position: fixed;
+            text-align: center;
+            width: 696px;
+            z-index: 20;
         }
 
         @media screen {
@@ -368,20 +528,26 @@
     </style>
 </head>
 <body class="pdf-{{ $templateSlug }}">
+@if ($templateSlug === 'act-digital')
+    @if ($actLogoData)
+        <div class="act-page-header"><img src="{{ $actLogoData }}" alt="ACT Digital"></div>
+    @endif
+    <div class="act-page-footer-url">https://actdigital.com/es</div>
+    @if ($actRuleData)
+        <div class="act-page-footer-rule"><img src="{{ $actRuleData }}" alt=""></div>
+    @endif
+@endif
 <div class="pdf-page">
 @if ($templateSlug === 'act-digital')
     <div class="template-act">
         <table class="act-top">
             <tr>
-                <td style="width: 68%; padding-right: 16px;">
+                <td style="width: 72%; padding-right: 16px;">
                     <h1 class="act-name">{{ $profile->full_name }}</h1>
                     @if ($profile->headline)<p class="act-role">{{ $profile->headline }}</p>@endif
                     @if ($profile->tagline)<p class="act-role">{{ $profile->tagline }}</p>@endif
                 </td>
-                <td style="width: 32%; text-align: right;">
-                    @if ($actLogoData)
-                        <img class="act-logo" src="{{ $actLogoData }}" alt="ACT Digital">
-                    @endif
+                <td style="width: 28%; text-align: right;">
                     @if ($contactItems->isNotEmpty())
                         <div class="act-contact">
                             @foreach ($contactItems as $item)
@@ -393,39 +559,44 @@
             </tr>
         </table>
 
-        @if ($profile->summary || $profile->objective)
-            <table class="act-section"><tr><td class="act-section-mark"></td><td class="act-section-title">Professional Summary</td></tr></table>
+        @if ($profile->summary || $profile->objective || $technicalSkills->isNotEmpty())
+            <table class="act-section"><tr><td class="act-section-mark"></td><td class="act-section-title">{{ $labels['professional_summary'] }}</td></tr></table>
             @if ($profile->summary)<p class="act-copy">{{ $profile->summary }}</p>@endif
             @if ($profile->objective)<p class="act-copy">{{ $profile->objective }}</p>@endif
-        @endif
-
-        @if ($technicalSkills->isNotEmpty())
-            <p class="act-subhead">SKILLS</p>
-            @foreach ($skillGroups as $category => $skills)
-                <p class="act-skill-line"><strong>{{ $category }}:</strong><br>{{ $skills->map(fn ($skill) => $skill->name)->join(', ') }}</p>
-            @endforeach
+            @if ($technicalSkills->isNotEmpty())
+                <div class="act-summary-skills">
+                    <p>{{ $skillsTitle }}</p>
+                    <ul>
+                        @foreach ($technicalSkills as $skill)<li>{{ $skill->name }}</li>@endforeach
+                    </ul>
+                </div>
+            @endif
         @endif
 
         @foreach ($mainSectionOrder as $section)
             @if ($section === 'experiences' && $profile->experiences->isNotEmpty())
-                <table class="act-section"><tr><td class="act-section-mark"></td><td class="act-section-title">Experience</td></tr></table>
-                @foreach ($profile->experiences as $item)
+                <table class="act-section"><tr><td class="act-section-mark"></td><td class="act-section-title">{{ $labels['experience'] }}</td></tr></table>
+                @foreach ($actExperienceEntries($profile->experiences) as $item)
                     <div class="act-entry">
-                        <p class="act-entry-title">{{ $item->position }}</p>
-                        <p class="act-entry-meta">{{ $item->company }}@if($item->location), {{ $item->location }}@endif</p>
-                        <p class="act-entry-meta">Dates: {{ $item->start_date?->format('Y') }} - {{ $item->is_current ? 'Actual' : $item->end_date?->format('Y') }}</p>
-                        @if ($item->description)
-                            <ul>@foreach ($lines($item->description) as $line)<li>{{ $line }}</li>@endforeach</ul>
+                        <p class="act-entry-title">{{ $item['company'] }}@if($item['location']), {{ $item['location'] }}@endif</p>
+                        <p class="act-entry-field"><span class="act-entry-label">{{ $labels['period'] }}:</span> {{ $item['period'] }}</p>
+                        <p class="act-entry-field"><span class="act-entry-label">{{ $labels['position'] }}:</span> {{ $item['position'] }}</p>
+                        @if (! empty($item['description']))
+                            <p class="act-entry-field"><span class="act-entry-label">{{ $labels['functions'] }}:</span></p>
+                            <ul>@foreach ($item['description'] as $line)<li>{{ $line }}</li>@endforeach</ul>
+                        @endif
+                        @if ($item['tools_used'])
+                            <p class="act-entry-field"><span class="act-entry-label">{{ $labels['tools_used'] }}:</span> {{ $lines($item['tools_used'])->join(', ') }}</p>
                         @endif
                     </div>
                 @endforeach
             @elseif ($section === 'education' && $profile->education->isNotEmpty())
-                <table class="act-section"><tr><td class="act-section-mark"></td><td class="act-section-title">Education</td></tr></table>
+                <table class="act-section"><tr><td class="act-section-mark"></td><td class="act-section-title">{{ $labels['education'] }}</td></tr></table>
                 @foreach ($profile->education as $item)
                     <div class="act-entry">
                         <p class="act-entry-title">{{ $item->degree }}@if($item->field), {{ $item->field }}@endif</p>
                         <p class="act-entry-meta">{{ $item->institution }}</p>
-                        <p class="act-entry-meta">Dates: {{ $item->start_date?->format('Y') }}@if($item->end_date) - {{ $item->end_date?->format('Y') }}@endif</p>
+                        <p class="act-entry-meta">{{ $labels['dates'] }}: {{ $item->start_date?->format('Y') }}@if($item->end_date) - {{ $item->end_date?->format('Y') }}@endif</p>
                         @if ($item->location)<p class="act-entry-meta">{{ $item->location }}</p>@endif
                         @if ($item->description)<p class="act-entry-meta">{{ $item->description }}</p>@endif
                     </div>
@@ -433,24 +604,37 @@
             @endif
         @endforeach
 
-        @if ($technicalSkills->isNotEmpty() || $languageSkills->isNotEmpty() || $softSkills->isNotEmpty())
-            <table class="act-section"><tr><td class="act-section-mark"></td><td class="act-section-title">Habilidades Técnicas y Certificaciones</td></tr></table>
+        @if ($softwareSkills->isNotEmpty() || $languageSkills->isNotEmpty() || $profile->awards)
+            <table class="act-section"><tr><td class="act-section-mark"></td><td class="act-section-title">{{ $labels['technical_certifications'] }}</td></tr></table>
             <table class="act-skill-table">
                 <tr>
-                    <th>Software</th>
-                    <th>Lenguajes</th>
+                    <th class="act-software-col">{{ $labels['software'] }}</th>
+                    <th class="act-languages-col">{{ $labels['languages'] }}</th>
+                    <th class="act-certifications-col">{{ $labels['awards'] }}</th>
                 </tr>
                 <tr>
-                    <td>
-                        <ul>
-                            @foreach ($technicalSkills as $skill)<li>{{ $skill->name }}</li>@endforeach
-                            @foreach ($softSkills as $skill)<li>{{ $skill->name }}</li>@endforeach
-                        </ul>
+                    <td class="act-software-col">
+                        @if ($softwareSkills->isNotEmpty())
+                            <ul>
+                                @foreach ($softwareSkills as $skill)<li>{{ $skill->name }}</li>@endforeach
+                            </ul>
+                        @else
+                            <p>&nbsp;</p>
+                        @endif
                     </td>
-                    <td>
+                    <td class="act-languages-col">
                         @if ($languageSkills->isNotEmpty())
                             @foreach ($languageSkills as $skill)
                                 <p>{{ $skill->name }}@if($skill->level): {{ $skill->level }}/5 @endif</p>
+                            @endforeach
+                        @else
+                            <p>&nbsp;</p>
+                        @endif
+                    </td>
+                    <td class="act-certifications-col">
+                        @if ($profile->awards)
+                            @foreach ($lines($profile->awards) as $line)
+                                <p><strong>{{ $line }}</strong></p>
                             @endforeach
                         @else
                             <p>&nbsp;</p>
@@ -460,16 +644,12 @@
             </table>
         @endif
 
-        @if ($profile->awards || $profile->leadership_activities || $profile->interests)
-            <table class="act-section"><tr><td class="act-section-mark"></td><td class="act-section-title">Additional Information</td></tr></table>
-            @if ($profile->awards)<p class="act-entry-meta"><strong>Reconocimientos:</strong> {{ $lines($profile->awards)->join(', ') }}</p>@endif
-            @if ($profile->leadership_activities)<p class="act-entry-meta"><strong>Actividades:</strong> {{ $lines($profile->leadership_activities)->join(', ') }}</p>@endif
-            @if ($profile->interests)<p class="act-entry-meta"><strong>Intereses:</strong> {{ $lines($profile->interests)->join(', ') }}</p>@endif
+        @if ($profile->leadership_activities || $profile->interests)
+            <table class="act-section"><tr><td class="act-section-mark"></td><td class="act-section-title">{{ $labels['additional_information'] }}</td></tr></table>
+            @if ($profile->leadership_activities)<p class="act-entry-meta"><strong>{{ $labels['activities'] }}:</strong> {{ $lines($profile->leadership_activities)->join(', ') }}</p>@endif
+            @if ($profile->interests)<p class="act-entry-meta"><strong>{{ $labels['interests'] }}:</strong> {{ $lines($profile->interests)->join(', ') }}</p>@endif
         @endif
 
-        @if ($actRuleData)
-            <div class="act-footer-rule"><img src="{{ $actRuleData }}" alt=""></div>
-        @endif
     </div>
 @elseif ($templateSlug === 'creativo-sidebar')
     <table class="template-sidebar">
@@ -480,7 +660,7 @@
                 @if ($profile->tagline)<p class="tiny" style="margin-top: 6px;">{{ $profile->tagline }}</p>@endif
                 <div class="side-line"></div>
 
-                <h2>Contacto</h2>
+                <h2>{{ $labels['contact'] }}</h2>
                 @foreach ($contactItems as $item)
                     <p class="small">
                         @if ($item['icon'])
@@ -495,12 +675,22 @@
                 @endforeach
 
                 @if ($profile->awards)
-                    <h2>Premios</h2>
+                    <h2>{{ $labels['awards'] }}</h2>
                     <ul>@foreach ($lines($profile->awards) as $line)<li>{{ $line }}</li>@endforeach</ul>
                 @endif
 
                 @foreach ($sideSectionOrder as $section)
-                    @if ($section === 'skills' && $technicalSkills->isNotEmpty())
+                    @if ($section === 'software' && $softwareSkills->isNotEmpty())
+                        <h2>{{ $labels['software'] }}</h2>
+                        <div class="skill-list">
+                            @foreach ($softwareSkills as $skill)
+                                <p class="small">{{ $skill->name }}@if($skill->level) · {{ $skill->level }}/5 @endif</p>
+                                @if ($skill->level)
+                                    <div class="meter"><span style="width: {{ min(100, max(0, $skill->level * 20)) }}%;"></span></div>
+                                @endif
+                            @endforeach
+                        </div>
+                    @elseif ($section === 'skills' && $technicalSkills->isNotEmpty())
                         <h2>{{ $skillsTitle }}</h2>
                         @foreach ($skillGroups as $category => $skills)
                             <div class="skill-list">
@@ -514,7 +704,7 @@
                             </div>
                         @endforeach
                     @elseif ($section === 'languages' && $languageSkills->isNotEmpty())
-                        <h2>Idiomas</h2>
+                        <h2>{{ $labels['languages'] }}</h2>
                         @foreach ($languageGroups as $category => $skills)
                             <div class="skill-list">
                                 <p><strong>{{ $category }}</strong></p>
@@ -543,7 +733,7 @@
                 @endforeach
 
                 @if ($profile->interests)
-                    <h2>Intereses</h2>
+                    <h2>{{ $labels['interests'] }}</h2>
                     <p class="small">{{ $lines($profile->interests)->join(', ') }}</p>
                 @endif
             </td>
@@ -551,23 +741,23 @@
                 @if ($profile->summary || $profile->objective)
                     <div class="spotlight">
                         @if ($profile->summary)<p>{{ $profile->summary }}</p>@endif
-                        @if ($profile->objective)<p style="margin-top: 7px;"><strong>Objetivo:</strong> {{ $profile->objective }}</p>@endif
+                        @if ($profile->objective)<p style="margin-top: 7px;"><strong>{{ $labels['objective'] }}:</strong> {{ $profile->objective }}</p>@endif
                     </div>
                 @endif
 
                 @foreach ($mainSectionOrder as $section)
                     @if ($section === 'experiences')
-                        <h2>Experiencia de trabajo</h2>
+                        <h2>{{ $labels['work_experience'] }}</h2>
                         @foreach ($profile->experiences as $item)
                             <div class="item">
-                                <p class="row-meta">{{ $item->start_date?->format('m/Y') }} - {{ $item->is_current ? 'Actual' : $item->end_date?->format('m/Y') }}</p>
+                                <p class="row-meta">{{ $item->start_date?->format('m/Y') }} - {{ $item->is_current ? $labels['current'] : $item->end_date?->format('m/Y') }}</p>
                                 <h3>{{ $item->position }}</h3>
                                 <p class="muted">{{ $item->company }}@if($item->location), {{ $item->location }}@endif</p>
                                 <ul>@foreach ($lines($item->description) as $line)<li>{{ $line }}</li>@endforeach</ul>
                             </div>
                         @endforeach
                     @elseif ($section === 'education')
-                        <h2>Educación</h2>
+                        <h2>{{ $labels['education'] }}</h2>
                         @foreach ($profile->education as $item)
                             <div class="item">
                                 <p class="row-meta">{{ $item->start_date?->format('Y') }} - {{ $item->end_date?->format('Y') }}</p>
@@ -581,7 +771,7 @@
                 @endforeach
 
                 @if ($profile->leadership_activities)
-                    <h2>Liderazgo y actividades</h2>
+                    <h2>{{ $labels['leadership'] }}</h2>
                     <ul>@foreach ($lines($profile->leadership_activities) as $line)<li>{{ $line }}</li>@endforeach</ul>
                 @endif
             </td>
@@ -610,29 +800,29 @@
         @if ($profile->summary || $profile->objective)
             <div class="academic-note">
                 @if ($profile->summary)<p>{{ $profile->summary }}</p>@endif
-                @if ($profile->objective)<p style="margin-top: 6px;"><strong>Objetivo:</strong> {{ $profile->objective }}</p>@endif
+                @if ($profile->objective)<p style="margin-top: 6px;"><strong>{{ $labels['objective'] }}:</strong> {{ $profile->objective }}</p>@endif
             </div>
         @endif
 
         @foreach ($mainSectionOrder as $section)
             @if ($section === 'education')
-                <h2>Educación</h2>
+                <h2>{{ $labels['education'] }}</h2>
                 @foreach ($profile->education as $item)
                     <div class="entry">
                         <table class="split"><tr><td><strong>{{ $item->institution }}</strong></td><td class="right">{{ $item->location }}</td></tr></table>
-                        <table class="split"><tr><td>{{ $item->degree }}@if($item->field), {{ $item->field }}@endif @if($item->gpa) · Promedio {{ $item->gpa }}@endif</td><td class="right">{{ $item->end_date?->format('M Y') }}</td></tr></table>
-                        @if ($item->honors)<p><strong>Honores:</strong> {{ $item->honors }}</p>@endif
-                        @if ($item->thesis)<p><strong>Tesis:</strong> {{ $item->thesis }}</p>@endif
-                        @if ($item->relevant_coursework)<p><strong>Cursos relevantes:</strong> {{ $item->relevant_coursework }}</p>@endif
+                        <table class="split"><tr><td>{{ $item->degree }}@if($item->field), {{ $item->field }}@endif @if($item->gpa) · {{ $labels['gpa'] }} {{ $item->gpa }}@endif</td><td class="right">{{ $item->end_date?->format('M Y') }}</td></tr></table>
+                        @if ($item->honors)<p><strong>{{ $labels['honors'] }}:</strong> {{ $item->honors }}</p>@endif
+                        @if ($item->thesis)<p><strong>{{ $labels['thesis'] }}:</strong> {{ $item->thesis }}</p>@endif
+                        @if ($item->relevant_coursework)<p><strong>{{ $labels['relevant_coursework'] }}:</strong> {{ $item->relevant_coursework }}</p>@endif
                         @if ($item->description)<ul>@foreach ($lines($item->description) as $line)<li>{{ $line }}</li>@endforeach</ul>@endif
                     </div>
                 @endforeach
             @elseif ($section === 'experiences')
-                <h2>Experiencia</h2>
+                <h2>{{ $labels['experience'] }}</h2>
                 @foreach ($profile->experiences as $item)
                     <div class="entry">
                         <table class="split"><tr><td><strong>{{ $item->company }}</strong></td><td class="right">{{ $item->location }}</td></tr></table>
-                        <table class="split"><tr><td>{{ $item->position }}</td><td class="right">{{ $item->start_date?->format('M Y') }} - {{ $item->is_current ? 'Actual' : $item->end_date?->format('M Y') }}</td></tr></table>
+                        <table class="split"><tr><td>{{ $item->position }}</td><td class="right">{{ $item->start_date?->format('M Y') }} - {{ $item->is_current ? $labels['current'] : $item->end_date?->format('M Y') }}</td></tr></table>
                         <ul>@foreach ($lines($item->description) as $line)<li>{{ $line }}</li>@endforeach</ul>
                     </div>
                 @endforeach
@@ -640,18 +830,21 @@
         @endforeach
 
         @if ($profile->leadership_activities)
-            <h2>Liderazgo y actividades</h2>
+            <h2>{{ $labels['leadership'] }}</h2>
             <ul>@foreach ($lines($profile->leadership_activities) as $line)<li>{{ $line }}</li>@endforeach</ul>
         @endif
 
         @foreach ($sideSectionOrder as $section)
-            @if ($section === 'skills' && $technicalSkills->isNotEmpty())
+            @if ($section === 'software' && $softwareSkills->isNotEmpty())
+                <h2>{{ $labels['software'] }}</h2>
+                <p>{{ $softwareSkills->map(fn ($skill) => $skill->name)->join(', ') }}</p>
+            @elseif ($section === 'skills' && $technicalSkills->isNotEmpty())
                 <h2>{{ $skillsTitle }}</h2>
                 @foreach ($skillGroups as $category => $skills)
                     <p><strong>{{ $category }}:</strong> {{ $skills->map(fn ($skill) => $skill->name)->join(', ') }}</p>
                 @endforeach
             @elseif ($section === 'languages' && $languageSkills->isNotEmpty())
-                <h2>Idiomas</h2>
+                <h2>{{ $labels['languages'] }}</h2>
                 @foreach ($languageGroups as $category => $skills)
                     <p><strong>{{ $category }}:</strong> {{ $skills->map(fn ($skill) => $skill->name)->join(', ') }}</p>
                 @endforeach
@@ -662,7 +855,7 @@
                 @endforeach
             @endif
         @endforeach
-        @if ($profile->interests)<h2>Intereses</h2><p>{{ $lines($profile->interests)->join(', ') }}</p>@endif
+        @if ($profile->interests)<h2>{{ $labels['interests'] }}</h2><p>{{ $lines($profile->interests)->join(', ') }}</p>@endif
     </div>
 @else
     <div class="template-classic">
@@ -697,17 +890,17 @@
         <table class="section-grid" style="margin-top: 12px;">
             <tr>
                 <td class="main-col">
-                    @if ($profile->objective)<h2>Objetivo</h2><p>{{ $profile->objective }}</p>@endif
+                    @if ($profile->objective)<h2>{{ $labels['objective'] }}</h2><p>{{ $profile->objective }}</p>@endif
 
                     @foreach ($mainSectionOrder as $section)
                         @if ($section === 'experiences')
-                            <h2>Experiencia</h2>
+                            <h2>{{ $labels['experience'] }}</h2>
                             @foreach ($profile->experiences as $item)
                                 <div class="item">
                                     <table class="split">
                                         <tr>
                                             <td><h3>{{ $item->position }}</h3></td>
-                                            <td class="right row-meta">{{ $item->start_date?->format('m/Y') }} - {{ $item->is_current ? 'Actual' : $item->end_date?->format('m/Y') }}</td>
+                                            <td class="right row-meta">{{ $item->start_date?->format('m/Y') }} - {{ $item->is_current ? $labels['current'] : $item->end_date?->format('m/Y') }}</td>
                                         </tr>
                                     </table>
                                     <p class="muted">{{ $item->company }}@if($item->location), {{ $item->location }}@endif</p>
@@ -715,7 +908,7 @@
                                 </div>
                             @endforeach
                         @elseif ($section === 'education')
-                            <h2>Educación</h2>
+                            <h2>{{ $labels['education'] }}</h2>
                             @foreach ($profile->education as $item)
                                 <div class="item">
                                     <table class="split">
@@ -725,9 +918,9 @@
                                         </tr>
                                     </table>
                                     <p class="muted">{{ $item->institution }}@if($item->location), {{ $item->location }}@endif</p>
-                                    <p>{{ collect([$item->field, $item->gpa ? 'Promedio '.$item->gpa : null, $item->honors])->filter()->join(' · ') }}</p>
+                                    <p>{{ collect([$item->field, $item->gpa ? $labels['gpa'].' '.$item->gpa : null, $item->honors])->filter()->join(' · ') }}</p>
                                     @if ($item->description)<p>{{ $item->description }}</p>@endif
-                                    @if ($item->relevant_coursework)<p><strong>Cursos relevantes:</strong> {{ $item->relevant_coursework }}</p>@endif
+                                    @if ($item->relevant_coursework)<p><strong>{{ $labels['relevant_coursework'] }}:</strong> {{ $item->relevant_coursework }}</p>@endif
                                 </div>
                             @endforeach
                         @endif
@@ -735,7 +928,14 @@
                 </td>
                 <td class="side-col">
                     @foreach ($sideSectionOrder as $section)
-                        @if ($section === 'skills' && $technicalSkills->isNotEmpty())
+                        @if ($section === 'software' && $softwareSkills->isNotEmpty())
+                            <div class="side-block">
+                                <p class="label">{{ $labels['software'] }}</p>
+                                <div class="pill-row">
+                                    @foreach ($softwareSkills as $skill)<span class="skill">{{ $skill->name }}@if($skill->level) · {{ $skill->level }}/5 @endif</span>@endforeach
+                                </div>
+                            </div>
+                        @elseif ($section === 'skills' && $technicalSkills->isNotEmpty())
                             <div class="side-block">
                                 <p class="label">{{ $skillsTitle }}</p>
                                 <div class="pill-row">
@@ -744,7 +944,7 @@
                             </div>
                         @elseif ($section === 'languages' && $languageSkills->isNotEmpty())
                             <div class="side-block">
-                                <p class="label">Idiomas</p>
+                                <p class="label">{{ $labels['languages'] }}</p>
                                 <div class="pill-row">
                                     @foreach ($languageSkills as $skill)<span class="skill">{{ $skill->name }}@if($skill->level) · {{ $skill->level }}/5 @endif</span>@endforeach
                                 </div>
@@ -761,21 +961,21 @@
 
                     @if ($profile->awards)
                         <div class="side-block">
-                            <p class="label">Premios y reconocimientos</p>
+                            <p class="label">{{ $labels['awards'] }}</p>
                             <ul>@foreach ($lines($profile->awards) as $line)<li>{{ $line }}</li>@endforeach</ul>
                         </div>
                     @endif
 
                     @if ($profile->leadership_activities)
                         <div class="side-block">
-                            <p class="label">Liderazgo y actividades</p>
+                            <p class="label">{{ $labels['leadership'] }}</p>
                             <ul>@foreach ($lines($profile->leadership_activities) as $line)<li>{{ $line }}</li>@endforeach</ul>
                         </div>
                     @endif
 
                     @if ($profile->interests)
                         <div class="side-block">
-                            <p class="label">Intereses</p>
+                            <p class="label">{{ $labels['interests'] }}</p>
                             <p>{{ $lines($profile->interests)->join(', ') }}</p>
                         </div>
                     @endif

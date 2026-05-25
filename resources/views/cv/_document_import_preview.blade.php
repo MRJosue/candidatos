@@ -49,7 +49,11 @@
             </div>
         </div>
 
-        <div class="grid md:grid-cols-3 gap-4 text-sm">
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            <div class="rounded border border-gray-200 p-4">
+                <h4 class="font-semibold text-gray-900">Software</h4>
+                <p class="mt-3 text-gray-600">{{ collect($parsed['software'] ?? [])->join(', ') ?: 'No se detecto software.' }}</p>
+            </div>
             <div class="rounded border border-gray-200 p-4">
                 <h4 class="font-semibold text-gray-900">Habilidades</h4>
                 <p class="mt-3 text-gray-600">{{ collect($parsed['skills'] ?? [])->join(', ') ?: 'No se detectaron habilidades.' }}</p>
@@ -65,8 +69,8 @@
         </div>
 
         <div class="rounded border border-gray-200 p-4 text-sm">
-            <h4 class="font-semibold text-gray-900">Premios y reconocimientos</h4>
-            <p class="mt-3 text-gray-600 whitespace-pre-line">{{ collect($parsed['awards'] ?? [])->join("\n") ?: 'No se detectaron cursos, premios o reconocimientos.' }}</p>
+            <h4 class="font-semibold text-gray-900">Certificaciones</h4>
+            <p class="mt-3 text-gray-600 whitespace-pre-line">{{ collect($parsed['awards'] ?? [])->join("\n") ?: 'No se detectaron certificaciones.' }}</p>
         </div>
 
         @if (isset($applyAction))

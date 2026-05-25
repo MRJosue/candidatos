@@ -2,6 +2,7 @@
     <input name="name" placeholder="Nombre" value="{{ old('name', $skill->name ?? '') }}" class="rounded border-gray-300" required>
     <select name="type" class="rounded border-gray-300" required>
         @php($selectedType = old('type', $skill->type ?? request('type', 'skill')))
+        <option value="software" @selected($selectedType === 'software')>Software</option>
         <option value="skill" @selected($selectedType === 'skill')>Habilidad</option>
         <option value="language" @selected($selectedType === 'language')>Idioma</option>
         <option value="soft_skill" @selected($selectedType === 'soft_skill')>Habilidad blanda</option>

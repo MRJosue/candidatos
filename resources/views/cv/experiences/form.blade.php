@@ -7,7 +7,8 @@
     <input type="date" name="end_date" value="{{ old('end_date', optional($experience?->end_date ?? null)->format('Y-m-d')) }}" class="rounded border-gray-300">
     <input type="hidden" name="is_current" value="0">
     <label class="flex items-center gap-2 md:col-span-2"><input type="checkbox" name="is_current" value="1" @checked(old('is_current', $experience->is_current ?? false))> Trabajo actual</label>
-    <textarea name="description" rows="5" placeholder="Logros y responsabilidades" class="rounded border-gray-300 md:col-span-2">{{ old('description', $experience->description ?? '') }}</textarea>
+    <textarea name="description" rows="5" placeholder="Funciones" class="rounded border-gray-300 md:col-span-2">{{ old('description', $experience->description ?? '') }}</textarea>
+    <textarea name="tools_used" rows="3" placeholder="Herramientas utilizadas" class="rounded border-gray-300 md:col-span-2">{{ old('tools_used', $experience->tools_used ?? '') }}</textarea>
 </div>
 @if ($errors->any())<p class="text-sm text-red-700">{{ $errors->first() }}</p>@endif
 <button class="px-4 py-2 bg-gray-900 text-white rounded">Guardar</button>

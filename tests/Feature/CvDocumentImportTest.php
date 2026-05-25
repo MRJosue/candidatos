@@ -70,6 +70,7 @@ class CvDocumentImportTest extends TestCase
                     'Construccion de APIs y modulos administrativos.',
                 ]),
                 'education_text' => 'Ingenieria en Sistemas | Universidad Demo | 2017 - 2021',
+                'software_text' => "Jira\nGitHub",
                 'skills_text' => "Laravel\nPHP\nMySQL",
                 'languages_text' => "Espanol\nIngles",
                 'soft_skills_text' => "Liderazgo\nComunicacion",
@@ -92,6 +93,12 @@ class CvDocumentImportTest extends TestCase
 
         $this->assertDatabaseHas('cv_skills', [
             'cv_profile_id' => $profile->id,
+            'name' => 'Jira',
+            'type' => 'software',
+        ]);
+
+        $this->assertDatabaseHas('cv_skills', [
+            'cv_profile_id' => $profile->id,
             'name' => 'Laravel',
             'type' => 'skill',
         ]);
@@ -105,6 +112,46 @@ class CvDocumentImportTest extends TestCase
             'cv_profile_id' => $profile->id,
             'name' => 'Liderazgo',
             'type' => 'soft_skill',
+        ]);
+    }
+
+    public function test_experience_text_splits_embedded_pipe_headers_into_new_experiences(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = CvProfile::create([
+            'user_id' => $user->id,
+            'title' => 'CV en proceso',
+            'full_name' => 'Andrea Lopez',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $this->actingAs($user)
+            ->put(route('cv.sections.update', $profile), [
+                'experiences_text' => implode("\n", [
+                    'Consultor de integraciones | ORACLE Cliente: Kosmos / Penoles | 2024 - 2026',
+                    'Orquestacion de OIC.',
+                    'Consultor | ORACLE Cliente: Alsea | 2020 - 2022',
+                    'Capacidad y empoderamiento self-service.',
+                    'Herramientas Utilizadas: Oracle Analytics Cloud (OAC), SQL',
+                ]),
+            ])
+            ->assertRedirect(route('cv.edit', $profile))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('cv_experiences', [
+            'cv_profile_id' => $profile->id,
+            'position' => 'Consultor de integraciones',
+            'company' => 'ORACLE Cliente: Kosmos / Penoles',
+            'description' => 'Orquestacion de OIC.',
+        ]);
+
+        $this->assertDatabaseHas('cv_experiences', [
+            'cv_profile_id' => $profile->id,
+            'position' => 'Consultor',
+            'company' => 'ORACLE Cliente: Alsea',
+            'description' => 'Capacidad y empoderamiento self-service.',
+            'tools_used' => 'Oracle Analytics Cloud (OAC), SQL',
         ]);
     }
 
@@ -186,6 +233,7 @@ class CvDocumentImportTest extends TestCase
                                     'period' => '2016 - 2020',
                                     'description' => '',
                                 ]],
+                                'software' => ['Jira', 'GitHub'],
                                 'skills' => ['Laravel', 'Gemini'],
                                 'languages' => ['Espanol', 'Ingles'],
                                 'soft_skills' => ['Liderazgo', 'Comunicacion'],
@@ -235,6 +283,7 @@ class CvDocumentImportTest extends TestCase
             ->assertSee('Previsualizacion de IA')
             ->assertSee('Andrea IA')
             ->assertSee('Tech Lead')
+            ->assertSee('Jira')
             ->assertSee('Curso de Arquitectura Laravel')
             ->assertSee('Liderazgo');
 
@@ -243,6 +292,7 @@ class CvDocumentImportTest extends TestCase
                 'apply_profile' => '1',
                 'apply_experiences' => '1',
                 'apply_education' => '1',
+                'apply_software' => '1',
                 'apply_skills' => '1',
                 'apply_languages' => '1',
                 'apply_soft_skills' => '1',
@@ -266,6 +316,11 @@ class CvDocumentImportTest extends TestCase
             'cv_profile_id' => $profile->id,
             'degree' => 'Ingenieria en Software',
             'institution' => 'Universidad IA',
+        ]);
+        $this->assertDatabaseHas('cv_skills', [
+            'cv_profile_id' => $profile->id,
+            'name' => 'Jira',
+            'type' => 'software',
         ]);
         $this->assertDatabaseHas('cv_skills', [
             'cv_profile_id' => $profile->id,
@@ -312,6 +367,7 @@ class CvDocumentImportTest extends TestCase
                                     'period' => '2015 - 2019',
                                     'description' => '',
                                 ]],
+                                'software' => ['Figma'],
                                 'skills' => ['Laravel', 'UX'],
                                 'languages' => ['Espanol', 'Ingles'],
                                 'soft_skills' => ['Comunicacion'],
@@ -356,6 +412,7 @@ class CvDocumentImportTest extends TestCase
                 'apply_profile' => '1',
                 'apply_experiences' => '1',
                 'apply_education' => '1',
+                'apply_software' => '1',
                 'apply_skills' => '1',
                 'apply_languages' => '1',
                 'apply_soft_skills' => '1',
@@ -375,6 +432,11 @@ class CvDocumentImportTest extends TestCase
             'cv_profile_id' => $profile->id,
             'degree' => 'Ingenieria',
             'institution' => 'Universidad Create',
+        ]);
+        $this->assertDatabaseHas('cv_skills', [
+            'cv_profile_id' => $profile->id,
+            'name' => 'Figma',
+            'type' => 'software',
         ]);
         $this->assertDatabaseHas('cv_skills', [
             'cv_profile_id' => $profile->id,

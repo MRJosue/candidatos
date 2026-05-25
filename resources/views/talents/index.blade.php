@@ -93,7 +93,9 @@
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-700">{{ $talent->source ?? 'No definida' }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-700 capitalize">{{ $talent->status }}</td>
-                                <td class="px-6 py-4 text-sm text-gray-700">{{ $talent->cvProfile ? 'Asociado' : 'Pendiente' }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-700">
+                                    {{ $talent->cvProfiles->isNotEmpty() ? $talent->cvProfiles->count().' CV(s)' : 'Pendiente' }}
+                                </td>
                                 <td class="px-6 py-4 text-sm text-gray-700">{{ $talent->applications_count }}</td>
                                 <td class="px-6 py-4 text-sm">
                                     <form method="POST" action="{{ route('talents.applications.store', $talent) }}" class="flex items-center gap-2">
@@ -114,12 +116,11 @@
                                         @if ($talent->cvProfile)
                                             <a href="{{ route('cv.download', $talent->cvProfile) }}" class="text-gray-700">Descargar CV</a>
                                             <a href="{{ route('cv.edit', $talent->cvProfile) }}" class="text-gray-700">Editar CV</a>
-                                        @else
-                                            <form method="POST" action="{{ route('talents.cv.store', $talent) }}">
-                                                @csrf
-                                                <button type="submit" class="text-gray-700">Crear CV</button>
-                                            </form>
                                         @endif
+                                        <form method="POST" action="{{ route('talents.cv.store', $talent) }}">
+                                            @csrf
+                                            <button type="submit" class="text-gray-700">Crear CV</button>
+                                        </form>
                                         <a href="{{ route('talents.edit', $talent) }}" class="text-indigo-600">Editar</a>
                                     </div>
                                 </td>

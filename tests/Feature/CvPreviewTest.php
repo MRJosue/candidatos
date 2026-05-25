@@ -100,12 +100,29 @@ class CvPreviewTest extends TestCase
             'email' => 'abdiel@example.com',
             'headline' => 'Developer',
             'summary' => 'Full Stack Developer with enterprise web application experience.',
+            'awards' => 'Oracle Cloud Platform Application Integration 2025 Certified Professional (OIC)',
             'section_order' => CvProfile::defaultSectionOrder(),
         ]);
 
         $profile->skills()->create([
+            'name' => 'Jira',
+            'type' => 'software',
+        ]);
+        $profile->skills()->create([
             'name' => 'React',
             'type' => 'skill',
+        ]);
+        $profile->skills()->create([
+            'name' => 'Ingles',
+            'type' => 'language',
+        ]);
+        $profile->experiences()->create([
+            'company' => 'ACT Digital',
+            'position' => 'Backend Developer',
+            'start_date' => '2024-01-01',
+            'is_current' => true,
+            'description' => "Builds APIs.\nConsultor | ORACLE Cliente: Alsea | 2020 - 2022\nManaged OAC.",
+            'tools_used' => 'Laravel, MySQL',
         ]);
 
         $response = $this
@@ -117,7 +134,22 @@ class CvPreviewTest extends TestCase
             ->assertSee('template-act', false)
             ->assertSee('ACT Digital', false)
             ->assertDontSee('abdiel@example.com')
-            ->assertSee('Professional Summary')
-            ->assertSee('Habilidades Técnicas y Certificaciones');
+            ->assertSee('Resumen profesional')
+            ->assertSee('Periodo')
+            ->assertSee('Puesto')
+            ->assertSee('Funciones')
+            ->assertSee('Herramientas Utilizadas')
+            ->assertSee('ORACLE Cliente: Alsea')
+            ->assertSee('Periodo:</span> 2020 - 2022', false)
+            ->assertDontSee('Consultor | ORACLE Cliente: Alsea | 2020 - 2022')
+            ->assertSee('https://actdigital.com/es')
+            ->assertSee('Habilidades Técnicas y Certificaciones')
+            ->assertSee('Software')
+            ->assertSee('Jira')
+            ->assertSee('Idiomas')
+            ->assertSee('Ingles')
+            ->assertSee('React')
+            ->assertSee('Certificaciones')
+            ->assertSee('Oracle Cloud Platform Application Integration 2025 Certified Professional');
     }
 }

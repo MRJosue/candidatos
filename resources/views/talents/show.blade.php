@@ -32,6 +32,7 @@
                         <div><dt class="text-gray-500">Fuente</dt><dd>{{ $talent->source ?? 'No definida' }}</dd></div>
                         <div><dt class="text-gray-500">Ultimo contacto</dt><dd>{{ $talent->last_contacted_at?->format('d/m/Y') ?? 'No registrado' }}</dd></div>
                         <div><dt class="text-gray-500">Contacto de CV</dt><dd>{{ $talent->cvProfile?->email ?? 'Sin CV asociado' }}</dd></div>
+                        <div><dt class="text-gray-500">CVs</dt><dd>{{ $talent->cvProfiles->count() }}</dd></div>
                     </dl>
                 </div>
             </div>
@@ -41,11 +42,7 @@
                     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                         <h3 class="font-semibold">CV</h3>
                         <div class="flex flex-wrap items-center gap-2">
-                            @if ($talent->cvProfile)
-                                <a href="{{ route('cv.edit', $talent->cvProfile) }}" class="px-3 py-2 bg-gray-900 text-white rounded text-sm">Editar CV</a>
-                            @else
-                                <a href="{{ route('talents.cv.create', $talent) }}" class="px-3 py-2 bg-gray-900 text-white rounded text-sm">Crear CV</a>
-                            @endif
+                            <a href="{{ route('talents.cv.create', $talent) }}" class="px-3 py-2 bg-gray-900 text-white rounded text-sm">Crear CV</a>
                             <button
                                 type="button"
                                 x-data="{ copied: false, link: @js(route('public-talents.edit', ['talent' => $talent->public_token])) }"
@@ -58,14 +55,19 @@
                         </div>
                     </div>
                     <div class="space-y-3">
-                        @if ($talent->cvProfile)
-                            <a href="{{ route('cv.show', $talent->cvProfile) }}" class="flex justify-between border-b pb-3 last:border-b-0">
-                                <span>{{ $talent->cvProfile->title }}</span>
-                                <span class="text-sm text-gray-500">{{ $talent->cvProfile->template?->name ?? 'Sin plantilla' }}</span>
+                        @forelse ($talent->cvProfiles as $cvProfile)
+                            <a href="{{ route('cv.show', $cvProfile) }}" class="flex justify-between border-b pb-3 last:border-b-0">
+                                <span>
+                                    {{ $cvProfile->title }}
+                                    @if ($cvProfile->is_primary)
+                                        <span class="ml-2 rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">Principal</span>
+                                    @endif
+                                </span>
+                                <span class="text-sm text-gray-500">{{ $cvProfile->template?->name ?? 'Sin plantilla' }} · {{ $cvProfile->languageLabel() }}</span>
                             </a>
-                        @else
+                        @empty
                             <p class="text-gray-500">Este talento aun no tiene CV asociado.</p>
-                        @endif
+                        @endforelse
                     </div>
                 </div>
 

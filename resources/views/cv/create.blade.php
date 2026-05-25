@@ -22,6 +22,7 @@
                     @include('cv._document_import_options')
                     @include('cv._form', ['showSubmitButton' => false])
                     @include('cv._sections_form', ['sectionText' => $sectionText ?? []])
+                    @include('cv._other_fields')
                     <button class="px-4 py-2 bg-gray-900 text-white rounded">Guardar</button>
                 </form>
             </section>

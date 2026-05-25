@@ -28,6 +28,7 @@ class StoreCvProfileRequest extends FormRequest
                 'nullable',
                 Rule::exists('cv_templates', 'id')->where('is_active', true),
             ],
+            'language' => ['nullable', Rule::in(['es', 'en'])],
             'title' => ['required', 'string', 'max:120'],
             'full_name' => ['required', 'string', 'max:160'],
             'email' => ['nullable', 'email', 'max:160'],

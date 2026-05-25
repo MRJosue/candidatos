@@ -581,7 +581,7 @@ class RecruitingCrudTest extends TestCase
         $this->assertNull($profile->headline);
     }
 
-    public function test_recruiter_cannot_assign_a_second_cv_to_same_talent(): void
+    public function test_recruiter_can_assign_multiple_cvs_to_same_talent(): void
     {
         $user = User::factory()->create();
         $talent = $user->talents()->create([
@@ -595,6 +595,7 @@ class RecruitingCrudTest extends TestCase
             'title' => 'CV Actual',
             'full_name' => 'Ana Lopez',
             'email' => 'ana@example.com',
+            'is_primary' => true,
         ]);
         $newProfile = $user->cvProfiles()->create([
             'title' => 'CV Nuevo',
@@ -606,10 +607,13 @@ class RecruitingCrudTest extends TestCase
             ->patch(route('cv.talent.update', $newProfile), [
                 'talent_id' => $talent->id,
             ])
-            ->assertSessionHasErrors('talent_id');
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('cv.index'));
 
         $this->assertSame($talent->id, $assignedProfile->refresh()->talent_id);
-        $this->assertNull($newProfile->refresh()->talent_id);
+        $this->assertSame($talent->id, $newProfile->refresh()->talent_id);
+        $this->assertFalse($newProfile->is_primary);
+        $this->assertCount(2, $talent->refresh()->cvProfiles);
     }
 
     public function test_recruiter_can_download_selected_talent_cvs_as_zip(): void

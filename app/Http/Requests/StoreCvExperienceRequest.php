@@ -30,6 +30,7 @@ class StoreCvExperienceRequest extends FormRequest
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'is_current' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string', 'max:2000'],
+            'tools_used' => ['nullable', 'string', 'max:2000'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:999'],
         ];
     }

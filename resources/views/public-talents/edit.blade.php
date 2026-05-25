@@ -105,6 +105,7 @@
                     </section>
 
                     @include('cv._sections_form')
+                    @include('cv._other_fields')
                 </fieldset>
 
                 @unless ($linkUsed)

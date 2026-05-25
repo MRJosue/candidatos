@@ -27,6 +27,7 @@
                 </section>
 
                 @include('cv._sections_form')
+                @include('cv._other_fields')
 
                 <button class="px-4 py-2 bg-gray-900 text-white rounded">Guardar</button>
             </form>

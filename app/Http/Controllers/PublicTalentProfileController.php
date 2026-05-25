@@ -74,6 +74,7 @@ class PublicTalentProfileController extends Controller
             'portfolio_url' => ['nullable', 'url', 'max:255'],
             'experiences_text' => ['nullable', 'string', 'max:12000'],
             'education_text' => ['nullable', 'string', 'max:8000'],
+            'software_text' => ['nullable', 'string', 'max:4000'],
             'skills_text' => ['nullable', 'string', 'max:4000'],
             'languages_text' => ['nullable', 'string', 'max:4000'],
             'soft_skills_text' => ['nullable', 'string', 'max:4000'],
@@ -167,6 +168,7 @@ class PublicTalentProfileController extends Controller
                     $education->description,
                 ]))))
                 ->implode("\n\n"),
+            'software' => $cvProfile->skills->where('type', 'software')->pluck('name')->implode("\n"),
             'skills' => $cvProfile->skills->where('type', 'skill')->pluck('name')->implode("\n"),
             'languages' => $cvProfile->skills->where('type', 'language')->pluck('name')->implode("\n"),
             'soft_skills' => $cvProfile->skills->where('type', 'soft_skill')->pluck('name')->implode("\n"),
@@ -180,6 +182,7 @@ class PublicTalentProfileController extends Controller
     {
         $this->replaceExperiences($cvProfile, $this->parseBlocks($data['experiences_text'] ?? '', ['position', 'company']));
         $this->replaceEducation($cvProfile, $this->parseBlocks($data['education_text'] ?? '', ['degree', 'institution']));
+        $this->replaceSkills($cvProfile, 'software', $this->parseList($data['software_text'] ?? ''));
         $this->replaceSkills($cvProfile, 'skill', $this->parseList($data['skills_text'] ?? ''));
         $this->replaceSkills($cvProfile, 'language', $this->parseList($data['languages_text'] ?? ''));
         $this->replaceSkills($cvProfile, 'soft_skill', $this->parseList($data['soft_skills_text'] ?? ''));

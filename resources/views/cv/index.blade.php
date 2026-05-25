@@ -16,7 +16,7 @@
                 <div class="bg-white p-5 rounded shadow-sm flex items-center justify-between gap-4">
                     <div>
                         <h3 class="font-semibold">{{ $profile->title }}</h3>
-                        <p class="text-sm text-gray-500">{{ $profile->full_name }} · {{ $profile->template?->name ?? 'Sin plantilla' }}</p>
+                        <p class="text-sm text-gray-500">{{ $profile->full_name }} · {{ $profile->template?->name ?? 'Sin plantilla' }} · {{ $profile->languageLabel() }}</p>
                         <p class="text-sm text-gray-500">
                             Postulante: {{ $profile->talent?->full_name ?? 'Sin asignar' }}
                         </p>
@@ -56,11 +56,10 @@
                                     <option
                                         value="{{ $talent->id }}"
                                         @selected($profile->talent_id === $talent->id)
-                                        @disabled($talent->cvProfile && $talent->cvProfile->id !== $profile->id)
                                     >
                                         {{ $talent->full_name }}
-                                        @if ($talent->cvProfile && $talent->cvProfile->id !== $profile->id)
-                                            - ya tiene CV: {{ $talent->cvProfile->title }}
+                                        @if ($talent->cvProfiles->isNotEmpty())
+                                            - {{ $talent->cvProfiles->count() }} CV(s)
                                         @endif
                                     </option>
                                 @endforeach

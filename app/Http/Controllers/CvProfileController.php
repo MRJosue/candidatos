@@ -9,13 +9,13 @@ use App\Models\CvTemplate;
 use App\Models\Talent;
 use App\Services\CvAiDocumentImportService;
 use App\Services\CvDocumentImportService;
+use App\Services\CvTranslationService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Throwable;
 
@@ -28,7 +28,7 @@ class CvProfileController extends Controller
     {
         return view('cv.index', [
             'profiles' => auth()->user()->cvProfiles()->with(['template', 'talent'])->latest()->paginate(12),
-            'talents' => auth()->user()->talents()->with('cvProfile:id,talent_id,title')->orderBy('last_name')->orderBy('first_name')->get(),
+            'talents' => auth()->user()->talents()->with('cvProfiles:id,talent_id,title,language,is_primary')->orderBy('last_name')->orderBy('first_name')->get(),
         ]);
     }
 
@@ -44,6 +44,7 @@ class CvProfileController extends Controller
                 'cv_template_id' => CvTemplate::defaultTemplate()?->id,
             ]), $documentImport),
             'templates' => CvTemplate::where('is_active', true)->orderBy('name')->get(),
+            'languageOptions' => CvProfile::languageOptions(),
             'documentImport' => $documentImport,
             'sectionText' => $this->sectionTextFromImport($documentImport),
         ]);
@@ -53,10 +54,6 @@ class CvProfileController extends Controller
     {
         abort_unless($talent->recruiter_id === $request->user()->id, 403);
 
-        if ($talent->cvProfile) {
-            return redirect()->route('cv.edit', $talent->cvProfile);
-        }
-
         $documentImport = session($this->createDocumentImportSessionKey());
 
         return view('cv.create', [
@@ -64,10 +61,12 @@ class CvProfileController extends Controller
                 'talent_id' => $talent->id,
                 'title' => 'CV '.$talent->full_name,
                 'full_name' => $talent->full_name,
+                'language' => 'es',
                 'cv_template_id' => CvTemplate::defaultTemplate()?->id,
             ]), $documentImport),
             'talent' => $talent,
             'templates' => CvTemplate::where('is_active', true)->orderBy('name')->get(),
+            'languageOptions' => CvProfile::languageOptions(),
             'documentImport' => $documentImport,
             'sectionText' => $this->sectionTextFromImport($documentImport),
         ]);
@@ -76,12 +75,6 @@ class CvProfileController extends Controller
     public function storeForTalent(Request $request, Talent $talent)
     {
         abort_unless($talent->recruiter_id === $request->user()->id, 403);
-
-        if ($talent->cvProfile) {
-            return redirect()
-                ->route('cv.edit', $talent->cvProfile)
-                ->with('status', 'Este talento ya tiene un CV asociado.');
-        }
 
         $profile = $request->user()->cvProfiles()->create($this->profileDataFromTalent($talent));
 
@@ -105,6 +98,7 @@ class CvProfileController extends Controller
                 ...$this->profileDataForStorage($data),
                 'talent_id' => $talent?->id,
                 'cv_template_id' => $data['cv_template_id'] ?? CvTemplate::defaultTemplate()?->id,
+                'is_primary' => $talent ? ! $talent->cvProfiles()->exists() : false,
                 'section_order' => CvProfile::defaultSectionOrder(),
             ]);
 
@@ -138,9 +132,10 @@ class CvProfileController extends Controller
         $this->authorize('view', $cvProfile);
 
         return view('cv.show', [
-            'profile' => $cvProfile->load(['template', 'experiences', 'education', 'skills']),
+            'profile' => $cvProfile->load(['template', 'experiences', 'education', 'skills', 'translations', 'sourceCvProfile']),
             'templates' => CvTemplate::where('is_active', true)->orderBy('is_premium')->orderBy('name')->get(),
             'purchasedTemplateIds' => auth()->user()?->purchases()->where('status', 'paid')->pluck('cv_template_id')->all() ?? [],
+            'languageOptions' => CvProfile::languageOptions(),
         ]);
     }
 
@@ -154,6 +149,7 @@ class CvProfileController extends Controller
         return view('cv.edit', [
             'profile' => $cvProfile->load(['experiences', 'education', 'skills']),
             'templates' => CvTemplate::where('is_active', true)->orderBy('name')->get(),
+            'languageOptions' => CvProfile::languageOptions(),
             'documentImport' => session($this->documentImportSessionKey($cvProfile)),
             'sectionText' => $this->sectionText($cvProfile),
         ]);
@@ -201,12 +197,11 @@ class CvProfileController extends Controller
             $talent = $request->user()->talents()->findOrFail($talentId);
         }
 
-        if ($talent && $talent->cvProfile()->whereKeyNot($cvProfile->id)->exists()) {
-            return back()->withErrors(['talent_id' => 'Este postulante ya tiene un CV asociado.']);
-        }
-
         DB::transaction(function () use ($cvProfile, $talent): void {
-            $cvProfile->update(['talent_id' => $talent?->id]);
+            $cvProfile->update([
+                'talent_id' => $talent?->id,
+                'is_primary' => $talent ? ! $talent->cvProfiles()->whereKeyNot($cvProfile->id)->exists() : false,
+            ]);
         });
 
         return redirect()->route('cv.index')->with('status', 'CV asignado al postulante.');
@@ -239,13 +234,54 @@ class CvProfileController extends Controller
         return redirect()->route('cv.show', $cvProfile)->with('status', 'Tipo de CV actualizado para impresion.');
     }
 
+    public function translate(Request $request, CvProfile $cvProfile, CvTranslationService $translationService)
+    {
+        $this->authorize('update', $cvProfile);
+
+        $data = $request->validate([
+            'target_language' => ['required', Rule::in(array_keys(CvProfile::languageOptions()))],
+        ]);
+
+        if (($cvProfile->language ?: 'es') === $data['target_language']) {
+            return back()->withErrors(['target_language' => 'El CV ya esta en ese idioma.']);
+        }
+
+        if ($cvProfile->sourceCvProfile && ($cvProfile->sourceCvProfile->language ?: 'es') === $data['target_language']) {
+            return redirect()
+                ->route('cv.edit', $cvProfile->sourceCvProfile)
+                ->with('status', 'Ya existia una version en ese idioma. Puedes revisarla y ajustarla.');
+        }
+
+        $existingTranslation = $cvProfile->translations()
+            ->where('language', $data['target_language'])
+            ->first();
+
+        if ($existingTranslation) {
+            return redirect()
+                ->route('cv.edit', $existingTranslation)
+                ->with('status', 'Ya existia una version en ese idioma. Puedes revisarla y ajustarla.');
+        }
+
+        try {
+            $translated = $translationService->translate($cvProfile, $data['target_language']);
+        } catch (RuntimeException $exception) {
+            return back()->withErrors(['target_language' => $exception->getMessage()]);
+        }
+
+        $newProfile = DB::transaction(fn () => $this->createTranslatedProfile($cvProfile, $translated, $data['target_language']));
+
+        return redirect()
+            ->route('cv.edit', $newProfile)
+            ->with('status', 'Version traducida creada. Revisala antes de descargar el PDF.');
+    }
+
     public function updateSectionOrder(Request $request, CvProfile $cvProfile)
     {
         $this->authorize('update', $cvProfile);
 
         $data = $request->validate([
             'side' => ['required', 'array'],
-            'side.*' => ['required', 'string', 'in:skills,languages,soft_skills'],
+            'side.*' => ['required', 'string', 'in:software,skills,languages,soft_skills'],
             'main' => ['required', 'array'],
             'main.*' => ['required', 'string', 'in:experiences,education'],
         ]);
@@ -390,18 +426,6 @@ class CvProfileController extends Controller
 
         $talent = $request->user()->talents()->findOrFail($data['talent_id']);
 
-        $existingCvQuery = $talent->cvProfile();
-
-        if ($request->route('cvProfile')) {
-            $existingCvQuery->whereKeyNot($request->route('cvProfile')->id);
-        }
-
-        if ($existingCvQuery->exists()) {
-            throw ValidationException::withMessages([
-                'talent_id' => 'Este postulante ya tiene un CV asociado.',
-            ]);
-        }
-
         return $talent;
     }
 
@@ -413,6 +437,7 @@ class CvProfileController extends Controller
         return $request->validate([
             'experiences_text' => ['nullable', 'string', 'max:12000'],
             'education_text' => ['nullable', 'string', 'max:8000'],
+            'software_text' => ['nullable', 'string', 'max:4000'],
             'skills_text' => ['nullable', 'string', 'max:4000'],
             'languages_text' => ['nullable', 'string', 'max:4000'],
             'soft_skills_text' => ['nullable', 'string', 'max:4000'],
@@ -424,6 +449,7 @@ class CvProfileController extends Controller
         return $request->hasAny([
             'experiences_text',
             'education_text',
+            'software_text',
             'skills_text',
             'languages_text',
             'soft_skills_text',
@@ -437,6 +463,7 @@ class CvProfileController extends Controller
     {
         $this->replaceExperiences($cvProfile, $this->parseExperienceBlocks($data['experiences_text'] ?? ''));
         $this->replaceEducation($cvProfile, $this->parseEducationBlocks($data['education_text'] ?? ''));
+        $this->replaceSkills($cvProfile, 'software', $this->parseList($data['software_text'] ?? ''));
         $this->replaceSkills($cvProfile, 'skill', $this->parseList($data['skills_text'] ?? ''));
         $this->replaceSkills($cvProfile, 'language', $this->parseList($data['languages_text'] ?? ''));
         $this->replaceSkills($cvProfile, 'soft_skill', $this->parseList($data['soft_skills_text'] ?? ''));
@@ -448,14 +475,17 @@ class CvProfileController extends Controller
             'talent_id' => $talent->id,
             'title' => 'CV '.$talent->full_name,
             'full_name' => $talent->full_name,
+            'language' => 'es',
             'section_order' => CvProfile::defaultSectionOrder(),
             'cv_template_id' => CvTemplate::defaultTemplate()?->id,
+            'is_primary' => ! $talent->cvProfiles()->exists(),
         ]);
     }
 
     private function profileDataForStorage(array $data): array
     {
         $data['email'] = $data['email'] ?? '';
+        $data['language'] = $data['language'] ?? 'es';
 
         return $data;
     }
@@ -553,6 +583,7 @@ class CvProfileController extends Controller
             'apply_profile' => ['nullable', 'boolean'],
             'apply_experiences' => ['nullable', 'boolean'],
             'apply_education' => ['nullable', 'boolean'],
+            'apply_software' => ['nullable', 'boolean'],
             'apply_skills' => ['nullable', 'boolean'],
             'apply_languages' => ['nullable', 'boolean'],
             'apply_soft_skills' => ['nullable', 'boolean'],
@@ -580,6 +611,10 @@ class CvProfileController extends Controller
             $this->replaceEducation($cvProfile, $parsed['education'] ?? []);
         }
 
+        if ($data['apply_software'] ?? false) {
+            $this->replaceSkills($cvProfile, 'software', $parsed['software'] ?? []);
+        }
+
         if ($data['apply_skills'] ?? false) {
             $this->replaceSkills($cvProfile, 'skill', $parsed['skills'] ?? []);
         }
@@ -591,6 +626,124 @@ class CvProfileController extends Controller
         if ($data['apply_soft_skills'] ?? false) {
             $this->replaceSkills($cvProfile, 'soft_skill', $parsed['soft_skills'] ?? []);
         }
+    }
+
+    private function createTranslatedProfile(CvProfile $source, array $translated, string $targetLanguage): CvProfile
+    {
+        $source->loadMissing(['experiences', 'education', 'skills']);
+
+        $profileData = collect($translated['profile'] ?? [])
+            ->only([
+                'title',
+                'full_name',
+                'email',
+                'phone',
+                'location',
+                'headline',
+                'tagline',
+                'summary',
+                'objective',
+                'skills_section_title',
+                'soft_skills_section_title',
+                'awards',
+                'leadership_activities',
+                'interests',
+                'linkedin_url',
+                'portfolio_url',
+            ])
+            ->filter(fn ($value) => $value !== null)
+            ->all();
+
+        $newProfile = $source->user->cvProfiles()->create([
+            ...$source->only([
+                'talent_id',
+                'cv_template_id',
+                'title',
+                'full_name',
+                'email',
+                'phone',
+                'location',
+                'headline',
+                'tagline',
+                'summary',
+                'objective',
+                'skills_section_title',
+                'soft_skills_section_title',
+                'section_order',
+                'awards',
+                'leadership_activities',
+                'interests',
+                'linkedin_url',
+                'portfolio_url',
+            ]),
+            ...$profileData,
+            'title' => $profileData['title'] ?? $this->translatedTitle($source, $targetLanguage),
+            'language' => $targetLanguage,
+            'source_cv_profile_id' => $source->id,
+            'is_primary' => false,
+        ]);
+
+        foreach ($source->experiences->values() as $index => $experience) {
+            $translatedExperience = $translated['experiences'][$index] ?? [];
+
+            $newProfile->experiences()->create([
+                ...$experience->only([
+                    'company',
+                    'position',
+                    'location',
+                    'start_date',
+                    'end_date',
+                    'is_current',
+                    'description',
+                    'tools_used',
+                    'sort_order',
+                ]),
+                ...collect($translatedExperience)->only(['company', 'position', 'location', 'description', 'tools_used'])->filter(fn ($value) => filled($value))->all(),
+            ]);
+        }
+
+        foreach ($source->education->values() as $index => $education) {
+            $translatedEducation = $translated['education'][$index] ?? [];
+
+            $newProfile->education()->create([
+                ...$education->only([
+                    'institution',
+                    'location',
+                    'degree',
+                    'field',
+                    'gpa',
+                    'honors',
+                    'thesis',
+                    'relevant_coursework',
+                    'start_date',
+                    'end_date',
+                    'description',
+                    'sort_order',
+                ]),
+                ...collect($translatedEducation)
+                    ->only(['institution', 'location', 'degree', 'field', 'gpa', 'honors', 'thesis', 'relevant_coursework', 'description'])
+                    ->filter(fn ($value) => filled($value))
+                    ->all(),
+            ]);
+        }
+
+        foreach ($source->skills->values() as $index => $skill) {
+            $translatedSkill = $translated['skills'][$index] ?? [];
+
+            $newProfile->skills()->create([
+                ...$skill->only(['name', 'category', 'type', 'level', 'sort_order']),
+                ...collect($translatedSkill)->only(['name', 'category', 'type'])->filter(fn ($value) => filled($value))->all(),
+            ]);
+        }
+
+        return $newProfile;
+    }
+
+    private function translatedTitle(CvProfile $source, string $targetLanguage): string
+    {
+        $languageLabel = CvProfile::languageOptions()[$targetLanguage] ?? strtoupper($targetLanguage);
+
+        return trim(($source->title ?: 'CV').' - '.$languageLabel);
     }
 
     /**
@@ -607,6 +760,7 @@ class CvProfileController extends Controller
                         $this->periodFromDates($experience->start_date?->format('Y'), $experience->end_date?->format('Y'), $experience->is_current),
                     ])),
                     $experience->description,
+                    filled($experience->tools_used) ? 'Herramientas Utilizadas: '.$experience->tools_used : null,
                 ]))))
                 ->implode("\n\n"),
             'education' => $cvProfile->education
@@ -619,6 +773,7 @@ class CvProfileController extends Controller
                     $education->description,
                 ]))))
                 ->implode("\n\n"),
+            'software' => $cvProfile->skills->where('type', 'software')->pluck('name')->implode("\n"),
             'skills' => $cvProfile->skills->where('type', 'skill')->pluck('name')->implode("\n"),
             'languages' => $cvProfile->skills->where('type', 'language')->pluck('name')->implode("\n"),
             'soft_skills' => $cvProfile->skills->where('type', 'soft_skill')->pluck('name')->implode("\n"),
@@ -646,6 +801,7 @@ class CvProfileController extends Controller
                         $experience['period'] ?? null,
                     ])),
                     $experience['description'] ?? null,
+                    filled($experience['tools_used'] ?? null) ? 'Herramientas Utilizadas: '.$experience['tools_used'] : null,
                 ]))))
                 ->implode("\n\n"),
             'education' => collect($parsed['education'] ?? [])
@@ -659,6 +815,7 @@ class CvProfileController extends Controller
                     $education['description'] ?? null,
                 ]))))
                 ->implode("\n\n"),
+            'software' => collect($parsed['software'] ?? [])->filter()->implode("\n"),
             'skills' => collect($parsed['skills'] ?? [])->filter()->implode("\n"),
             'languages' => collect($parsed['languages'] ?? [])->filter()->implode("\n"),
             'soft_skills' => collect($parsed['soft_skills'] ?? [])->filter()->implode("\n"),
@@ -731,6 +888,7 @@ class CvProfileController extends Controller
                 'end_date' => $dates['end_date'],
                 'is_current' => $dates['is_current'],
                 'description' => $experience['description'] ?? null,
+                'tools_used' => $experience['tools_used'] ?? null,
                 'sort_order' => $index,
             ]);
         }
@@ -787,7 +945,7 @@ class CvProfileController extends Controller
      */
     private function parseExperienceBlocks(?string $text): array
     {
-        return $this->parseBlocks($text, ['position', 'company']);
+        return $this->parseBlocks($this->splitEmbeddedExperienceHeaders($text), ['position', 'company']);
     }
 
     /**
@@ -817,16 +975,65 @@ class CvProfileController extends Controller
                 $header = $lines->shift() ?? '';
                 $parts = array_pad(array_map('trim', explode('|', $header, 3)), 3, null);
 
+                $toolsUsed = null;
+                $descriptionLines = $lines->reject(function ($line) use (&$toolsUsed) {
+                    if (preg_match('/^herramientas(?:\s+utilizadas)?\s*:\s*(.+)$/iu', $line, $matches)) {
+                        $toolsUsed = trim($matches[1]);
+
+                        return true;
+                    }
+
+                    return false;
+                });
+
                 return [
                     $keys[0] => $parts[0] ?: null,
                     $keys[1] => $parts[1] ?: null,
                     'period' => $parts[2] ?: null,
-                    'description' => $lines->implode("\n") ?: null,
+                    'description' => $descriptionLines->implode("\n") ?: null,
+                    'tools_used' => $toolsUsed,
                 ];
             })
             ->filter(fn ($item) => filled($item[$keys[0]]) || filled($item[$keys[1]]))
             ->values()
             ->all();
+    }
+
+    private function splitEmbeddedExperienceHeaders(?string $text): string
+    {
+        $lines = collect(preg_split('/\R/u', (string) $text) ?: []);
+        $normalized = [];
+        $hasContentInCurrentBlock = false;
+
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+
+            if ($trimmed === '') {
+                $normalized[] = '';
+                $hasContentInCurrentBlock = false;
+
+                continue;
+            }
+
+            if ($hasContentInCurrentBlock && $this->looksLikeExperienceHeader($trimmed)) {
+                $normalized[] = '';
+            }
+
+            $normalized[] = $line;
+            $hasContentInCurrentBlock = true;
+        }
+
+        return implode("\n", $normalized);
+    }
+
+    private function looksLikeExperienceHeader(string $line): bool
+    {
+        $parts = array_map('trim', explode('|', $line));
+
+        return count($parts) >= 3
+            && filled($parts[0] ?? null)
+            && filled($parts[1] ?? null)
+            && (bool) preg_match('/(?:19|20)\d{2}/', $parts[2] ?? '');
     }
 
     /**

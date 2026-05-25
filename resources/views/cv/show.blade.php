@@ -1,5 +1,6 @@
 <x-app-layout>
     @php
+        $software = $profile->skills->where('type', 'software');
         $skills = $profile->skills->where('type', 'skill');
         $languages = $profile->skills->where('type', 'language');
         $softSkills = $profile->skills->where('type', 'soft_skill');
@@ -8,6 +9,7 @@
         $sectionOrder = $profile->normalizedSectionOrder();
         $sideSectionLabels = [
             'skills' => $skillsTitle,
+            'software' => 'Software',
             'languages' => 'Idiomas',
             'soft_skills' => $softSkillsTitle,
         ];
@@ -29,8 +31,27 @@
     @endphp
     <x-slot name="header">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <h2 class="font-semibold text-xl text-gray-800">{{ $profile->title }}</h2>
+            <div>
+                <h2 class="font-semibold text-xl text-gray-800">{{ $profile->title }}</h2>
+                <p class="text-sm text-gray-500">Idioma: {{ $profile->languageLabel() }}</p>
+            </div>
             <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <form method="POST" action="{{ route('cv.translate', $profile) }}" class="min-w-56">
+                    @csrf
+                    <label class="block">
+                        <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Traducir CV</span>
+                        <div class="mt-1 flex gap-2">
+                            <select name="target_language" class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                @foreach ($languageOptions as $language => $label)
+                                    <option value="{{ $language }}" @disabled(($profile->language ?: 'es') === $language) @selected(($profile->language ?: 'es') !== $language)>
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <button class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">Crear</button>
+                        </div>
+                    </label>
+                </form>
                 <form method="POST" action="{{ route('cv.template.update', $profile) }}" class="min-w-64">
                     @csrf
                     @method('PATCH')
@@ -110,6 +131,7 @@
 
     <div class="py-8"><div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-6">
         @if (session('status'))<div class="bg-emerald-50 text-emerald-800 p-4 rounded">{{ session('status') }}</div>@endif
+        @if ($errors->any())<div class="bg-red-50 text-red-700 p-4 rounded">{{ $errors->first() }}</div>@endif
         <section class="bg-white p-6 rounded shadow-sm">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -119,6 +141,18 @@
                     <p class="mt-3">{{ $profile->summary }}</p>
                     @if ($profile->objective)<p class="mt-3"><strong>Objetivo:</strong> {{ $profile->objective }}</p>@endif
                     <p class="mt-3 text-sm text-gray-500">Plantilla: {{ $profile->template?->name ?? 'Sin plantilla' }}</p>
+                    @if ($profile->sourceCvProfile)
+                        <p class="mt-1 text-sm text-gray-500">Traducido desde: <a href="{{ route('cv.show', $profile->sourceCvProfile) }}" class="text-indigo-700">{{ $profile->sourceCvProfile->title }}</a></p>
+                    @endif
+                    @if ($profile->translations->isNotEmpty())
+                        <div class="mt-3 flex flex-wrap gap-2 text-sm">
+                            @foreach ($profile->translations as $translation)
+                                <a href="{{ route('cv.show', $translation) }}" class="rounded bg-indigo-50 px-2 py-1 text-indigo-700">
+                                    {{ $translation->languageLabel() }}
+                                </a>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
                 <a href="{{ route('cv.edit', $profile) }}" class="inline-flex items-center self-start rounded-md border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Editar</a>
             </div>
@@ -236,12 +270,41 @@
 
             <section class="rounded border border-gray-200 bg-white/60 p-4">
                 <div class="mb-4 flex items-center justify-between">
-                    <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Habilidades / Idiomas / Habilidades blandas</h3>
+                    <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Software / Habilidades / Idiomas / Habilidades blandas</h3>
                     <span class="text-xs text-gray-400">Arrastra los cards para ordenar</span>
                 </div>
-                <div class="grid gap-6 lg:grid-cols-3">
+                <div class="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
             @foreach ($sideSectionOrder as $section)
-                @if ($section === 'skills')
+                @if ($section === 'software')
+                    <section
+                        class="bg-white p-6 rounded shadow-sm transition"
+                        data-group="side"
+                        data-section="software"
+                        draggable="true"
+                        x-bind:style="cardStyle('side', 'software')"
+                        x-bind:class="cardClass('software')"
+                        x-on:dragstart="dragStart('side', 'software', $event)"
+                        x-on:dragend="dragEnd()"
+                        x-on:drop.prevent="drop('side', 'software', $event)"
+                    >
+                        <div class="flex justify-between mb-3"><h3 class="font-semibold cursor-move">Software</h3><a href="{{ route('cv.skills.create', ['cvProfile' => $profile, 'type' => 'software']) }}" class="text-indigo-700">Agregar</a></div>
+                        <div class="flex flex-wrap gap-2">
+                            @forelse ($software as $skill)
+                                <div class="inline-flex items-center gap-2 rounded bg-gray-100 px-2 py-1">
+                                    {{ $skill->name }}
+                                    <a href="{{ route('skills.edit', $skill) }}" class="text-xs text-indigo-700">Editar</a>
+                                    <form method="POST" action="{{ route('skills.destroy', $skill) }}" onsubmit="return confirm('¿Eliminar este software?')" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-xs text-red-700">Eliminar</button>
+                                    </form>
+                                </div>
+                            @empty
+                                <p class="text-sm text-gray-500">Aun no has agregado software.</p>
+                            @endforelse
+                        </div>
+                    </section>
+                @elseif ($section === 'skills')
                     <section
                         class="bg-white p-6 rounded shadow-sm transition"
                         data-group="side"

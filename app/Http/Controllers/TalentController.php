@@ -17,7 +17,7 @@ class TalentController extends Controller
         return view('talents.index', [
             'talents' => $request->user()
                 ->talents()
-                ->with(['cvProfile', 'applications:id,talent_id,vacancy_id'])
+                ->with(['cvProfile', 'cvProfiles', 'applications:id,talent_id,vacancy_id'])
                 ->withCount('applications')
                 ->orderBy('last_name')
                 ->orderBy('first_name')
@@ -55,6 +55,7 @@ class TalentController extends Controller
         return view('talents.show', [
             'talent' => $talent->load([
                 'cvProfile.template',
+                'cvProfiles.template',
                 'applications.vacancy.company',
                 'applications.vacancy.position',
             ]),

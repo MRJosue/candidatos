@@ -15,6 +15,13 @@ class CvDocumentImportService
     {
         $text = $this->extractText($file);
 
+        $software = $this->itemsFromSection($sections['software'] ?? '');
+        $skills = $this->itemsFromSection($sections['skills'] ?? '');
+
+        if ($software === [] && $skills !== []) {
+            [$software, $skills] = $this->partitionSoftwareItems($skills);
+        }
+
         return [
             'original_name' => $file->getClientOriginalName(),
             'parsed' => $this->parseText($text),
@@ -63,7 +70,8 @@ class CvDocumentImportService
                 'linkedin_url' => $this->firstLink($cleanText, 'linkedin.com'),
                 'portfolio_url' => $this->firstPortfolioLink($cleanText),
             ],
-            'skills' => $this->itemsFromSection($sections['skills'] ?? ''),
+            'software' => $software,
+            'skills' => $skills,
             'languages' => $this->itemsFromSection($sections['languages'] ?? ''),
             'experiences' => $experiences,
             'education' => $this->entriesFromSection($sections['education'] ?? ''),
@@ -153,7 +161,8 @@ class CvDocumentImportService
             'objective' => ['objetivo', 'objective'],
             'experience' => ['experiencia', 'experiencia laboral', 'experiencia profesional', 'work experience', 'professional experience', 'employment'],
             'education' => ['educacion', 'educación', 'formacion', 'formación', 'formacion academica', 'academic background', 'education'],
-            'skills' => ['habilidades', 'competencias', 'skills', 'technical skills', 'tecnologias', 'tecnologías'],
+            'software' => ['software', 'herramientas', 'herramientas digitales', 'tools', 'platforms', 'plataformas', 'aplicaciones'],
+            'skills' => ['habilidades', 'competencias', 'skills', 'technical skills', 'tecnologias', 'tecnologías', 'lenguajes', 'programming languages'],
             'languages' => ['idiomas', 'languages'],
         ];
 
@@ -261,6 +270,27 @@ class CvDocumentImportService
             ->filter(fn ($item) => mb_strlen($item) >= 2)
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  array<int, string>  $items
+     * @return array{0: array<int, string>, 1: array<int, string>}
+     */
+    private function partitionSoftwareItems(array $items): array
+    {
+        $groups = collect($items)->partition(fn ($item) => $this->looksLikeSoftware($item));
+
+        return [
+            $groups[0]->values()->all(),
+            $groups[1]->values()->all(),
+        ];
+    }
+
+    private function looksLikeSoftware(string $item): bool
+    {
+        $value = Str::lower(Str::ascii($item));
+
+        return (bool) preg_match('/\b(jira|confluence|figma|miro|notion|slack|trello|asana|office|excel|power bi|tableau|salesforce|sap|sharepoint|github|gitlab|bitbucket|visual studio|vs code|intellij|eclipse|postman|insomnia|docker desktop|jenkins|azure devops|servicenow|wordpress|photoshop|illustrator|sketch|zeplin|windows|linux|macos)\b/u', $value);
     }
 
     /**

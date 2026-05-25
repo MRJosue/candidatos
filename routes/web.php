@@ -102,6 +102,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/cv/import-document-ai/create', [CvProfileController::class, 'importDocumentForCreateWithAi'])->name('cv.import-document-ai-create');
     Route::post('/cv/{cvProfile}/import-document-ai', [CvProfileController::class, 'importDocumentWithAi'])->name('cv.import-document-ai');
     Route::post('/cv/{cvProfile}/apply-document-import', [CvProfileController::class, 'applyDocumentImport'])->name('cv.apply-document-import');
+    Route::post('/cv/{cvProfile}/translate', [CvProfileController::class, 'translate'])->name('cv.translate');
     Route::put('/cv/{cvProfile}/sections', [CvProfileController::class, 'updateSections'])->name('cv.sections.update');
     Route::patch('/cv/{cvProfile}/template', [CvProfileController::class, 'updateTemplate'])->name('cv.template.update');
     Route::patch('/cv/{cvProfile}/section-order', [CvProfileController::class, 'updateSectionOrder'])->name('cv.section-order.update');
