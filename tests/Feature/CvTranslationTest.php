@@ -99,4 +99,66 @@ class CvTranslationTest extends TestCase
         $this->assertSame('Communication', $translatedProfile->skills()->first()->name);
         $this->assertNull($translatedProfile->skills()->first()->category);
     }
+
+    public function test_simultaneous_translation_to_same_language_reuses_existing_variant(): void
+    {
+        $user = User::factory()->create();
+        $talent = $user->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $profile = $user->cvProfiles()->create([
+            'talent_id' => $talent->id,
+            'title' => 'CV Ana',
+            'language' => 'es',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana@example.com',
+            'headline' => 'Desarrolladora',
+            'summary' => 'Construye aplicaciones internas.',
+            'is_primary' => true,
+        ]);
+
+        $this->app->instance(CvTranslationService::class, new class extends CvTranslationService
+        {
+            public function translate(CvProfile $profile, string $targetLanguage): array
+            {
+                $profile->user->cvProfiles()->create([
+                    'talent_id' => $profile->talent_id,
+                    'cv_template_id' => $profile->cv_template_id,
+                    'source_cv_profile_id' => $profile->id,
+                    'title' => 'Ana CV',
+                    'language' => $targetLanguage,
+                    'full_name' => 'Ana Lopez',
+                    'email' => 'ana@example.com',
+                    'is_primary' => false,
+                ]);
+
+                return [
+                    'profile' => [
+                        'title' => 'Ana CV duplicate',
+                        'full_name' => 'Ana Lopez',
+                        'email' => 'ana@example.com',
+                    ],
+                    'experiences' => [],
+                    'education' => [],
+                    'skills' => [],
+                ];
+            }
+        });
+
+        $response = $this->actingAs($user)->post(route('cv.translate', $profile), [
+            'target_language' => 'en',
+        ]);
+
+        $translatedProfile = CvProfile::query()
+            ->where('source_cv_profile_id', $profile->id)
+            ->where('language', 'en')
+            ->sole();
+
+        $response->assertRedirect(route('cv.edit', $translatedProfile));
+        $this->assertSame(1, $profile->translations()->where('language', 'en')->count());
+        $this->assertSame(2, $talent->cvProfiles()->count());
+    }
 }

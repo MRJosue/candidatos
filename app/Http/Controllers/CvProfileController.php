@@ -11,6 +11,7 @@ use App\Services\CvAiDocumentImportService;
 use App\Services\CvDocumentImportService;
 use App\Services\CvTranslationService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -308,7 +309,21 @@ class CvProfileController extends Controller
             return back()->withErrors(['target_language' => $exception->getMessage()]);
         }
 
-        $newProfile = DB::transaction(fn () => $this->createTranslatedProfile($cvProfile, $translated, $data['target_language']));
+        try {
+            $newProfile = DB::transaction(fn () => $this->createTranslatedProfile($cvProfile, $translated, $data['target_language']));
+        } catch (QueryException $exception) {
+            $existingTranslation = $cvProfile->translations()
+                ->where('language', $data['target_language'])
+                ->first();
+
+            if (! $existingTranslation || ! $this->isUniqueConstraintViolation($exception)) {
+                throw $exception;
+            }
+
+            return redirect()
+                ->route('cv.edit', $existingTranslation)
+                ->with('status', 'Ya existia una version en ese idioma. Puedes revisarla y ajustarla.');
+        }
 
         return redirect()
             ->route('cv.edit', $newProfile)
@@ -875,6 +890,14 @@ class CvProfileController extends Controller
         $languageLabel = CvProfile::languageOptions()[$targetLanguage] ?? strtoupper($targetLanguage);
 
         return trim(($source->title ?: 'CV').' - '.$languageLabel);
+    }
+
+    private function isUniqueConstraintViolation(QueryException $exception): bool
+    {
+        $sqlState = (string) ($exception->errorInfo[0] ?? '');
+        $driverCode = (string) ($exception->errorInfo[1] ?? '');
+
+        return $sqlState === '23000' || in_array($driverCode, ['1062', '19'], true);
     }
 
     /**
