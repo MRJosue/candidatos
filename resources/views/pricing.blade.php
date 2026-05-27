@@ -18,8 +18,8 @@
                         <thead>
                             <tr class="text-left text-gray-900">
                                 <th class="px-4 py-3 font-semibold">Plan</th>
-                                <th class="px-4 py-3 font-semibold">Precio sin IVA ajustado</th>
-                                <th class="px-4 py-3 font-semibold">Total con IVA</th>
+                                <th class="px-4 py-3 font-semibold">Precio antes de impuestos</th>
+                                <th class="px-4 py-3 font-semibold">Total</th>
                                 <th class="px-4 py-3 font-semibold">CVs incluidos</th>
                             </tr>
                         </thead>
@@ -27,19 +27,19 @@
                             <tr>
                                 <td class="px-4 py-3 font-medium text-gray-900">Basico</td>
                                 <td class="px-4 py-3">$4,151</td>
-                                <td class="px-4 py-3 font-semibold text-gray-900">$4,815</td>
+                                <td class="px-4 py-3 font-semibold text-gray-900">$4,320.50</td>
                                 <td class="px-4 py-3">600 CV/mes</td>
                             </tr>
                             <tr>
                                 <td class="px-4 py-3 font-medium text-gray-900">Medio volumen</td>
                                 <td class="px-4 py-3">$6,227</td>
-                                <td class="px-4 py-3 font-semibold text-gray-900">$7,223</td>
+                                <td class="px-4 py-3 font-semibold text-gray-900">$6,481.27</td>
                                 <td class="px-4 py-3">1,500 CV/mes</td>
                             </tr>
                             <tr>
                                 <td class="px-4 py-3 font-medium text-gray-900">Alto volumen</td>
                                 <td class="px-4 py-3">$9,341</td>
-                                <td class="px-4 py-3 font-semibold text-gray-900">$10,835</td>
+                                <td class="px-4 py-3 font-semibold text-gray-900">$9,722.43</td>
                                 <td class="px-4 py-3">3,000 CV/mes</td>
                             </tr>
                         </tbody>
@@ -70,15 +70,15 @@
                         <thead>
                             <tr class="text-left text-gray-900">
                                 <th class="px-4 py-3 font-semibold">Concepto</th>
-                                <th class="px-4 py-3 font-semibold">Precio sin IVA</th>
-                                <th class="px-4 py-3 font-semibold">Total con IVA</th>
+                                <th class="px-4 py-3 font-semibold">Precio antes de impuestos</th>
+                                <th class="px-4 py-3 font-semibold">Total</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 text-gray-700">
                             <tr>
                                 <td class="px-4 py-3">Instalaci&oacute;n inicial</td>
                                 <td class="px-4 py-3">$2,500</td>
-                                <td class="px-4 py-3 font-semibold text-gray-900">$2,900</td>
+                                <td class="px-4 py-3 font-semibold text-gray-900">$2,602.08</td>
                             </tr>
                         </tbody>
                     </table>
