@@ -6,6 +6,7 @@ use App\Models\CvProfile;
 use App\Models\User;
 use App\Services\CvTranslationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class CvTranslationTest extends TestCase
@@ -160,5 +161,69 @@ class CvTranslationTest extends TestCase
         $response->assertRedirect(route('cv.edit', $translatedProfile));
         $this->assertSame(1, $profile->translations()->where('language', 'en')->count());
         $this->assertSame(2, $talent->cvProfiles()->count());
+    }
+
+    public function test_translation_uses_fallback_model_when_primary_is_unavailable(): void
+    {
+        config()->set('services.gemini.key', 'test-key');
+        config()->set('services.gemini.cv_import_model', 'gemini-2.5-flash');
+        config()->set('services.gemini.cv_import_fallback_models', ['gemini-2.5-flash-lite']);
+
+        Http::fake([
+            'generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent' => Http::response([
+                'error' => [
+                    'code' => 503,
+                    'message' => 'This model is currently experiencing high demand.',
+                    'status' => 'UNAVAILABLE',
+                ],
+            ], 503),
+            'generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent' => Http::response([
+                'candidates' => [[
+                    'content' => [
+                        'parts' => [[
+                            'text' => json_encode([
+                                'profile' => [
+                                    'title' => 'Ana CV',
+                                    'full_name' => 'Ana Lopez',
+                                    'email' => 'ana@example.com',
+                                    'phone' => '',
+                                    'location' => '',
+                                    'headline' => 'Developer',
+                                    'tagline' => '',
+                                    'summary' => 'Builds internal applications.',
+                                    'objective' => '',
+                                    'skills_section_title' => 'Skills',
+                                    'soft_skills_section_title' => 'Soft skills',
+                                    'awards' => '',
+                                    'leadership_activities' => '',
+                                    'interests' => '',
+                                    'linkedin_url' => '',
+                                    'portfolio_url' => '',
+                                ],
+                                'experiences' => [],
+                                'education' => [],
+                                'skills' => [],
+                            ]),
+                        ]],
+                    ],
+                ]],
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+        $profile = $user->cvProfiles()->create([
+            'title' => 'CV Ana',
+            'language' => 'es',
+            'full_name' => 'Ana Lopez',
+            'email' => 'ana@example.com',
+            'headline' => 'Desarrolladora',
+            'summary' => 'Construye aplicaciones internas.',
+        ]);
+
+        $translated = app(CvTranslationService::class)->translate($profile, 'en');
+
+        $this->assertSame('Developer', $translated['profile']['headline']);
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'models/gemini-2.5-flash:generateContent'));
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'models/gemini-2.5-flash-lite:generateContent'));
     }
 }

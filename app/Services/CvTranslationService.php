@@ -20,50 +20,65 @@ class CvTranslationService
 
         $source = $this->sourcePayload($profile);
         $targetLabel = CvProfile::languageOptions()[$targetLanguage] ?? $targetLanguage;
+        $lastException = null;
 
-        $response = Http::withHeaders([
-            'X-goog-api-key' => $apiKey,
-        ])
-            ->acceptJson()
-            ->timeout(45)
-            ->retry(2, 1500, throw: false)
-            ->post('https://generativelanguage.googleapis.com/v1beta/models/'.config('services.gemini.cv_import_model', 'gemini-2.5-flash').':generateContent', [
-                'systemInstruction' => [
-                    'parts' => [[
-                        'text' => 'Traduce CVs y responde solo JSON valido segun el esquema. No inventes informacion.',
+        foreach ($this->models() as $model) {
+            $response = Http::withHeaders([
+                'X-goog-api-key' => $apiKey,
+            ])
+                ->acceptJson()
+                ->timeout(45)
+                ->retry(2, 1500, throw: false)
+                ->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent", [
+                    'systemInstruction' => [
+                        'parts' => [[
+                            'text' => 'Traduce CVs y responde solo JSON valido segun el esquema. No inventes informacion.',
+                        ]],
+                    ],
+                    'contents' => [[
+                        'role' => 'user',
+                        'parts' => [[
+                            'text' => implode("\n", [
+                                "Traduce este CV a {$targetLabel}.",
+                                'Conserva nombres propios, empresas, universidades, URLs, emails, telefonos, software, tecnologias, frameworks y certificaciones oficiales.',
+                                'Adapta cargos, resumen, responsabilidades, categorias, habilidades blandas y etiquetas naturales del CV al idioma destino.',
+                                'Devuelve la misma estructura JSON, con todos los campos presentes. Si un campo no tiene informacion real, devuelvelo como cadena vacia, nunca como texto "null".',
+                                json_encode($source, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                            ]),
+                        ]],
                     ]],
-                ],
-                'contents' => [[
-                    'role' => 'user',
-                    'parts' => [[
-                        'text' => implode("\n", [
-                            "Traduce este CV a {$targetLabel}.",
-                            'Conserva nombres propios, empresas, universidades, URLs, emails, telefonos, software, tecnologias, frameworks y certificaciones oficiales.',
-                            'Adapta cargos, resumen, responsabilidades, categorias, habilidades blandas y etiquetas naturales del CV al idioma destino.',
-                            'Devuelve la misma estructura JSON, con todos los campos presentes. Si un campo no tiene informacion real, devuelvelo como cadena vacia, nunca como texto "null".',
-                            json_encode($source, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                        ]),
-                    ]],
-                ]],
-                'generationConfig' => [
-                    'responseMimeType' => 'application/json',
-                    'responseSchema' => $this->schema(),
-                ],
-            ]);
+                    'generationConfig' => [
+                        'responseMimeType' => 'application/json',
+                        'responseSchema' => $this->schema(),
+                    ],
+                ]);
 
-        try {
-            $response->throw();
-        } catch (RequestException $exception) {
-            throw new RuntimeException($this->requestErrorMessage($exception), previous: $exception);
+            try {
+                $response->throw();
+            } catch (RequestException $exception) {
+                $lastException = $exception;
+
+                if ($this->shouldTryNextModel($response->status())) {
+                    continue;
+                }
+
+                throw new RuntimeException($this->requestErrorMessage($exception), previous: $exception);
+            }
+
+            $decoded = json_decode($this->responseText($response->json()), true);
+
+            if (! is_array($decoded)) {
+                throw new RuntimeException('Gemini no devolvio JSON valido para traducir el CV.');
+            }
+
+            return $this->normalize($decoded);
         }
 
-        $decoded = json_decode($this->responseText($response->json()), true);
-
-        if (! is_array($decoded)) {
-            throw new RuntimeException('Gemini no devolvio JSON valido para traducir el CV.');
+        if ($lastException instanceof RequestException) {
+            throw new RuntimeException($this->requestErrorMessage($lastException), previous: $lastException);
         }
 
-        return $this->normalize($decoded);
+        throw new RuntimeException('Gemini no pudo traducir el CV. Revisa la API key, cuota o intenta de nuevo.');
     }
 
     private function sourcePayload(CvProfile $profile): array
@@ -126,6 +141,27 @@ class CvTranslationService
         }
 
         return '';
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function models(): array
+    {
+        return collect([
+            config('services.gemini.cv_import_model', 'gemini-2.5-flash'),
+            ...config('services.gemini.cv_import_fallback_models', []),
+        ])
+            ->map(fn ($model) => trim((string) $model))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function shouldTryNextModel(int $status): bool
+    {
+        return in_array($status, [429, 500, 502, 503, 504], true);
     }
 
     private function requestErrorMessage(RequestException $exception): string

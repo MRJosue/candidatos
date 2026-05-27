@@ -53,7 +53,7 @@ class CvAiDocumentImportService
             } catch (RequestException $exception) {
                 $lastException = $exception;
 
-                if ($response->status() === 503) {
+                if ($this->shouldTryNextModel($response->status())) {
                     continue;
                 }
 
@@ -125,6 +125,11 @@ class CvAiDocumentImportService
         }
 
         return 'Gemini no pudo analizar el documento. Revisa la API key, cuota o intenta de nuevo.';
+    }
+
+    private function shouldTryNextModel(int $status): bool
+    {
+        return in_array($status, [429, 500, 502, 503, 504], true);
     }
 
     /**
