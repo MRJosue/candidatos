@@ -18,29 +18,25 @@
                         <thead>
                             <tr class="text-left text-gray-900">
                                 <th class="px-4 py-3 font-semibold">Plan</th>
-                                <th class="px-4 py-3 font-semibold">Precio sin IVA</th>
+                                <th class="px-4 py-3 font-semibold">Precio sin IVA ajustado</th>
                                 <th class="px-4 py-3 font-semibold">Total con IVA</th>
-                                <th class="px-4 py-3 font-semibold">CVs incluidos</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 text-gray-700">
                             <tr>
                                 <td class="px-4 py-3 font-medium text-gray-900">Basico</td>
-                                <td class="px-4 py-3">$3,999</td>
-                                <td class="px-4 py-3 font-semibold text-gray-900">$4,639</td>
-                                <td class="px-4 py-3">600 CV/mes</td>
+                                <td class="px-4 py-3">$4,267</td>
+                                <td class="px-4 py-3 font-semibold text-gray-900">$4,950</td>
                             </tr>
                             <tr>
-                                <td class="px-4 py-3 font-medium text-gray-900">Profesional</td>
-                                <td class="px-4 py-3">$5,999</td>
-                                <td class="px-4 py-3 font-semibold text-gray-900">$6,959</td>
-                                <td class="px-4 py-3">1,500 CV/mes</td>
+                                <td class="px-4 py-3 font-medium text-gray-900">Medio volumen</td>
+                                <td class="px-4 py-3">$6,464</td>
+                                <td class="px-4 py-3 font-semibold text-gray-900">$7,499</td>
                             </tr>
                             <tr>
                                 <td class="px-4 py-3 font-medium text-gray-900">Alto volumen</td>
-                                <td class="px-4 py-3">$8,999</td>
-                                <td class="px-4 py-3 font-semibold text-gray-900">$10,439</td>
-                                <td class="px-4 py-3">3,000 CV/mes</td>
+                                <td class="px-4 py-3">$9,737</td>
+                                <td class="px-4 py-3 font-semibold text-gray-900">$11,295</td>
                             </tr>
                         </tbody>
                     </table>
