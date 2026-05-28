@@ -102,6 +102,14 @@ class User extends Authenticatable
         return [$this->id];
     }
 
+    /**
+     * @return array<int, int>
+     */
+    public function visibleRecruiterUserIds(): array
+    {
+        return $this->visibleCvUserIds();
+    }
+
     public function isAccountOwner(): bool
     {
         return $this->hasAnyRole(self::ACCOUNT_OWNER_ROLES);
@@ -112,6 +120,13 @@ class User extends Authenticatable
         $ownerId = $owner instanceof self ? $owner->id : $owner;
 
         return $ownerId !== null && in_array((int) $ownerId, $this->visibleCvUserIds(), true);
+    }
+
+    public function canViewRecruiterOwner(User|int|null $owner): bool
+    {
+        $ownerId = $owner instanceof self ? $owner->id : $owner;
+
+        return $ownerId !== null && in_array((int) $ownerId, $this->visibleRecruiterUserIds(), true);
     }
 
     public function talents(): HasMany

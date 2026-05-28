@@ -123,6 +123,7 @@
                                 $hasAvailableVacancies = $vacancies->contains(fn ($vacancy) => ! in_array($vacancy->id, $appliedVacancyIds, true));
                                 $spanishCv = $talent->cvProfiles->first(fn ($profile) => ($profile->language ?: 'es') === 'es');
                                 $englishCv = $talent->cvProfiles->first(fn ($profile) => ($profile->language ?: 'es') === 'en');
+                                $canManageTalent = $talent->recruiter_id === auth()->id();
                             @endphp
                             <tr>
                                 <td class="px-6 py-4">
@@ -191,11 +192,13 @@
                                             role="menu"
                                         >
                                             <a href="{{ route('talents.show', $talent) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Ver talento</a>
-                                            <a href="{{ route('talents.edit', $talent) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Editar talento</a>
-                                            <button type="button" onclick="document.getElementById('create-application-{{ $talent->id }}').showModal()" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Crear postulacion</button>
+                                            @if ($canManageTalent)
+                                                <a href="{{ route('talents.edit', $talent) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Editar talento</a>
+                                                <button type="button" onclick="document.getElementById('create-application-{{ $talent->id }}').showModal()" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Crear postulacion</button>
+                                            @endif
                                             @if ($spanishCv)
-                                                <a href="{{ route('cv.show', $spanishCv) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Editar CV espanol</a>
-                                            @elseif ($talent->cvProfiles->count() < \App\Models\CvProfile::MAX_PER_TALENT)
+                                                <a href="{{ route('cv.show', $spanishCv) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">{{ $canManageTalent ? 'Editar' : 'Ver' }} CV espanol</a>
+                                            @elseif ($canManageTalent && $talent->cvProfiles->count() < \App\Models\CvProfile::MAX_PER_TALENT)
                                                 <form method="POST" action="{{ route('talents.cv.store', $talent) }}">
                                                     @csrf
                                                     <input type="hidden" name="language" value="es">
@@ -203,8 +206,8 @@
                                                 </form>
                                             @endif
                                             @if ($englishCv)
-                                                <a href="{{ route('cv.show', $englishCv) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Editar CV en ingles</a>
-                                            @elseif ($spanishCv && $talent->cvProfiles->count() < \App\Models\CvProfile::MAX_PER_TALENT)
+                                                <a href="{{ route('cv.show', $englishCv) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">{{ $canManageTalent ? 'Editar' : 'Ver' }} CV en ingles</a>
+                                            @elseif ($canManageTalent && $spanishCv && $talent->cvProfiles->count() < \App\Models\CvProfile::MAX_PER_TALENT)
                                                 <a href="{{ route('cv.show', $spanishCv) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Crear CV en ingles</a>
                                             @endif
                                             @if ($spanishCv)
@@ -216,39 +219,41 @@
                                         </div>
                                     </div>
 
-                                    <dialog id="create-application-{{ $talent->id }}" class="w-full max-w-lg rounded-lg p-0 text-left shadow-xl backdrop:bg-gray-500/75">
-                                        <form method="POST" action="{{ route('talents.applications.store', $talent) }}" class="space-y-5 p-6">
-                                            @csrf
-                                            <div>
-                                                <h3 class="text-lg font-semibold text-gray-900">Crear postulacion</h3>
-                                                <p class="mt-1 text-sm text-gray-500">{{ $talent->full_name }}</p>
-                                            </div>
-
-                                            <label class="block">
-                                                <span class="text-sm font-medium text-gray-700">Vacante</span>
-                                                <select name="vacancy_id" class="mt-1 w-full rounded border-gray-300 text-sm" @disabled(! $hasAvailableVacancies)>
-                                                    <option value="">Selecciona vacante</option>
-                                                    @foreach ($vacancies as $vacancy)
-                                                        <option value="{{ $vacancy->id }}" @disabled(in_array($vacancy->id, $appliedVacancyIds, true))>
-                                                            {{ $vacancy->display_title }} - {{ $vacancy->display_company ?? 'Cliente confidencial' }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                            </label>
-
-                                            @unless ($hasAvailableVacancies)
-                                                <p class="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">No hay vacantes disponibles para postular a este talento.</p>
-                                            @endunless
-
-                                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                                <a href="{{ route('vacancies.create') }}" class="inline-flex justify-center rounded bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100">Crear nueva vacante</a>
-                                                <div class="flex justify-end gap-3">
-                                                    <button type="button" onclick="document.getElementById('create-application-{{ $talent->id }}').close()" class="rounded bg-gray-100 px-4 py-2 text-sm text-gray-700">Cancelar</button>
-                                                    <button class="rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50" @disabled(! $hasAvailableVacancies)>Crear postulacion</button>
+                                    @if ($canManageTalent)
+                                        <dialog id="create-application-{{ $talent->id }}" class="w-full max-w-lg rounded-lg p-0 text-left shadow-xl backdrop:bg-gray-500/75">
+                                            <form method="POST" action="{{ route('talents.applications.store', $talent) }}" class="space-y-5 p-6">
+                                                @csrf
+                                                <div>
+                                                    <h3 class="text-lg font-semibold text-gray-900">Crear postulacion</h3>
+                                                    <p class="mt-1 text-sm text-gray-500">{{ $talent->full_name }}</p>
                                                 </div>
-                                            </div>
-                                        </form>
-                                    </dialog>
+
+                                                <label class="block">
+                                                    <span class="text-sm font-medium text-gray-700">Vacante</span>
+                                                    <select name="vacancy_id" class="mt-1 w-full rounded border-gray-300 text-sm" @disabled(! $hasAvailableVacancies)>
+                                                        <option value="">Selecciona vacante</option>
+                                                        @foreach ($vacancies as $vacancy)
+                                                            <option value="{{ $vacancy->id }}" @disabled(in_array($vacancy->id, $appliedVacancyIds, true))>
+                                                                {{ $vacancy->display_title }} - {{ $vacancy->display_company ?? 'Cliente confidencial' }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </label>
+
+                                                @unless ($hasAvailableVacancies)
+                                                    <p class="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">No hay vacantes disponibles para postular a este talento.</p>
+                                                @endunless
+
+                                                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                    <a href="{{ route('vacancies.create') }}" class="inline-flex justify-center rounded bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100">Crear nueva vacante</a>
+                                                    <div class="flex justify-end gap-3">
+                                                        <button type="button" onclick="document.getElementById('create-application-{{ $talent->id }}').close()" class="rounded bg-gray-100 px-4 py-2 text-sm text-gray-700">Cancelar</button>
+                                                        <button class="rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50" @disabled(! $hasAvailableVacancies)>Crear postulacion</button>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        </dialog>
+                                    @endif
                                 </td>
                             </tr>
                         @empty

@@ -9,6 +9,7 @@ use Illuminate\Http\UploadedFile;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class RecruitingCrudTest extends TestCase
@@ -171,6 +172,60 @@ class RecruitingCrudTest extends TestCase
                 $middleTalent->full_name,
                 $oldestTalent->full_name,
             ]);
+    }
+
+    public function test_account_owner_can_view_subordinate_talents(): void
+    {
+        Role::findOrCreate('jefe_atc');
+        Role::findOrCreate('usuario_subordinado');
+
+        $owner = User::factory()->create();
+        $owner->assignRole('jefe_atc');
+        $subordinate = User::factory()->create([
+            'account_owner_id' => $owner->id,
+        ]);
+        $subordinate->assignRole('usuario_subordinado');
+        $otherUser = User::factory()->create();
+
+        $subordinateTalent = $subordinate->talents()->create([
+            'first_name' => 'Subordinado',
+            'last_name' => 'Visible',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $otherTalent = $otherUser->talents()->create([
+            'first_name' => 'Talento',
+            'last_name' => 'Ajeno',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('talents.index'))
+            ->assertOk()
+            ->assertSee($subordinateTalent->full_name)
+            ->assertDontSee($otherTalent->full_name)
+            ->assertDontSee(route('talents.edit', $subordinateTalent), false);
+
+        $this->actingAs($owner)
+            ->get(route('talents.show', $subordinateTalent))
+            ->assertOk();
+    }
+
+    public function test_user_cannot_view_unrelated_talent(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $talent = $otherUser->talents()->create([
+            'first_name' => 'Talento',
+            'last_name' => 'Ajeno',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('talents.show', $talent))
+            ->assertForbidden();
     }
 
     public function test_recruiter_can_download_talent_import_layout(): void

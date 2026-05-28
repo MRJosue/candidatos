@@ -22,10 +22,11 @@ class TalentController extends Controller
         $name = trim((string) ($filters['name'] ?? ''));
         $createdDate = trim((string) ($filters['created_date'] ?? ''));
         $normalizedCreatedDate = $this->normalizedDateSearch($createdDate);
+        $visibleRecruiterIds = $request->user()->visibleRecruiterUserIds();
 
         return view('talents.index', [
-            'talents' => $request->user()
-                ->talents()
+            'talents' => Talent::query()
+                ->whereIn('recruiter_id', $visibleRecruiterIds)
                 ->with(['cvProfile', 'cvProfiles', 'applications:id,talent_id,vacancy_id'])
                 ->withCount('applications')
                 ->when($name !== '', function ($query) use ($name): void {
@@ -56,8 +57,8 @@ class TalentController extends Controller
                 'created_date' => $createdDate,
             ],
             'filterOptions' => [
-                'createdDates' => $request->user()
-                    ->talents()
+                'createdDates' => Talent::query()
+                    ->whereIn('recruiter_id', $visibleRecruiterIds)
                     ->selectRaw('DATE(created_at) as created_date')
                     ->whereNotNull('created_at')
                     ->distinct()
@@ -86,7 +87,7 @@ class TalentController extends Controller
 
     public function show(Request $request, Talent $talent)
     {
-        abort_unless($talent->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($talent->recruiter_id), 403);
 
         return view('talents.show', [
             'talent' => $talent->load([
@@ -140,8 +141,8 @@ class TalentController extends Controller
             ->where('is_active', true)
             ->firstOrFail();
 
-        $talents = $request->user()
-            ->talents()
+        $talents = Talent::query()
+            ->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())
             ->with(['cvProfiles.template', 'cvProfiles.experiences', 'cvProfiles.education', 'cvProfiles.skills'])
             ->whereIn('id', $data['talent_ids'])
             ->orderBy('last_name')
