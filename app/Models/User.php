@@ -27,6 +27,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'account_owner_id',
         'application_theme_id',
         'theme_mode',
     ];
@@ -62,6 +63,44 @@ class User extends Authenticatable
     public function recruiterProfile(): HasOne
     {
         return $this->hasOne(RecruiterProfile::class);
+    }
+
+    public function accountOwner(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'account_owner_id');
+    }
+
+    public function accountUsers(): HasMany
+    {
+        return $this->hasMany(self::class, 'account_owner_id');
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public function visibleCvUserIds(): array
+    {
+        if ($this->hasAnyRole(['admin', 'administrator'])) {
+            return self::query()->pluck('id')->all();
+        }
+
+        if ($this->hasRole('jefe_cuenta')) {
+            return $this->accountUsers()
+                ->pluck('id')
+                ->push($this->id)
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        return [$this->id];
+    }
+
+    public function canViewCvOwner(User|int|null $owner): bool
+    {
+        $ownerId = $owner instanceof self ? $owner->id : $owner;
+
+        return $ownerId !== null && in_array((int) $ownerId, $this->visibleCvUserIds(), true);
     }
 
     public function talents(): HasMany
@@ -102,6 +141,16 @@ class User extends Authenticatable
     public function appointments(): HasMany
     {
         return $this->hasMany(Appointment::class);
+    }
+
+    public function cvUsageSubscription(): HasOne
+    {
+        return $this->hasOne(CvUsageSubscription::class);
+    }
+
+    public function cvUsageEvents(): HasMany
+    {
+        return $this->hasMany(CvUsageEvent::class);
     }
 
     public function applicationTheme(): BelongsTo

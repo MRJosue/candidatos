@@ -21,6 +21,8 @@ class DatabaseSeeder extends Seeder
     {
         Role::findOrCreate('admin');
         Role::findOrCreate('cliente');
+        Role::findOrCreate('jefe_cuenta');
+        Role::findOrCreate('usuario_subordinado');
 
         User::where('email', 'ingjosue.cardona@gmail.com')
             ->first()
@@ -35,6 +37,7 @@ class DatabaseSeeder extends Seeder
             ->syncRoles(['cliente']);
 
         $this->call(DemoUserSeeder::class);
+        $this->call(AccountHierarchyDemoSeeder::class);
 
         ApplicationTheme::ensureDefaultThemes();
         CvTemplate::ensureDefaultTemplates();

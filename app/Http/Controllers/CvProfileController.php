@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCvProfileRequest;
 use App\Http\Requests\UpdateCvProfileRequest;
 use App\Models\CvProfile;
+use App\Models\CvUsageEvent;
 use App\Models\CvTemplate;
 use App\Models\Talent;
 use App\Services\CvAiDocumentImportService;
 use App\Services\CvDocumentImportService;
 use App\Services\CvTranslationService;
+use App\Services\CvUsageService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
@@ -28,9 +30,21 @@ class CvProfileController extends Controller
      */
     public function index()
     {
+        $user = auth()->user();
+        $visibleUserIds = $user->visibleCvUserIds();
+
+        $profiles = CvProfile::query()
+            ->with(['template', 'talent', 'user'])
+            ->whereIn('user_id', $visibleUserIds)
+            ->latest()
+            ->get();
+
         return view('cv.index', [
-            'profiles' => auth()->user()->cvProfiles()->with(['template', 'talent'])->latest()->paginate(12),
-            'talents' => auth()->user()->talents()->with('cvProfiles:id,talent_id,title,language,is_primary')->orderBy('last_name')->orderBy('first_name')->get(),
+            'profiles' => $profiles,
+            'profilesByTalent' => $profiles
+                ->groupBy(fn (CvProfile $profile) => $profile->talent_id ?: 'unassigned')
+                ->sortBy(fn ($group, $key) => $key === 'unassigned' ? 'zzzzzz' : ($group->first()->talent?->full_name ?? 'zzzzzy')),
+            'talents' => $user->talents()->with('cvProfiles:id,talent_id,title,language,is_primary')->orderBy('last_name')->orderBy('first_name')->get(),
         ]);
     }
 
@@ -273,7 +287,7 @@ class CvProfileController extends Controller
         return redirect()->route('cv.show', $cvProfile)->with('status', 'Tipo de CV actualizado para impresion.');
     }
 
-    public function translate(Request $request, CvProfile $cvProfile, CvTranslationService $translationService)
+    public function translate(Request $request, CvProfile $cvProfile, CvTranslationService $translationService, CvUsageService $usageService)
     {
         $this->authorize('update', $cvProfile);
 
@@ -304,6 +318,7 @@ class CvProfileController extends Controller
         $this->ensureTalentCanReceiveCv($cvProfile->talent, $cvProfile);
 
         try {
+            $usageService->ensureCanConsume($request->user());
             $translated = $translationService->translate($cvProfile, $data['target_language']);
         } catch (RuntimeException $exception) {
             return back()->withErrors(['target_language' => $exception->getMessage()]);
@@ -324,6 +339,11 @@ class CvProfileController extends Controller
                 ->route('cv.edit', $existingTranslation)
                 ->with('status', 'Ya existia una version en ese idioma. Puedes revisarla y ajustarla.');
         }
+
+        $usageService->record($request->user(), CvUsageEvent::TYPE_TRANSLATION_AI, $cvProfile, [
+            'target_language' => $data['target_language'],
+            'translated_cv_profile_id' => $newProfile->id,
+        ]);
 
         return redirect()
             ->route('cv.edit', $newProfile)
@@ -359,10 +379,11 @@ class CvProfileController extends Controller
         CvProfile $cvProfile,
         CvDocumentImportService $importService,
         CvAiDocumentImportService $aiImportService,
+        CvUsageService $usageService,
     ) {
         $this->authorize('update', $cvProfile);
 
-        $import = $this->analyzeDocumentImport($request, $importService, $aiImportService);
+        $import = $this->analyzeDocumentImport($request, $importService, $aiImportService, $usageService, $cvProfile);
 
         if ($import instanceof RedirectResponse) {
             return $import;
@@ -379,8 +400,9 @@ class CvProfileController extends Controller
         Request $request,
         CvDocumentImportService $importService,
         CvAiDocumentImportService $aiImportService,
+        CvUsageService $usageService,
     ) {
-        $import = $this->analyzeDocumentImport($request, $importService, $aiImportService);
+        $import = $this->analyzeDocumentImport($request, $importService, $aiImportService, $usageService);
 
         if ($import instanceof RedirectResponse) {
             return $import;
@@ -627,19 +649,29 @@ class CvProfileController extends Controller
         Request $request,
         CvDocumentImportService $importService,
         CvAiDocumentImportService $aiImportService,
+        CvUsageService $usageService,
+        ?CvProfile $cvProfile = null,
     ): array|RedirectResponse {
         $data = $request->validate([
             'cv_document' => ['required', 'file', 'mimes:pdf,docx,txt', 'max:6144'],
         ]);
 
         try {
+            $usageService->ensureCanConsume($request->user());
             $text = $importService->extractText($data['cv_document']);
+            $analysis = $aiImportService->analyze($text);
+
+            $usageService->record($request->user(), CvUsageEvent::TYPE_IMPORT_AI, $cvProfile, [
+                'original_name' => $data['cv_document']->getClientOriginalName(),
+                'file_mime' => $data['cv_document']->getClientMimeType(),
+                'file_size' => $data['cv_document']->getSize(),
+            ]);
 
             return [
                 'original_name' => $data['cv_document']->getClientOriginalName(),
                 'source' => 'ai',
                 'parsed' => [
-                    ...$aiImportService->analyze($text),
+                    ...$analysis,
                     'raw_text' => str($text)->limit(12000, '')->toString(),
                 ],
             ];

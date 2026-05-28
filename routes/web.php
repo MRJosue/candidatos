@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AdminCvUsageSubscriptionController;
+use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\ApplicationThemeController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\CompanyController;
@@ -8,6 +10,7 @@ use App\Http\Controllers\CvExperienceController;
 use App\Http\Controllers\CvProfileController;
 use App\Http\Controllers\CvSkillController;
 use App\Http\Controllers\CvTemplateController;
+use App\Http\Controllers\CvUsageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\JobApplicationController;
 use App\Http\Controllers\ProfileController;
@@ -68,6 +71,7 @@ Route::get('/gemini-test', function (Request $request) {
 
 Route::middleware('auth')->group(function () {
     Route::view('/precios', 'pricing')->name('pricing');
+    Route::get('/uso', CvUsageController::class)->name('usage.index');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -75,6 +79,14 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::middleware('admin')->group(function () {
+        Route::get('/admin/users', [AdminUserController::class, 'index'])->name('admin.users.index');
+        Route::get('/admin/users/{user}/edit', [AdminUserController::class, 'edit'])->name('admin.users.edit');
+        Route::patch('/admin/users/{user}', [AdminUserController::class, 'update'])->name('admin.users.update');
+
+        Route::get('/admin/usage-subscriptions', [AdminCvUsageSubscriptionController::class, 'index'])->name('admin.usage-subscriptions.index');
+        Route::get('/admin/usage-subscriptions/{user}/edit', [AdminCvUsageSubscriptionController::class, 'edit'])->name('admin.usage-subscriptions.edit');
+        Route::patch('/admin/usage-subscriptions/{user}', [AdminCvUsageSubscriptionController::class, 'update'])->name('admin.usage-subscriptions.update');
+
         Route::post('/admin/themes/import-json', [ApplicationThemeController::class, 'importJson'])->name('admin.themes.import-json');
         Route::resource('admin/themes', ApplicationThemeController::class)
             ->except('show')

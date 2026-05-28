@@ -25,9 +25,6 @@
                     <x-nav-link :href="route('cv.index')" :active="request()->routeIs('cv.*')">
                         CVs
                     </x-nav-link>
-                    <x-nav-link :href="route('templates.index')" :active="request()->routeIs('templates.*')">
-                        Plantillas
-                    </x-nav-link>
                     <x-nav-link :href="route('companies.index')" :active="request()->routeIs('companies.*')">
                         Compañías
                     </x-nav-link>
@@ -40,11 +37,44 @@
                     <x-nav-link :href="route('appointments.index')" :active="request()->routeIs('appointments.*')">
                         Citas
                     </x-nav-link>
-                    @if (Auth::user()->hasAnyRole(['admin', 'administrator']))
-                        <x-nav-link :href="route('admin.themes.index')" :active="request()->routeIs('admin.themes.*')">
-                            Temas
-                        </x-nav-link>
-                    @endif
+                    <div class="relative flex h-full items-stretch" x-data="{ businessMenuOpen: false }" x-on:click.outside="businessMenuOpen = false" x-on:keydown.escape.window="businessMenuOpen = false">
+                        <div class="flex h-full items-stretch">
+                            <button
+                                type="button"
+                                class="{{ request()->routeIs('usage.*') || request()->routeIs('admin.usage-subscriptions.*') || request()->routeIs('admin.users.*') || request()->routeIs('admin.themes.*') ? 'app-nav-link app-nav-link-active' : 'app-nav-link' }} inline-flex h-full items-center gap-1 border-b-2 px-3 pt-1 text-sm font-medium leading-5 transition duration-150 ease-in-out focus:outline-none"
+                                x-on:click="businessMenuOpen = ! businessMenuOpen"
+                                x-bind:aria-expanded="businessMenuOpen.toString()"
+                            >
+                                <span>Negocio</span>
+                                <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div
+                            x-cloak
+                            x-show="businessMenuOpen"
+                            x-transition.origin.top.left
+                            class="app-user-dropdown absolute start-0 top-full mt-2 w-56 rounded-lg py-1 ring-1"
+                        >
+                            <x-dropdown-link :href="route('usage.index')">
+                                Uso mensual
+                            </x-dropdown-link>
+
+                            @if (Auth::user()->hasAnyRole(['admin', 'administrator']))
+                                <x-dropdown-link :href="route('admin.users.index')">
+                                    Usuarios
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('admin.usage-subscriptions.index')">
+                                    Planes de cuentas
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('admin.themes.index')">
+                                    Temas
+                                </x-dropdown-link>
+                            @endif
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -107,17 +137,6 @@
                             </select>
                         </form>
 
-                        @if (Auth::user()->hasAnyRole(['admin', 'administrator']))
-                            <div class="app-user-dropdown-section border-b py-1">
-                                <x-dropdown-link :href="route('admin.themes.index')">
-                                    Gestionar temas
-                                </x-dropdown-link>
-                                <x-dropdown-link :href="route('admin.themes.create')">
-                                    Nuevo tema
-                                </x-dropdown-link>
-                            </div>
-                        @endif
-
                         <x-dropdown-link :href="route('pricing')">
                             Precios
                         </x-dropdown-link>
@@ -164,9 +183,6 @@
             <x-responsive-nav-link :href="route('cv.index')" :active="request()->routeIs('cv.*')">
                 CVs
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('templates.index')" :active="request()->routeIs('templates.*')">
-                Plantillas
-            </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('companies.index')" :active="request()->routeIs('companies.*')">
                 Compañías
             </x-responsive-nav-link>
@@ -179,7 +195,19 @@
             <x-responsive-nav-link :href="route('appointments.index')" :active="request()->routeIs('appointments.*')">
                 Citas
             </x-responsive-nav-link>
+            <div class="px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                Negocio
+            </div>
+            <x-responsive-nav-link :href="route('usage.index')" :active="request()->routeIs('usage.*')">
+                Uso mensual
+            </x-responsive-nav-link>
             @if (Auth::user()->hasAnyRole(['admin', 'administrator']))
+                <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
+                    Usuarios
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.usage-subscriptions.index')" :active="request()->routeIs('admin.usage-subscriptions.*')">
+                    Planes de cuentas
+                </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.themes.index')" :active="request()->routeIs('admin.themes.*')">
                     Temas
                 </x-responsive-nav-link>
@@ -228,12 +256,6 @@
                 <x-responsive-nav-link :href="route('pricing')" :active="request()->routeIs('pricing')">
                     Precios
                 </x-responsive-nav-link>
-
-                @if (Auth::user()->hasAnyRole(['admin', 'administrator']))
-                    <x-responsive-nav-link :href="route('admin.themes.create')" :active="request()->routeIs('admin.themes.create')">
-                        Nuevo tema
-                    </x-responsive-nav-link>
-                @endif
 
                 <!-- Authentication -->
                 <form method="POST" action="{{ route('logout') }}">
