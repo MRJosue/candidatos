@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
         Role::findOrCreate('admin');
         Role::findOrCreate('cliente');
         Role::findOrCreate('jefe_cuenta');
+        Role::findOrCreate('jefe_atc');
         Role::findOrCreate('usuario_subordinado');
 
         User::where('email', 'ingjosue.cardona@gmail.com')

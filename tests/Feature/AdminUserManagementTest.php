@@ -35,6 +35,28 @@ class AdminUserManagementTest extends TestCase
         $this->assertSame($owner->id, $account->fresh()->account_owner_id);
     }
 
+    public function test_admin_can_assign_atc_account_owner_to_subordinate(): void
+    {
+        Role::findOrCreate('admin');
+        Role::findOrCreate('jefe_atc');
+        Role::findOrCreate('usuario_subordinado');
+
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $owner = User::factory()->create();
+        $owner->assignRole('jefe_atc');
+        $account = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->patch(route('admin.users.update', $account), [
+                'roles' => ['usuario_subordinado'],
+                'account_owner_id' => $owner->id,
+            ])
+            ->assertRedirect(route('admin.users.edit', $account));
+
+        $this->assertSame($owner->id, $account->fresh()->account_owner_id);
+    }
+
     public function test_admin_cannot_remove_last_admin_role(): void
     {
         Role::findOrCreate('admin');

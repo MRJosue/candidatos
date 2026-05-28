@@ -14,7 +14,7 @@ class AdminCvUsageSubscriptionController extends Controller
     {
         $users = User::query()
             ->with(['cvUsageSubscription.plan'])
-            ->role('jefe_cuenta')
+            ->whereHas('roles', fn ($query) => $query->whereIn('name', User::ACCOUNT_OWNER_ROLES))
             ->orderBy('name')
             ->paginate(15);
 
@@ -28,7 +28,7 @@ class AdminCvUsageSubscriptionController extends Controller
 
     public function edit(User $user, CvUsageService $usageService)
     {
-        abort_unless($user->hasRole('jefe_cuenta'), 404);
+        abort_unless($user->isAccountOwner(), 404);
 
         $subscription = $usageService->subscriptionFor($user);
 
@@ -42,7 +42,7 @@ class AdminCvUsageSubscriptionController extends Controller
 
     public function update(Request $request, User $user, CvUsageService $usageService)
     {
-        abort_unless($user->hasRole('jefe_cuenta'), 404);
+        abort_unless($user->isAccountOwner(), 404);
 
         $data = $request->validate([
             'cv_usage_plan_id' => ['required', Rule::exists('cv_usage_plans', 'id')->where('is_active', true)],

@@ -41,6 +41,36 @@ class CvAccountVisibilityTest extends TestCase
             ->assertOk();
     }
 
+    public function test_atc_account_owner_can_view_subordinate_cvs(): void
+    {
+        Role::findOrCreate('jefe_atc');
+        Role::findOrCreate('usuario_subordinado');
+
+        $owner = User::factory()->create();
+        $owner->assignRole('jefe_atc');
+
+        $subordinate = User::factory()->create([
+            'account_owner_id' => $owner->id,
+        ]);
+        $subordinate->assignRole('usuario_subordinado');
+
+        $profile = $subordinate->cvProfiles()->create([
+            'title' => 'CV Subordinado ATC',
+            'full_name' => 'Talento Subordinado ATC',
+            'email' => 'talento.atc@example.com',
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('cv.index'))
+            ->assertOk()
+            ->assertSee('CV Subordinado ATC')
+            ->assertSee($subordinate->name);
+
+        $this->actingAs($owner)
+            ->get(route('cv.show', $profile))
+            ->assertOk();
+    }
+
     public function test_subordinate_cannot_view_other_users_cvs(): void
     {
         Role::findOrCreate('usuario_subordinado');

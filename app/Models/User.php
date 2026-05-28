@@ -18,6 +18,12 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use Billable, HasFactory, HasRoles, Notifiable;
 
+    public const ACCOUNT_OWNER_ROLES = [
+        'jefe_cuenta',
+        'jefe_atc',
+        'jefe atc',
+    ];
+
     /**
      * The attributes that are mass assignable.
      *
@@ -84,7 +90,7 @@ class User extends Authenticatable
             return self::query()->pluck('id')->all();
         }
 
-        if ($this->hasRole('jefe_cuenta')) {
+        if ($this->isAccountOwner()) {
             return $this->accountUsers()
                 ->pluck('id')
                 ->push($this->id)
@@ -94,6 +100,11 @@ class User extends Authenticatable
         }
 
         return [$this->id];
+    }
+
+    public function isAccountOwner(): bool
+    {
+        return $this->hasAnyRole(self::ACCOUNT_OWNER_ROLES);
     }
 
     public function canViewCvOwner(User|int|null $owner): bool

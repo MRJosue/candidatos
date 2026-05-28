@@ -25,7 +25,7 @@ class AdminUserController extends Controller
             'account' => $user->load('roles'),
             'roles' => Role::query()->orderBy('name')->get(),
             'accountOwners' => User::query()
-                ->role('jefe_cuenta')
+                ->whereHas('roles', fn ($query) => $query->whereIn('name', User::ACCOUNT_OWNER_ROLES))
                 ->whereKeyNot($user->id)
                 ->orderBy('name')
                 ->get(),
@@ -54,9 +54,9 @@ class AdminUserController extends Controller
         if ($roles->contains('usuario_subordinado') && filled($data['account_owner_id'] ?? null)) {
             $owner = User::find($data['account_owner_id']);
 
-            if (! $owner?->hasRole('jefe_cuenta')) {
+            if (! $owner?->isAccountOwner()) {
                 return back()
-                    ->withErrors(['account_owner_id' => 'Selecciona un usuario con rol jefe_cuenta como jefe de cuenta.'])
+                    ->withErrors(['account_owner_id' => 'Selecciona un usuario con rol jefe de cuenta como jefe de cuenta.'])
                     ->withInput();
             }
         }
