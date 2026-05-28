@@ -49,6 +49,41 @@
 
             <div class="rounded bg-white shadow-sm ring-1 ring-gray-100">
                 <div class="border-b border-gray-100 px-4 py-3">
+                    <h3 class="font-semibold text-gray-900">Consumos adicionales</h3>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-100 text-sm">
+                        <thead>
+                            <tr class="text-left text-gray-900">
+                                <th class="px-4 py-3 font-semibold">Concepto</th>
+                                <th class="px-4 py-3 font-semibold">Costo sin IVA</th>
+                                <th class="px-4 py-3 font-semibold">Total con IVA</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 text-gray-700">
+                            <tr>
+                                <td class="px-4 py-3 font-medium text-gray-900">CV convertido/procesado</td>
+                                <td class="px-4 py-3">$2.00</td>
+                                <td class="px-4 py-3 font-semibold text-gray-900">$2.32</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-3 font-medium text-gray-900">Traducci&oacute;n de CV</td>
+                                <td class="px-4 py-3">$1.00</td>
+                                <td class="px-4 py-3 font-semibold text-gray-900">$1.16</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-3 font-medium text-gray-900">CV procesado + traducci&oacute;n</td>
+                                <td class="px-4 py-3">$3.00</td>
+                                <td class="px-4 py-3 font-semibold text-gray-900">$3.48</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="rounded bg-white shadow-sm ring-1 ring-gray-100">
+                <div class="border-b border-gray-100 px-4 py-3">
                     <h3 class="font-semibold text-gray-900">Servicios por hora</h3>
                 </div>
 
