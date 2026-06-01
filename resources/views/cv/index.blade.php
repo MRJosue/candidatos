@@ -114,6 +114,7 @@
                                             >
                                                 <a href="{{ route('cv.show', $profile) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Abrir CV</a>
                                                 <a href="{{ route('cv.download', $profile) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Descargar PDF</a>
+                                                <a href="{{ route('cv.download-word', $profile) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Descargar Word</a>
                                                 @if ($canUpdateProfile)
                                                     <button type="button" onclick="document.getElementById('assign-cv-{{ $profile->id }}').showModal()" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Asignar talento</button>
                                                 @endif

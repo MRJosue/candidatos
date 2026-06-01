@@ -111,6 +111,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/cv/{cvProfile}/preview', [CvProfileController::class, 'preview'])->name('cv.preview');
     Route::get('/cv/{cvProfile}/download', [CvProfileController::class, 'download'])->name('cv.download');
+    Route::get('/cv/{cvProfile}/download-word', [CvProfileController::class, 'downloadWord'])->name('cv.download-word');
     Route::post('/cv/import-document-ai/create', [CvProfileController::class, 'importDocumentForCreateWithAi'])->name('cv.import-document-ai-create');
     Route::post('/cv/{cvProfile}/import-document-ai', [CvProfileController::class, 'importDocumentWithAi'])->name('cv.import-document-ai');
     Route::post('/cv/{cvProfile}/apply-document-import', [CvProfileController::class, 'applyDocumentImport'])->name('cv.apply-document-import');

@@ -12,6 +12,7 @@ use App\Services\CvAiDocumentImportService;
 use App\Services\CvDocumentImportService;
 use App\Services\CvTranslationService;
 use App\Services\CvUsageService;
+use App\Services\CvWordDocumentService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
@@ -504,6 +505,28 @@ class CvProfileController extends Controller
         return Pdf::loadView('cv.pdf', compact('profile'))
             ->setPaper($paper)
             ->download(str($profile->title)->slug().'.pdf');
+    }
+
+    public function downloadWord(Request $request, CvProfile $cvProfile, CvWordDocumentService $wordDocumentService)
+    {
+        $this->authorize('view', $cvProfile);
+
+        $data = $request->validate([
+            'language' => ['nullable', Rule::in(array_keys(CvProfile::languageOptions()))],
+        ]);
+
+        $profile = $this->profileForDownloadLanguage($cvProfile, $data['language'] ?? null);
+
+        if (! $profile) {
+            return back()->withErrors(['language' => 'No hay un CV disponible en el idioma seleccionado.']);
+        }
+
+        $profile->load(['template', 'experiences', 'education', 'skills']);
+
+        return response($wordDocumentService->output($profile), 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Content-Disposition' => 'attachment; filename="'.(str($profile->title ?: $profile->full_name)->slug()->value() ?: 'cv-'.$profile->id).'.docx"',
+        ]);
     }
 
     private function validatedTalent(Request $request): ?Talent

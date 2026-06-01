@@ -55,6 +55,17 @@
                             <option value="academico-bullet">Academico bullet</option>
                         </select>
                     </label>
+                    <label class="block">
+                        <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Archivo</span>
+                        <select
+                            name="file_format"
+                            form="bulk-cv-download"
+                            class="mt-1 w-full rounded border-gray-300 text-sm shadow-sm sm:w-32"
+                        >
+                            <option value="pdf" selected>PDF</option>
+                            <option value="word">Word</option>
+                        </select>
+                    </label>
                     <button
                         id="download-selected-cvs"
                         type="submit"
@@ -211,10 +222,12 @@
                                                 <a href="{{ route('cv.show', $spanishCv) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Crear CV en ingles</a>
                                             @endif
                                             @if ($spanishCv)
-                                                <a href="{{ route('cv.download', ['cvProfile' => $spanishCv, 'language' => 'es']) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Descargar CV en espanol</a>
+                                                <a href="{{ route('cv.download', ['cvProfile' => $spanishCv, 'language' => 'es']) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Descargar CV espanol PDF</a>
+                                                <a href="{{ route('cv.download-word', ['cvProfile' => $spanishCv, 'language' => 'es']) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Descargar CV espanol Word</a>
                                             @endif
                                             @if ($englishCv)
-                                                <a href="{{ route('cv.download', ['cvProfile' => $englishCv, 'language' => 'en']) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Descargar CV en ingles</a>
+                                                <a href="{{ route('cv.download', ['cvProfile' => $englishCv, 'language' => 'en']) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Descargar CV ingles PDF</a>
+                                                <a href="{{ route('cv.download-word', ['cvProfile' => $englishCv, 'language' => 'en']) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Descargar CV ingles Word</a>
                                             @endif
                                         </div>
                                     </div>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Talent;
 use App\Models\CvTemplate;
+use App\Services\CvWordDocumentService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -124,18 +125,20 @@ class TalentController extends Controller
         return redirect()->route('talents.index')->with('status', 'Postulante eliminado.');
     }
 
-    public function downloadCvs(Request $request)
+    public function downloadCvs(Request $request, CvWordDocumentService $wordDocumentService)
     {
         $data = $request->validate([
             'talent_ids' => ['required', 'array', 'min:1'],
             'talent_ids.*' => ['integer'],
             'cv_template_slug' => ['nullable', Rule::in(['act-digital', 'academico-bullet'])],
             'cv_language' => ['nullable', Rule::in(array_keys(\App\Models\CvProfile::languageOptions()))],
+            'file_format' => ['nullable', Rule::in(['pdf', 'word'])],
         ]);
 
         CvTemplate::ensureDefaultTemplates();
 
         $templateSlug = $data['cv_template_slug'] ?? 'act-digital';
+        $fileFormat = $data['file_format'] ?? 'pdf';
         $template = CvTemplate::query()
             ->where('slug', $templateSlug)
             ->where('is_active', true)
@@ -175,28 +178,30 @@ class TalentController extends Controller
 
             $paper = $template->slug === 'act-digital' ? 'a4' : 'letter';
             $baseName = str($profile->title ?: $profile->full_name)->slug()->value() ?: 'cv-'.$profile->id;
-            $fileName = $baseName.'.pdf';
+            $extension = $fileFormat === 'word' ? 'docx' : 'pdf';
+            $fileName = $baseName.'.'.$extension;
             $counter = 2;
 
             while (in_array($fileName, $usedNames, true)) {
-                $fileName = $baseName.'-'.$counter.'.pdf';
+                $fileName = $baseName.'-'.$counter.'.'.$extension;
                 $counter++;
             }
 
             $usedNames[] = $fileName;
 
-            $zip->addFromString(
-                $fileName,
-                Pdf::loadView('cv.pdf', ['profile' => $profile])
+            $contents = $fileFormat === 'word'
+                ? $wordDocumentService->output($profile)
+                : Pdf::loadView('cv.pdf', ['profile' => $profile])
                     ->setPaper($paper)
-                    ->output()
-            );
+                    ->output();
+
+            $zip->addFromString($fileName, $contents);
         }
 
         $zip->close();
 
         return response()
-            ->download($zipPath, 'cvs-talentos-'.now()->format('Ymd-His').'.zip')
+            ->download($zipPath, 'cvs-talentos-'.$fileFormat.'-'.now()->format('Ymd-His').'.zip')
             ->deleteFileAfterSend(true);
     }
 
