@@ -37,7 +37,7 @@ class CvProfilePolicy
      */
     public function update(User $user, CvProfile $cvProfile): bool
     {
-        return $cvProfile->user_id === $user->id;
+        return $user->canViewCvOwner($cvProfile->user_id);
     }
 
     /**

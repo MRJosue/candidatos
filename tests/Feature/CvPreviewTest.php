@@ -143,6 +143,18 @@ class CvPreviewTest extends TestCase
             ->assertSee('Funciones')
             ->assertSee('Herramientas Utilizadas')
             ->assertSee('ORACLE Cliente: Alsea')
+            ->assertSee('class="act-entry-company"', false)
+            ->assertSee('background: #eeeeee', false)
+            ->assertSee('font-family: Arial, DejaVu Sans, sans-serif !important', false)
+            ->assertSee('font-size: 10px !important', false)
+            ->assertSee('.pdf-act-digital .template-act .act-name', false)
+            ->assertSee('font-size: 20px !important', false)
+            ->assertSee('.pdf-act-digital .template-act .act-role', false)
+            ->assertSee('font-size: 12px !important', false)
+            ->assertSee('.pdf-act-digital .template-act .act-section-title', false)
+            ->assertSee('font-size: 15px !important', false)
+            ->assertSee('.pdf-act-digital .template-act .act-entry-company', false)
+            ->assertSee('font-size: 14px !important', false)
             ->assertSee('Periodo:</span> 2020 - 2022', false)
             ->assertDontSee('Consultor | ORACLE Cliente: Alsea | 2020 - 2022')
             ->assertSee('https://actdigital.com/es')
@@ -156,5 +168,51 @@ class CvPreviewTest extends TestCase
             ->assertDontSee('<li>Jira</li>', false)
             ->assertSee('Certificaciones')
             ->assertSee('Oracle Cloud Platform Application Integration 2025 Certified Professional');
+    }
+
+    public function test_act_digital_english_template_uses_company_gray_band(): void
+    {
+        $user = User::factory()->create();
+
+        $template = CvTemplate::create([
+            'name' => 'ACT Digital',
+            'slug' => 'act-digital',
+            'description' => 'Corporate format inspired by ACT Digital.',
+            'is_premium' => false,
+            'price_cents' => 0,
+            'currency' => 'MXN',
+            'is_active' => true,
+        ]);
+
+        $profile = CvProfile::create([
+            'user_id' => $user->id,
+            'cv_template_id' => $template->id,
+            'title' => 'ACT CV EN',
+            'full_name' => 'Alex Rivera',
+            'email' => 'alex@example.com',
+            'headline' => 'Integration Consultant',
+            'summary' => 'Builds enterprise integrations.',
+            'language' => 'en',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $profile->experiences()->create([
+            'company' => 'Oracle Client: Kosmos / Penoles',
+            'position' => 'Integration Consultant',
+            'start_date' => '2024-03-01',
+            'end_date' => '2026-02-01',
+            'description' => 'Developed integrations.',
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('cv.preview', $profile));
+
+        $response
+            ->assertOk()
+            ->assertSee('Experience')
+            ->assertSee('class="act-entry-company"', false)
+            ->assertSee('Oracle Client: Kosmos / Penoles')
+            ->assertSee('Period:</span> 03/2024 - 02/2026', false);
     }
 }

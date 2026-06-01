@@ -153,15 +153,35 @@
                                 <a href="{{ route('cv.experiences.create', $profile) }}" class="text-indigo-700">Agregar</a>
                             </div>
                         </div>
-                        <div class="space-y-4">
+                        <div class="space-y-4" data-reorder-list="experiences">
                             @forelse ($profile->experiences as $item)
-                                <div class="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
+                                <div class="border-b border-gray-100 pb-4 last:border-0 last:pb-0" data-reorder-item="{{ $item->id }}">
                                     <div class="flex items-start justify-between gap-3">
                                         <p>
                                             <strong>{{ $item->position }}</strong><br>
                                             <span class="text-gray-700">{{ $item->company }}</span>
                                         </p>
                                         <div class="flex items-center gap-2 text-sm">
+                                            <div class="flex items-center gap-1" aria-label="Mover experiencia">
+                                                <button
+                                                    type="button"
+                                                    title="Subir experiencia"
+                                                    data-reorder-button
+                                                    data-reorder-url="{{ route('experiences.move', $item) }}"
+                                                    data-direction="up"
+                                                    class="inline-flex h-7 w-7 items-center justify-center rounded border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                    @disabled($loop->first)
+                                                >&uarr;</button>
+                                                <button
+                                                    type="button"
+                                                    title="Bajar experiencia"
+                                                    data-reorder-button
+                                                    data-reorder-url="{{ route('experiences.move', $item) }}"
+                                                    data-direction="down"
+                                                    class="inline-flex h-7 w-7 items-center justify-center rounded border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                    @disabled($loop->last)
+                                                >&darr;</button>
+                                            </div>
                                             <a href="{{ route('experiences.edit', $item) }}" class="text-indigo-700">Editar</a>
                                             <form method="POST" action="{{ route('experiences.destroy', $item) }}" onsubmit="return confirm('¿Eliminar esta experiencia?')">
                                                 @csrf
@@ -196,15 +216,35 @@
                                 <a href="{{ route('cv.education.create', $profile) }}" class="text-indigo-700">Agregar</a>
                             </div>
                         </div>
-                        <div class="space-y-4">
+                        <div class="space-y-4" data-reorder-list="education">
                             @forelse ($profile->education as $item)
-                                <div class="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
+                                <div class="border-b border-gray-100 pb-4 last:border-0 last:pb-0" data-reorder-item="{{ $item->id }}">
                                     <div class="flex items-start justify-between gap-3">
                                         <p>
                                             <strong>{{ $item->degree }}</strong><br>
                                             <span class="text-gray-700">{{ $item->institution }}</span>
                                         </p>
                                         <div class="flex items-center gap-2 text-sm">
+                                            <div class="flex items-center gap-1" aria-label="Mover educacion">
+                                                <button
+                                                    type="button"
+                                                    title="Subir educacion"
+                                                    data-reorder-button
+                                                    data-reorder-url="{{ route('education.move', $item) }}"
+                                                    data-direction="up"
+                                                    class="inline-flex h-7 w-7 items-center justify-center rounded border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                    @disabled($loop->first)
+                                                >&uarr;</button>
+                                                <button
+                                                    type="button"
+                                                    title="Bajar educacion"
+                                                    data-reorder-button
+                                                    data-reorder-url="{{ route('education.move', $item) }}"
+                                                    data-direction="down"
+                                                    class="inline-flex h-7 w-7 items-center justify-center rounded border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                    @disabled($loop->last)
+                                                >&darr;</button>
+                                            </div>
                                             <a href="{{ route('education.edit', $item) }}" class="text-indigo-700">Editar</a>
                                             <form method="POST" action="{{ route('education.destroy', $item) }}" onsubmit="return confirm('¿Eliminar esta educacion?')">
                                                 @csrf
@@ -227,7 +267,7 @@
                 </div>
             </section>
 
-            <section class="rounded border border-gray-200 bg-white/60 p-4">
+            <section class="rounded border border-gray-200 bg-white/60 p-4" data-skill-board data-skill-reorder-url="{{ route('cv.skills.reorder', $profile) }}">
                 <div class="mb-4 flex items-center justify-between">
                     <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Software / Habilidades / Idiomas / Habilidades blandas</h3>
                 </div>
@@ -238,11 +278,12 @@
                         class="bg-white p-6 rounded shadow-sm transition"
                         data-group="side"
                         data-section="software"
+                        data-skill-column="software"
                     >
                         <div class="flex justify-between mb-3"><h3 class="font-semibold">Software</h3><a href="{{ route('cv.skills.create', ['cvProfile' => $profile, 'type' => 'software']) }}" class="text-indigo-700">Agregar</a></div>
-                        <div class="flex flex-wrap gap-2">
+                        <div class="flex min-h-12 flex-wrap content-start gap-2 rounded border border-dashed border-transparent p-1 transition" data-skill-list="software">
                             @forelse ($software as $skill)
-                                <div class="inline-flex items-center gap-2 rounded bg-gray-100 px-2 py-1">
+                                <div draggable="true" data-skill-item="{{ $skill->id }}" class="inline-flex cursor-grab items-center gap-2 rounded bg-gray-100 px-2 py-1 active:cursor-grabbing">
                                     {{ $skill->name }}
                                     <a href="{{ route('skills.edit', $skill) }}" class="text-xs text-indigo-700">Editar</a>
                                     <form method="POST" action="{{ route('skills.destroy', $skill) }}" onsubmit="return confirm('¿Eliminar este software?')" class="inline">
@@ -252,7 +293,7 @@
                                     </form>
                                 </div>
                             @empty
-                                <p class="text-sm text-gray-500">Aun no has agregado software.</p>
+                                <p class="text-sm text-gray-500" data-skill-empty>Arrastra elementos aqui o agrega software.</p>
                             @endforelse
                         </div>
                     </section>
@@ -261,11 +302,12 @@
                         class="bg-white p-6 rounded shadow-sm transition"
                         data-group="side"
                         data-section="skills"
+                        data-skill-column="skills"
                     >
                         <div class="flex justify-between mb-3"><h3 class="font-semibold">{{ $skillsTitle }}</h3><a href="{{ route('cv.skills.create', ['cvProfile' => $profile, 'type' => 'skill']) }}" class="text-indigo-700">Agregar</a></div>
-                        <div class="flex flex-wrap gap-2">
+                        <div class="flex min-h-12 flex-wrap content-start gap-2 rounded border border-dashed border-transparent p-1 transition" data-skill-list="skills">
                             @forelse ($skills as $skill)
-                                <div class="inline-flex items-center gap-2 rounded bg-gray-100 px-2 py-1">
+                                <div draggable="true" data-skill-item="{{ $skill->id }}" class="inline-flex cursor-grab items-center gap-2 rounded bg-gray-100 px-2 py-1 active:cursor-grabbing">
                                     {{ $skill->name }}
                                     <a href="{{ route('skills.edit', $skill) }}" class="text-xs text-indigo-700">Editar</a>
                                     <form method="POST" action="{{ route('skills.destroy', $skill) }}" onsubmit="return confirm('¿Eliminar esta habilidad?')" class="inline">
@@ -275,7 +317,7 @@
                                     </form>
                                 </div>
                             @empty
-                                <p class="text-sm text-gray-500">Aun no has agregado habilidades.</p>
+                                <p class="text-sm text-gray-500" data-skill-empty>Arrastra elementos aqui o agrega habilidades.</p>
                             @endforelse
                         </div>
                     </section>
@@ -284,11 +326,12 @@
                         class="bg-white p-6 rounded shadow-sm transition"
                         data-group="side"
                         data-section="languages"
+                        data-skill-column="languages"
                     >
                         <div class="flex justify-between mb-3"><h3 class="font-semibold">Idiomas</h3><a href="{{ route('cv.skills.create', ['cvProfile' => $profile, 'type' => 'language']) }}" class="text-indigo-700">Agregar</a></div>
-                        <div class="flex flex-wrap gap-2">
+                        <div class="flex min-h-12 flex-wrap content-start gap-2 rounded border border-dashed border-transparent p-1 transition" data-skill-list="languages">
                             @forelse ($languages as $skill)
-                                <div class="inline-flex items-center gap-2 rounded bg-gray-100 px-2 py-1">
+                                <div draggable="true" data-skill-item="{{ $skill->id }}" class="inline-flex cursor-grab items-center gap-2 rounded bg-gray-100 px-2 py-1 active:cursor-grabbing">
                                     {{ $skill->name }}@if($skill->level) · {{ $skill->level }}/5 @endif
                                     <a href="{{ route('skills.edit', $skill) }}" class="text-xs text-indigo-700">Editar</a>
                                     <form method="POST" action="{{ route('skills.destroy', $skill) }}" onsubmit="return confirm('¿Eliminar este idioma?')" class="inline">
@@ -298,7 +341,7 @@
                                     </form>
                                 </div>
                             @empty
-                                <p class="text-sm text-gray-500">Aun no has agregado idiomas.</p>
+                                <p class="text-sm text-gray-500" data-skill-empty>Arrastra elementos aqui o agrega idiomas.</p>
                             @endforelse
                         </div>
                     </section>
@@ -307,11 +350,12 @@
                         class="bg-white p-6 rounded shadow-sm transition"
                         data-group="side"
                         data-section="soft_skills"
+                        data-skill-column="soft_skills"
                     >
                         <div class="flex justify-between mb-3"><h3 class="font-semibold">{{ $softSkillsTitle }}</h3><a href="{{ route('cv.skills.create', ['cvProfile' => $profile, 'type' => 'soft_skill']) }}" class="text-indigo-700">Agregar</a></div>
-                        <div class="flex flex-wrap gap-2">
+                        <div class="flex min-h-12 flex-wrap content-start gap-2 rounded border border-dashed border-transparent p-1 transition" data-skill-list="soft_skills">
                             @forelse ($softSkills as $skill)
-                                <div class="inline-flex items-center gap-2 rounded bg-gray-100 px-2 py-1">
+                                <div draggable="true" data-skill-item="{{ $skill->id }}" class="inline-flex cursor-grab items-center gap-2 rounded bg-gray-100 px-2 py-1 active:cursor-grabbing">
                                     {{ $skill->name }}
                                     <a href="{{ route('skills.edit', $skill) }}" class="text-xs text-indigo-700">Editar</a>
                                     <form method="POST" action="{{ route('skills.destroy', $skill) }}" onsubmit="return confirm('¿Eliminar esta habilidad blanda?')" class="inline">
@@ -321,7 +365,7 @@
                                     </form>
                                 </div>
                             @empty
-                                <p class="text-sm text-gray-500">Aun no has agregado habilidades blandas.</p>
+                                <p class="text-sm text-gray-500" data-skill-empty>Arrastra elementos aqui o agrega habilidades blandas.</p>
                             @endforelse
                         </div>
                     </section>
@@ -331,4 +375,202 @@
             </section>
         </div>
     </div></div>
+
+    <script>
+        document.querySelectorAll('[data-reorder-button]').forEach((button) => {
+            button.addEventListener('click', async () => {
+                const item = button.closest('[data-reorder-item]');
+                const list = item?.closest('[data-reorder-list]');
+                const direction = button.dataset.direction;
+                const url = button.dataset.reorderUrl;
+
+                if (! item || ! list || ! direction || ! url || button.disabled) {
+                    return;
+                }
+
+                button.disabled = true;
+
+                try {
+                    const body = new FormData();
+                    body.append('_method', 'PATCH');
+                    body.append('_token', document.querySelector('meta[name="csrf-token"]')?.content ?? '');
+                    body.append('direction', direction);
+
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body,
+                    });
+
+                    if (! response.ok) {
+                        let message = 'No se pudo actualizar el orden.';
+
+                        if (response.status === 403) {
+                            message = 'No tienes permisos para modificar este CV.';
+                        } else if (response.status === 419) {
+                            message = 'La sesion expiro. Recarga la pagina e intenta de nuevo.';
+                        } else if (response.status >= 500) {
+                            message = 'El servidor no pudo actualizar el orden. Revisa el log e intenta de nuevo.';
+                        }
+
+                        alert(message);
+
+                        return;
+                    }
+
+                    if (direction === 'up' && item.previousElementSibling) {
+                        list.insertBefore(item, item.previousElementSibling);
+                    }
+
+                    if (direction === 'down' && item.nextElementSibling) {
+                        list.insertBefore(item.nextElementSibling, item);
+                    }
+
+                } finally {
+                    refreshReorderButtons(list);
+                }
+            });
+        });
+
+        function refreshReorderButtons(list) {
+            const items = Array.from(list.querySelectorAll('[data-reorder-item]'));
+
+            items.forEach((item, index) => {
+                const upButton = item.querySelector('[data-reorder-button][data-direction="up"]');
+                const downButton = item.querySelector('[data-reorder-button][data-direction="down"]');
+
+                if (upButton) {
+                    upButton.disabled = index === 0;
+                }
+
+                if (downButton) {
+                    downButton.disabled = index === items.length - 1;
+                }
+            });
+        }
+
+        const skillBoard = document.querySelector('[data-skill-board]');
+        let draggedSkill = null;
+
+        if (skillBoard) {
+            skillBoard.querySelectorAll('[data-skill-item]').forEach((item) => {
+                item.addEventListener('dragstart', (event) => {
+                    draggedSkill = item;
+                    item.classList.add('opacity-50');
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', item.dataset.skillItem ?? '');
+                });
+
+                item.addEventListener('dragend', () => {
+                    item.classList.remove('opacity-50');
+                    draggedSkill = null;
+                    skillBoard.querySelectorAll('[data-skill-list]').forEach((list) => {
+                        list.classList.remove('border-indigo-300', 'bg-indigo-50');
+                    });
+                });
+            });
+
+            skillBoard.querySelectorAll('[data-skill-list]').forEach((list) => {
+                list.addEventListener('dragover', (event) => {
+                    if (! draggedSkill) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    list.classList.add('border-indigo-300', 'bg-indigo-50');
+
+                    const target = skillDropTarget(list, event.clientX, event.clientY);
+
+                    if (target) {
+                        list.insertBefore(draggedSkill, target);
+                    } else {
+                        list.appendChild(draggedSkill);
+                    }
+
+                    updateSkillEmptyMessages();
+                });
+
+                list.addEventListener('dragleave', (event) => {
+                    if (! list.contains(event.relatedTarget)) {
+                        list.classList.remove('border-indigo-300', 'bg-indigo-50');
+                    }
+                });
+
+                list.addEventListener('drop', async (event) => {
+                    event.preventDefault();
+                    list.classList.remove('border-indigo-300', 'bg-indigo-50');
+                    updateSkillEmptyMessages();
+                    await persistSkillOrder();
+                });
+            });
+
+            updateSkillEmptyMessages();
+        }
+
+        function skillDropTarget(list, x, y) {
+            const items = Array.from(list.querySelectorAll('[data-skill-item]:not(.opacity-50)'));
+
+            return items
+                .map((item) => {
+                    const rect = item.getBoundingClientRect();
+                    const sameRow = y >= rect.top && y <= rect.bottom;
+                    const before = sameRow ? x < rect.left + rect.width / 2 : y < rect.top + rect.height / 2;
+                    const distance = Math.hypot(x - (rect.left + rect.width / 2), y - (rect.top + rect.height / 2));
+
+                    return { item, before, distance };
+                })
+                .filter((entry) => entry.before)
+                .sort((a, b) => a.distance - b.distance)[0]?.item ?? null;
+        }
+
+        function skillColumnsPayload() {
+            return Array.from(skillBoard.querySelectorAll('[data-skill-list]')).reduce((columns, list) => {
+                columns[list.dataset.skillList] = Array.from(list.querySelectorAll('[data-skill-item]'))
+                    .map((item) => Number(item.dataset.skillItem))
+                    .filter(Boolean);
+
+                return columns;
+            }, {});
+        }
+
+        async function persistSkillOrder() {
+            if (! skillBoard) {
+                return;
+            }
+
+            const response = await fetch(skillBoard.dataset.skillReorderUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                },
+                body: JSON.stringify({
+                    _method: 'PATCH',
+                    columns: skillColumnsPayload(),
+                }),
+            });
+
+            if (! response.ok) {
+                alert('No se pudo actualizar el orden de habilidades. Recarga la pagina e intenta de nuevo.');
+            }
+        }
+
+        function updateSkillEmptyMessages() {
+            skillBoard?.querySelectorAll('[data-skill-list]').forEach((list) => {
+                const emptyMessage = list.querySelector('[data-skill-empty]');
+                const hasItems = list.querySelector('[data-skill-item]') !== null;
+
+                if (emptyMessage) {
+                    emptyMessage.classList.toggle('hidden', hasItems);
+                }
+            });
+        }
+    </script>
 </x-app-layout>

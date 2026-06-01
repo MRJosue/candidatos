@@ -398,7 +398,7 @@
         }
         .template-act .act-section .act-section-title {
             color: #808080;
-            font-family: "Trebuchet MS", Arial, DejaVu Sans, sans-serif;
+            font-family: Arial, DejaVu Sans, sans-serif;
             font-size: 15px;
             font-weight: 700;
             line-height: 1.1;
@@ -407,7 +407,7 @@
         }
         .template-act .act-copy {
             color: #262626;
-            font-family: Cambria, Georgia, DejaVu Serif, serif;
+            font-family: Arial, DejaVu Sans, sans-serif;
             font-size: 10px;
             line-height: 1.34;
             margin: 0 0 8px;
@@ -417,7 +417,7 @@
             margin: 8px 0 9px;
         }
         .template-act .act-summary-skills p {
-            font-size: 10.5px;
+            font-size: 10px;
             font-weight: 700;
             line-height: 1.2;
             margin: 0;
@@ -438,12 +438,23 @@
             page-break-inside: avoid;
         }
         .template-act .act-entry-title {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 400;
             line-height: 1.22;
         }
+        .template-act .act-entry-company {
+            background: #eeeeee;
+            color: #808080;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.22;
+            margin: 0 45px 2px 38px;
+            padding: 1px 6px;
+            text-align: center;
+            text-transform: uppercase;
+        }
         .template-act .act-entry-meta {
-            font-size: 10.5px;
+            font-size: 10px;
             line-height: 1.24;
             margin-top: 1px;
         }
@@ -451,7 +462,7 @@
             margin: 2px 0 5px 14px;
         }
         .template-act .act-entry-field {
-            font-size: 10.5px;
+            font-size: 10px;
             line-height: 1.28;
             margin: 2px 0;
         }
@@ -511,6 +522,27 @@
             text-align: center;
             width: 696px;
             z-index: 20;
+        }
+        .pdf-act-digital .template-act,
+        .pdf-act-digital .template-act p,
+        .pdf-act-digital .template-act li,
+        .pdf-act-digital .template-act td,
+        .pdf-act-digital .template-act th,
+        .pdf-act-digital .act-page-footer-url {
+            font-family: Arial, DejaVu Sans, sans-serif !important;
+            font-size: 10px !important;
+        }
+        .pdf-act-digital .template-act .act-name {
+            font-size: 20px !important;
+        }
+        .pdf-act-digital .template-act .act-role {
+            font-size: 12px !important;
+        }
+        .pdf-act-digital .template-act .act-section-title {
+            font-size: 15px !important;
+        }
+        .pdf-act-digital .template-act .act-entry-company {
+            font-size: 14px !important;
         }
 
         @media screen {
@@ -579,7 +611,7 @@
                 <table class="act-section"><tr><td class="act-section-mark"></td><td class="act-section-title">{{ $labels['experience'] }}</td></tr></table>
                 @foreach ($actExperienceEntries($profile->experiences) as $item)
                     <div class="act-entry">
-                        <p class="act-entry-title">{{ $item['company'] }}@if($item['location']), {{ $item['location'] }}@endif</p>
+                        <p class="act-entry-company">{{ $item['company'] }}@if($item['location']), {{ $item['location'] }}@endif</p>
                         <p class="act-entry-field"><span class="act-entry-label">{{ $labels['period'] }}:</span> {{ $item['period'] }}</p>
                         <p class="act-entry-field"><span class="act-entry-label">{{ $labels['position'] }}:</span> {{ $item['position'] }}</p>
                         @if (! empty($item['description']))

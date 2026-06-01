@@ -122,13 +122,16 @@ Route::middleware('auth')->group(function () {
     Route::resource('cv', CvProfileController::class)->parameters(['cv' => 'cvProfile']);
 
     Route::patch('/cv/{cvProfile}/experiences/reverse-order', [CvExperienceController::class, 'reverseOrder'])->name('cv.experiences.reverse-order');
+    Route::match(['get', 'post', 'patch'], '/experiences/{cvExperience}/move', [CvExperienceController::class, 'move'])->name('experiences.move');
     Route::resource('cv.experiences', CvExperienceController::class)
         ->shallow()
         ->parameters(['cv' => 'cvProfile', 'experiences' => 'cvExperience']);
     Route::patch('/cv/{cvProfile}/education/reverse-order', [CvEducationController::class, 'reverseOrder'])->name('cv.education.reverse-order');
+    Route::match(['get', 'post', 'patch'], '/education/{cvEducation}/move', [CvEducationController::class, 'move'])->name('education.move');
     Route::resource('cv.education', CvEducationController::class)
         ->shallow()
         ->parameters(['cv' => 'cvProfile', 'education' => 'cvEducation']);
+    Route::match(['post', 'patch'], '/cv/{cvProfile}/skills/reorder', [CvSkillController::class, 'reorder'])->name('cv.skills.reorder');
     Route::resource('cv.skills', CvSkillController::class)
         ->shallow()
         ->parameters(['cv' => 'cvProfile', 'skills' => 'cvSkill']);

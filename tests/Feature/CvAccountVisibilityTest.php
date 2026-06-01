@@ -41,6 +41,46 @@ class CvAccountVisibilityTest extends TestCase
             ->assertOk();
     }
 
+    public function test_account_owner_can_update_subordinate_cv_order(): void
+    {
+        Role::findOrCreate('jefe_cuenta');
+        Role::findOrCreate('usuario_subordinado');
+
+        $owner = User::factory()->create();
+        $owner->assignRole('jefe_cuenta');
+
+        $subordinate = User::factory()->create([
+            'account_owner_id' => $owner->id,
+        ]);
+        $subordinate->assignRole('usuario_subordinado');
+
+        $profile = $subordinate->cvProfiles()->create([
+            'title' => 'CV Subordinado',
+            'full_name' => 'Talento Subordinado',
+            'email' => 'talento@example.com',
+        ]);
+
+        $first = $profile->experiences()->create([
+            'company' => 'First Company',
+            'position' => 'Developer',
+            'start_date' => '2021-01-01',
+            'sort_order' => 1,
+        ]);
+
+        $second = $profile->experiences()->create([
+            'company' => 'Second Company',
+            'position' => 'Lead Developer',
+            'start_date' => '2023-01-01',
+            'sort_order' => 2,
+        ]);
+
+        $this
+            ->actingAs($owner)
+            ->patchJson(route('experiences.move', $second), ['direction' => 'up'])
+            ->assertOk()
+            ->assertJsonPath('ordered_ids', [$second->id, $first->id]);
+    }
+
     public function test_atc_account_owner_can_view_subordinate_cvs(): void
     {
         Role::findOrCreate('jefe_atc');
