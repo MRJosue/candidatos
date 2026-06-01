@@ -15,6 +15,17 @@ class CvUsageServiceTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_demo_usage_plan_is_available_with_50_cv_limit(): void
+    {
+        $plan = CvUsagePlan::where('slug', 'demo')->firstOrFail();
+
+        $this->assertSame('Demo', $plan->name);
+        $this->assertSame(50, $plan->monthly_quota);
+        $this->assertSame(0, $plan->price_before_tax_cents);
+        $this->assertSame(0, $plan->price_with_tax_cents);
+        $this->assertTrue($plan->is_active);
+    }
+
     public function test_it_creates_default_usage_subscription_and_tracks_consumption(): void
     {
         $user = User::factory()->create();
