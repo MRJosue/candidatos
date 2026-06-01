@@ -450,7 +450,7 @@
             line-height: 1.22;
             margin: 0 45px 2px 38px;
             padding: 1px 6px;
-            text-align: center;
+            text-align: left;
             text-transform: uppercase;
         }
         .template-act .act-entry-meta {

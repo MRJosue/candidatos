@@ -243,7 +243,7 @@ class CvWordDocumentService
     private function band(string $text): string
     {
         return '<w:tbl>'.$this->tableProperties([self::COMPANY_BAND_WIDTH], false, self::COMPANY_BAND_INDENT)
-            .'<w:tr>'.$this->tableCell(mb_strtoupper($text), self::COMPANY_BAND_WIDTH, 'EEEEEE', 'ActBand', ['text' => 'center']).'</w:tr>'
+            .'<w:tr>'.$this->tableCell(mb_strtoupper($text), self::COMPANY_BAND_WIDTH, 'EEEEEE', 'ActBand').'</w:tr>'
             .'</w:tbl>';
     }
 

@@ -77,8 +77,16 @@
                                                 left: 0,
                                                 place() {
                                                     const rect = this.$refs.trigger.getBoundingClientRect();
-                                                    this.top = rect.bottom + 8;
-                                                    this.left = Math.max(12, rect.right - 224);
+                                                    const menuHeight = this.$refs.menu?.offsetHeight || 0;
+                                                    const menuWidth = this.$refs.menu?.offsetWidth || 256;
+                                                    const viewportPadding = 12;
+                                                    const bottomTop = rect.bottom + 8;
+                                                    const topTop = rect.top - menuHeight - 8;
+
+                                                    this.top = bottomTop + menuHeight > window.innerHeight - viewportPadding
+                                                        ? Math.max(viewportPadding, topTop)
+                                                        : bottomTop;
+                                                    this.left = Math.max(viewportPadding, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - viewportPadding));
                                                 },
                                                 toggle() {
                                                     this.open = ! this.open;
@@ -105,24 +113,52 @@
 
                                             <div
                                                 x-cloak
+                                                x-ref="menu"
                                                 x-show="open"
                                                 x-transition
                                                 x-on:click.outside="open = false"
                                                 x-bind:style="`top: ${top}px; left: ${left}px;`"
-                                                class="fixed z-50 w-56 rounded-md bg-white py-1 text-left shadow-lg ring-1 ring-black ring-opacity-5"
+                                                class="fixed z-50 w-64 space-y-1 rounded-md bg-white p-2 text-left shadow-lg ring-1 ring-black ring-opacity-5"
                                                 role="menu"
                                             >
-                                                <a href="{{ route('cv.show', $profile) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Abrir CV</a>
-                                                <a href="{{ route('cv.download', $profile) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Descargar PDF</a>
-                                                <a href="{{ route('cv.download-word', $profile) }}" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Descargar Word</a>
+                                                <a href="{{ route('cv.show', $profile) }}" class="flex w-full items-center gap-2 rounded bg-emerald-50 px-3 py-2 text-start text-sm font-medium leading-5 text-emerald-700 transition duration-150 ease-in-out hover:bg-emerald-100" role="menuitem">
+                                                    <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                        <path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v13A1.5 1.5 0 0 0 4.5 18h11a1.5 1.5 0 0 0 1.5-1.5V7.25a1.5 1.5 0 0 0-.44-1.06l-3.75-3.75A1.5 1.5 0 0 0 11.75 2H4.5ZM6 10a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Zm1 3a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2H7Z" clip-rule="evenodd" />
+                                                    </svg>
+                                                    Abrir CV
+                                                </a>
+                                                <a href="{{ route('cv.download', $profile) }}" class="flex w-full items-center gap-2 rounded bg-rose-50 px-3 py-2 text-start text-sm font-medium leading-5 text-rose-700 transition duration-150 ease-in-out hover:bg-rose-100" role="menuitem">
+                                                    <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                        <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.69L6.03 8.22a.75.75 0 0 0-1.06 1.06l4.5 4.5a.75.75 0 0 0 1.06 0l4.5-4.5a.75.75 0 1 0-1.06-1.06l-3.22 3.22V2.75Z" />
+                                                        <path d="M3.5 13.75a.75.75 0 0 1 .75.75v1.25a.75.75 0 0 0 .75.75h10a.75.75 0 0 0 .75-.75V14.5a.75.75 0 0 1 1.5 0v1.25A2.25 2.25 0 0 1 15 18H5a2.25 2.25 0 0 1-2.25-2.25V14.5a.75.75 0 0 1 .75-.75Z" />
+                                                    </svg>
+                                                    Descargar PDF
+                                                </a>
+                                                <a href="{{ route('cv.download-word', $profile) }}" class="flex w-full items-center gap-2 rounded bg-blue-50 px-3 py-2 text-start text-sm font-medium leading-5 text-blue-700 transition duration-150 ease-in-out hover:bg-blue-100" role="menuitem">
+                                                    <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                        <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.69L6.03 8.22a.75.75 0 0 0-1.06 1.06l4.5 4.5a.75.75 0 0 0 1.06 0l4.5-4.5a.75.75 0 1 0-1.06-1.06l-3.22 3.22V2.75Z" />
+                                                        <path d="M3.5 13.75a.75.75 0 0 1 .75.75v1.25a.75.75 0 0 0 .75.75h10a.75.75 0 0 0 .75-.75V14.5a.75.75 0 0 1 1.5 0v1.25A2.25 2.25 0 0 1 15 18H5a2.25 2.25 0 0 1-2.25-2.25V14.5a.75.75 0 0 1 .75-.75Z" />
+                                                    </svg>
+                                                    Descargar Word
+                                                </a>
                                                 @if ($canUpdateProfile)
-                                                    <button type="button" onclick="document.getElementById('assign-cv-{{ $profile->id }}').showModal()" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 transition duration-150 ease-in-out" role="menuitem">Asignar talento</button>
+                                                    <button type="button" onclick="document.getElementById('assign-cv-{{ $profile->id }}').showModal()" class="flex w-full items-center gap-2 rounded bg-violet-50 px-3 py-2 text-start text-sm font-medium leading-5 text-violet-700 transition duration-150 ease-in-out hover:bg-violet-100" role="menuitem">
+                                                        <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                            <path d="M10 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3.465 14.493a1.23 1.23 0 0 0 .41 1.412A9.957 9.957 0 0 0 10 18c2.31 0 4.438-.784 6.131-2.1.43-.333.604-.903.408-1.411A7.002 7.002 0 0 0 3.465 14.493Z" />
+                                                        </svg>
+                                                        Asignar talento
+                                                    </button>
                                                 @endif
                                                 @if ($canDeleteProfile)
                                                     <form method="POST" action="{{ route('cv.destroy', $profile) }}" onsubmit="return confirm('¿Eliminar este CV? Esta acción no se puede deshacer.');">
                                                         @csrf
                                                         @method('DELETE')
-                                                        <button type="submit" class="app-dropdown-link block w-full px-4 py-2 text-start text-sm leading-5 text-red-600 transition duration-150 ease-in-out" role="menuitem">Eliminar</button>
+                                                        <button type="submit" class="flex w-full items-center gap-2 rounded bg-red-50 px-3 py-2 text-start text-sm font-medium leading-5 text-red-700 transition duration-150 ease-in-out hover:bg-red-100" role="menuitem">
+                                                            <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                                <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75V4H3.75a.75.75 0 0 0 0 1.5h.36l.72 10.08A2.75 2.75 0 0 0 7.57 18h4.86a2.75 2.75 0 0 0 2.74-2.42l.72-10.08h.36a.75.75 0 0 0 0-1.5H14v-.25A2.75 2.75 0 0 0 11.25 1h-2.5ZM8 4h4v-.25A.75.75 0 0 0 11.25 3h-2.5A.75.75 0 0 0 8 3.75V4Zm.25 4a.75.75 0 0 1 .75.75v5a.75.75 0 0 1-1.5 0v-5A.75.75 0 0 1 8.25 8Zm4.25.75a.75.75 0 0 0-1.5 0v5a.75.75 0 0 0 1.5 0v-5Z" clip-rule="evenodd" />
+                                                            </svg>
+                                                            Eliminar
+                                                        </button>
                                                     </form>
                                                 @endif
                                             </div>

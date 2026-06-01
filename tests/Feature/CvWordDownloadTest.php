@@ -53,6 +53,8 @@ class CvWordDownloadTest extends TestCase
 
         $this->assertStringContainsString('Andrea Lopez', $document);
         $this->assertStringContainsString('Backend Developer', $document);
+        $this->assertStringContainsString('ACME', $document);
+        $this->assertStringNotContainsString('<w:pStyle w:val="ActBand"/><w:jc w:val="center"/>', $document);
         $this->assertStringContainsString('CERTIFICACIONES', $document);
         $this->assertStringContainsString('Oracle Cloud Infrastructure Foundations', $document);
         $this->assertStringNotContainsString('9 average', $document);
