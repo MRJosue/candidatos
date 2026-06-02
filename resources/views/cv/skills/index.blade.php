@@ -5,7 +5,7 @@
             <span class="inline-block px-2 py-1 bg-gray-100 rounded m-1">
                 {{ $skill->name }}
                 <span class="text-xs text-gray-500">
-                    {{ ['software' => 'Software', 'skill' => 'Habilidad', 'language' => 'Idioma', 'soft_skill' => 'Habilidad blanda'][$skill->type ?? 'skill'] ?? 'Habilidad' }}
+                    {{ ['software' => 'Software', 'skill' => 'Habilidad', 'language' => 'Idioma', 'certification' => 'Certificacion', 'soft_skill' => 'Habilidad blanda'][$skill->type ?? 'skill'] ?? 'Habilidad' }}
                 </span>
             </span>
         @endforeach

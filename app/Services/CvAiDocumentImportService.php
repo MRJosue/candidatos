@@ -38,7 +38,7 @@ class CvAiDocumentImportService
                         [
                             'role' => 'user',
                             'parts' => [[
-                                'text' => "Analiza este CV y devuelve JSON estructurado. Separa software de habilidades: software debe contener herramientas, aplicaciones, plataformas, sistemas operativos, IDEs, suites y productos usados; skills debe contener lenguajes de programacion, frameworks, bases de datos, metodologias y capacidades tecnicas. En experiences separa responsabilidades en description y herramientas/plataformas especificas de ese puesto en tools_used. En awards incluye solo certificaciones, cursos profesionales y diplomados detectados, uno por elemento. No incluyas reconocimientos generales, premios, hobbies ni logros laborales en awards:\n\n".Str::limit($text, 24000, ''),
+                                'text' => "Analiza este CV y devuelve JSON estructurado. Separa software de habilidades: software debe contener herramientas, aplicaciones, plataformas, sistemas operativos, IDEs, suites y productos usados; skills debe contener lenguajes de programacion, frameworks, bases de datos, metodologias y capacidades tecnicas. No extraigas ni devuelvas habilidades blandas. En experiences separa responsabilidades en description y herramientas/plataformas especificas de ese puesto en tools_used. En awards incluye solo certificaciones, cursos profesionales y diplomados detectados, uno por elemento. No incluyas reconocimientos generales, premios, hobbies ni logros laborales en awards:\n\n".Str::limit($text, 24000, ''),
                             ]],
                         ],
                     ],
@@ -177,7 +177,6 @@ class CvAiDocumentImportService
             'software' => $this->stringList($data['software'] ?? []),
             'skills' => $this->stringList($data['skills'] ?? []),
             'languages' => $this->stringList($data['languages'] ?? []),
-            'soft_skills' => $this->stringList($data['soft_skills'] ?? []),
             'awards' => $this->stringList($data['awards'] ?? []),
         ];
     }
@@ -212,7 +211,7 @@ class CvAiDocumentImportService
 
         return [
             'type' => 'object',
-            'required' => ['profile', 'experiences', 'education', 'software', 'skills', 'languages', 'soft_skills', 'awards'],
+            'required' => ['profile', 'experiences', 'education', 'software', 'skills', 'languages', 'awards'],
             'properties' => [
                 'profile' => [
                     'type' => 'object',
@@ -236,10 +235,6 @@ class CvAiDocumentImportService
                     'items' => ['type' => 'string'],
                 ],
                 'languages' => [
-                    'type' => 'array',
-                    'items' => ['type' => 'string'],
-                ],
-                'soft_skills' => [
                     'type' => 'array',
                     'items' => ['type' => 'string'],
                 ],

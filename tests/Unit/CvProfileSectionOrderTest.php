@@ -17,7 +17,7 @@ class CvProfileSectionOrderTest extends TestCase
         ]);
 
         $this->assertSame([
-            'side' => ['skills', 'languages', 'software', 'soft_skills'],
+            'side' => ['skills', 'languages', 'software', 'certifications'],
             'main' => ['experiences', 'education'],
         ], $profile->normalizedSectionOrder());
     }

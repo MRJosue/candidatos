@@ -3,14 +3,16 @@
         $software = $profile->skills->where('type', 'software');
         $skills = $profile->skills->where('type', 'skill');
         $languages = $profile->skills->where('type', 'language');
-        $softSkills = $profile->skills->where('type', 'soft_skill');
+        $certifications = $profile->skills->where('type', 'certification');
+        $legacyCertifications = $certifications->isEmpty()
+            ? collect(preg_split('/\r\n|\r|\n/', (string) $profile->awards))->map(fn ($line) => trim($line))->filter()
+            : collect();
         $skillsTitle = $profile->skills_section_title ?: 'Habilidades';
-        $softSkillsTitle = $profile->soft_skills_section_title ?: 'Habilidades blandas';
         $sideSectionLabels = [
             'software' => 'Software',
             'skills' => $skillsTitle,
             'languages' => 'Idiomas',
-            'soft_skills' => $softSkillsTitle,
+            'certifications' => 'Certificaciones',
         ];
         $mainSectionLabels = [
             'experiences' => 'Experiencia',
@@ -194,7 +196,7 @@
                                                 >&darr;</button>
                                             </div>
                                             <a href="{{ route('experiences.edit', $item) }}" class="text-indigo-700">Editar</a>
-                                            <form method="POST" action="{{ route('experiences.destroy', $item) }}" onsubmit="return confirm('¿Eliminar esta experiencia?')">
+                                            <form method="POST" action="{{ route('experiences.destroy', $item) }}" onsubmit="return confirm('¿Eliminar esta experiencia?')" data-delete-form>
                                                 @csrf
                                                 @method('DELETE')
                                                 <button class="text-red-700">Eliminar</button>
@@ -257,7 +259,7 @@
                                                 >&darr;</button>
                                             </div>
                                             <a href="{{ route('education.edit', $item) }}" class="text-indigo-700">Editar</a>
-                                            <form method="POST" action="{{ route('education.destroy', $item) }}" onsubmit="return confirm('¿Eliminar esta educacion?')">
+                                            <form method="POST" action="{{ route('education.destroy', $item) }}" onsubmit="return confirm('¿Eliminar esta educacion?')" data-delete-form>
                                                 @csrf
                                                 @method('DELETE')
                                                 <button class="text-red-700">Eliminar</button>
@@ -280,7 +282,7 @@
 
             <section class="rounded border border-gray-200 bg-white/60 p-4" data-skill-board data-skill-reorder-url="{{ route('cv.skills.reorder', $profile) }}">
                 <div class="mb-4 flex items-center justify-between">
-                    <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Software / Habilidades / Idiomas / Habilidades blandas</h3>
+                    <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Software / Habilidades / Idiomas / Certificaciones</h3>
                 </div>
                 <div class="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
             @foreach ($sideSectionOrder as $section)
@@ -297,7 +299,7 @@
                                 <div draggable="true" data-skill-item="{{ $skill->id }}" class="inline-flex cursor-grab items-center gap-2 rounded bg-gray-100 px-2 py-1 active:cursor-grabbing">
                                     {{ $skill->name }}
                                     <a href="{{ route('skills.edit', $skill) }}" class="text-xs text-indigo-700">Editar</a>
-                                    <form method="POST" action="{{ route('skills.destroy', $skill) }}" onsubmit="return confirm('¿Eliminar este software?')" class="inline">
+                                    <form method="POST" action="{{ route('skills.destroy', $skill) }}" onsubmit="return confirm('¿Eliminar este software?')" class="inline" data-delete-form>
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-xs text-red-700">Eliminar</button>
@@ -321,7 +323,7 @@
                                 <div draggable="true" data-skill-item="{{ $skill->id }}" class="inline-flex cursor-grab items-center gap-2 rounded bg-gray-100 px-2 py-1 active:cursor-grabbing">
                                     {{ $skill->name }}
                                     <a href="{{ route('skills.edit', $skill) }}" class="text-xs text-indigo-700">Editar</a>
-                                    <form method="POST" action="{{ route('skills.destroy', $skill) }}" onsubmit="return confirm('¿Eliminar esta habilidad?')" class="inline">
+                                    <form method="POST" action="{{ route('skills.destroy', $skill) }}" onsubmit="return confirm('¿Eliminar esta habilidad?')" class="inline" data-delete-form>
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-xs text-red-700">Eliminar</button>
@@ -345,7 +347,7 @@
                                 <div draggable="true" data-skill-item="{{ $skill->id }}" class="inline-flex cursor-grab items-center gap-2 rounded bg-gray-100 px-2 py-1 active:cursor-grabbing">
                                     {{ $skill->name }}@if($skill->level) · {{ $skill->level }}/5 @endif
                                     <a href="{{ route('skills.edit', $skill) }}" class="text-xs text-indigo-700">Editar</a>
-                                    <form method="POST" action="{{ route('skills.destroy', $skill) }}" onsubmit="return confirm('¿Eliminar este idioma?')" class="inline">
+                                    <form method="POST" action="{{ route('skills.destroy', $skill) }}" onsubmit="return confirm('¿Eliminar este idioma?')" class="inline" data-delete-form>
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-xs text-red-700">Eliminar</button>
@@ -356,27 +358,33 @@
                             @endforelse
                         </div>
                     </section>
-                @elseif ($section === 'soft_skills')
+                @elseif ($section === 'certifications')
                     <section
                         class="bg-white p-6 rounded shadow-sm transition"
                         data-group="side"
-                        data-section="soft_skills"
-                        data-skill-column="soft_skills"
+                        data-section="certifications"
+                        data-skill-column="certifications"
                     >
-                        <div class="flex justify-between mb-3"><h3 class="font-semibold">{{ $softSkillsTitle }}</h3><a href="{{ route('cv.skills.create', ['cvProfile' => $profile, 'type' => 'soft_skill']) }}" class="text-indigo-700">Agregar</a></div>
-                        <div class="flex min-h-12 flex-wrap content-start gap-2 rounded border border-dashed border-transparent p-1 transition" data-skill-list="soft_skills">
-                            @forelse ($softSkills as $skill)
+                        <div class="flex justify-between mb-3"><h3 class="font-semibold">Certificaciones</h3><a href="{{ route('cv.skills.create', ['cvProfile' => $profile, 'type' => 'certification']) }}" class="text-indigo-700">Agregar</a></div>
+                        <div class="flex min-h-12 flex-wrap content-start gap-2 rounded border border-dashed border-transparent p-1 transition" data-skill-list="certifications">
+                            @forelse ($certifications as $skill)
                                 <div draggable="true" data-skill-item="{{ $skill->id }}" class="inline-flex cursor-grab items-center gap-2 rounded bg-gray-100 px-2 py-1 active:cursor-grabbing">
                                     {{ $skill->name }}
                                     <a href="{{ route('skills.edit', $skill) }}" class="text-xs text-indigo-700">Editar</a>
-                                    <form method="POST" action="{{ route('skills.destroy', $skill) }}" onsubmit="return confirm('¿Eliminar esta habilidad blanda?')" class="inline">
+                                    <form method="POST" action="{{ route('skills.destroy', $skill) }}" onsubmit="return confirm('¿Eliminar esta certificacion?')" class="inline" data-delete-form>
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-xs text-red-700">Eliminar</button>
                                     </form>
                                 </div>
                             @empty
-                                <p class="text-sm text-gray-500" data-skill-empty>Arrastra elementos aqui o agrega habilidades blandas.</p>
+                                @forelse ($legacyCertifications as $certification)
+                                    <div class="inline-flex items-center gap-2 rounded bg-gray-100 px-2 py-1">
+                                        {{ $certification }}
+                                    </div>
+                                @empty
+                                    <p class="text-sm text-gray-500" data-skill-empty>Arrastra elementos aqui o agrega certificaciones.</p>
+                                @endforelse
                             @endforelse
                         </div>
                     </section>
@@ -462,6 +470,99 @@
                     downButton.disabled = index === items.length - 1;
                 }
             });
+        }
+
+        document.querySelectorAll('[data-delete-form]').forEach((form) => {
+            form.addEventListener('submit', async (event) => {
+                if (event.defaultPrevented) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                const item = form.closest('[data-skill-item], [data-reorder-item]');
+                const skillList = item?.closest('[data-skill-list]');
+                const reorderList = item?.closest('[data-reorder-list]');
+                const submitButton = form.querySelector('button[type="submit"], button:not([type])');
+
+                if (! item || form.dataset.deleting === 'true') {
+                    return;
+                }
+
+                form.dataset.deleting = 'true';
+
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.classList.add('opacity-50', 'cursor-wait');
+                }
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: new FormData(form),
+                    });
+
+                    if (! response.ok) {
+                        let message = 'No se pudo eliminar el elemento. Recarga la pagina e intenta de nuevo.';
+
+                        if (response.status === 403) {
+                            message = 'No tienes permisos para modificar este CV.';
+                        } else if (response.status === 419) {
+                            message = 'La sesion expiro. Recarga la pagina e intenta de nuevo.';
+                        }
+
+                        alert(message);
+                        return;
+                    }
+
+                    item.classList.add('opacity-0', 'scale-95');
+                    item.style.transition = 'opacity 150ms ease, transform 150ms ease';
+
+                    window.setTimeout(() => {
+                        item.remove();
+
+                        if (reorderList) {
+                            refreshReorderButtons(reorderList);
+                            updateReorderEmptyMessage(reorderList);
+                        }
+
+                        if (skillList) {
+                            updateSkillEmptyMessages();
+                        }
+                    }, 150);
+                } catch (error) {
+                    alert('No se pudo eliminar el elemento. Revisa tu conexion e intenta de nuevo.');
+                } finally {
+                    form.dataset.deleting = 'false';
+
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.classList.remove('opacity-50', 'cursor-wait');
+                    }
+                }
+            });
+        });
+
+        function updateReorderEmptyMessage(list) {
+            const hasItems = list.querySelector('[data-reorder-item]') !== null;
+            let emptyMessage = list.querySelector('[data-reorder-empty]');
+
+            if (! emptyMessage) {
+                emptyMessage = document.createElement('p');
+                emptyMessage.dataset.reorderEmpty = 'true';
+                emptyMessage.className = 'text-sm text-gray-500';
+                emptyMessage.textContent = list.dataset.reorderList === 'education'
+                    ? 'Aun no has agregado educacion.'
+                    : 'Aun no has agregado experiencia.';
+                list.appendChild(emptyMessage);
+            }
+
+            emptyMessage.classList.toggle('hidden', hasItems);
         }
 
         const skillBoard = document.querySelector('[data-skill-board]');
@@ -575,8 +676,21 @@
 
         function updateSkillEmptyMessages() {
             skillBoard?.querySelectorAll('[data-skill-list]').forEach((list) => {
-                const emptyMessage = list.querySelector('[data-skill-empty]');
                 const hasItems = list.querySelector('[data-skill-item]') !== null;
+                let emptyMessage = list.querySelector('[data-skill-empty]');
+
+                if (! emptyMessage) {
+                    emptyMessage = document.createElement('p');
+                    emptyMessage.dataset.skillEmpty = 'true';
+                    emptyMessage.className = 'text-sm text-gray-500';
+                    emptyMessage.textContent = {
+                        software: 'Arrastra elementos aqui o agrega software.',
+                        skills: 'Arrastra elementos aqui o agrega habilidades.',
+                        languages: 'Arrastra elementos aqui o agrega idiomas.',
+                        certifications: 'Arrastra elementos aqui o agrega certificaciones.',
+                    }[list.dataset.skillList] ?? 'Arrastra elementos aqui o agrega elementos.';
+                    list.appendChild(emptyMessage);
+                }
 
                 if (emptyMessage) {
                     emptyMessage.classList.toggle('hidden', hasItems);

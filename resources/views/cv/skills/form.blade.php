@@ -5,6 +5,7 @@
         <option value="software" @selected($selectedType === 'software')>Software</option>
         <option value="skill" @selected($selectedType === 'skill')>Habilidad</option>
         <option value="language" @selected($selectedType === 'language')>Idioma</option>
+        <option value="certification" @selected($selectedType === 'certification')>Certificacion</option>
         <option value="soft_skill" @selected($selectedType === 'soft_skill')>Habilidad blanda</option>
     </select>
     <input name="category" placeholder="Categoria" value="{{ old('category', $skill->category ?? '') }}" class="rounded border-gray-300">

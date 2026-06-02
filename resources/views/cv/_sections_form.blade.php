@@ -30,14 +30,9 @@
         </label>
         <label class="block">
             <span class="text-sm font-medium text-gray-700">Certificaciones</span>
-            <textarea name="awards" rows="7" class="mt-1 w-full rounded border-gray-300">{{ old('awards', $profile->awards ?? '') }}</textarea>
+            <textarea name="certifications_text" rows="7" class="mt-1 w-full rounded border-gray-300" placeholder="AWS Certified Cloud Practitioner; Scrum Master">{{ old('certifications_text', $sectionText['certifications'] ?? '') }}</textarea>
         </label>
     </div>
-
-    <label class="block">
-        <span class="text-sm font-medium text-gray-700">Habilidades blandas</span>
-        <textarea name="soft_skills_text" rows="5" class="mt-1 w-full rounded border-gray-300" placeholder="Liderazgo; Comunicacion">{{ old('soft_skills_text', $sectionText['soft_skills'] ?? '') }}</textarea>
-    </label>
 
     @error('experiences_text')
         <p class="text-sm text-red-700">{{ $message }}</p>

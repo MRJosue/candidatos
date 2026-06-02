@@ -183,10 +183,9 @@ class CvWordDocumentService
     {
         $software = $this->skillText($profile, 'software');
         $languages = $this->skillText($profile, 'language');
-        $certifications = $this->lines($profile->awards)->implode("\n");
-        $softSkills = $this->skillText($profile, 'soft_skill');
+        $certifications = $this->skillText($profile, 'certification') ?: $this->lines($profile->awards)->implode("\n");
 
-        if (! filled($software.$languages.$certifications.$softSkills)) {
+        if (! filled($software.$languages.$certifications)) {
             return [];
         }
 
@@ -196,10 +195,6 @@ class CvWordDocumentService
             $labels['languages'] => $languages,
             $labels['awards'] => $certifications,
         ]);
-
-        if (filled($softSkills)) {
-            $body[] = $this->paragraph(($profile->soft_skills_section_title ?: $labels['soft_skills']).': '.$softSkills, 'ActBody');
-        }
 
         return $body;
     }
@@ -387,7 +382,6 @@ class CvWordDocumentService
                 'software' => 'Software',
                 'skills' => 'Skills',
                 'languages' => 'Languages',
-                'soft_skills' => 'Soft skills',
                 'awards' => 'Certifications',
                 'leadership' => 'Leadership and activities',
                 'interests' => 'Interests',
@@ -410,7 +404,6 @@ class CvWordDocumentService
                 'software' => 'Software',
                 'skills' => 'Lenguajes',
                 'languages' => 'Idiomas',
-                'soft_skills' => 'Habilidades blandas',
                 'awards' => 'Certificaciones',
                 'leadership' => 'Liderazgo y actividades',
                 'interests' => 'Intereses',

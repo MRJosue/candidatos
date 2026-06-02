@@ -16,7 +16,7 @@ class CvSkillController extends Controller
         'software' => 'software',
         'skills' => 'skill',
         'languages' => 'language',
-        'soft_skills' => 'soft_skill',
+        'certifications' => 'certification',
     ];
 
     /**
@@ -63,7 +63,7 @@ class CvSkillController extends Controller
             'columns.software' => ['present', 'array'],
             'columns.skills' => ['present', 'array'],
             'columns.languages' => ['present', 'array'],
-            'columns.soft_skills' => ['present', 'array'],
+            'columns.certifications' => ['present', 'array'],
             'columns.*.*' => [
                 'integer',
                 Rule::exists('cv_skills', 'id')->where('cv_profile_id', $cvProfile->id),

@@ -35,7 +35,7 @@ class CvSkillOrderTest extends TestCase
                     'software' => [],
                     'skills' => [$second->id, $first->id],
                     'languages' => [],
-                    'soft_skills' => [],
+                    'certifications' => [],
                 ],
             ])
             ->assertOk();
@@ -70,7 +70,7 @@ class CvSkillOrderTest extends TestCase
                     'software' => [],
                     'skills' => [$laravel->id, $jira->id],
                     'languages' => [],
-                    'soft_skills' => [],
+                    'certifications' => [],
                 ],
             ])
             ->assertOk();
@@ -99,7 +99,7 @@ class CvSkillOrderTest extends TestCase
                     'software' => [$skill->id],
                     'skills' => [$skill->id],
                     'languages' => [],
-                    'soft_skills' => [],
+                    'certifications' => [],
                 ],
             ])
             ->assertStatus(422);

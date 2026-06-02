@@ -357,7 +357,7 @@ class CvProfileController extends Controller
 
         $data = $request->validate([
             'side' => ['required', 'array'],
-            'side.*' => ['required', 'string', 'in:software,skills,languages,soft_skills'],
+            'side.*' => ['required', 'string', 'in:software,skills,languages,certifications'],
             'main' => ['required', 'array'],
             'main.*' => ['required', 'string', 'in:experiences,education'],
         ]);
@@ -577,7 +577,7 @@ class CvProfileController extends Controller
             'software_text' => ['nullable', 'string', 'max:4000'],
             'skills_text' => ['nullable', 'string', 'max:4000'],
             'languages_text' => ['nullable', 'string', 'max:4000'],
-            'soft_skills_text' => ['nullable', 'string', 'max:4000'],
+            'certifications_text' => ['nullable', 'string', 'max:4000'],
         ]);
     }
 
@@ -589,7 +589,7 @@ class CvProfileController extends Controller
             'software_text',
             'skills_text',
             'languages_text',
-            'soft_skills_text',
+            'certifications_text',
         ]);
     }
 
@@ -603,7 +603,8 @@ class CvProfileController extends Controller
         $this->replaceSkills($cvProfile, 'software', $this->parseList($data['software_text'] ?? ''));
         $this->replaceSkills($cvProfile, 'skill', $this->parseList($data['skills_text'] ?? ''));
         $this->replaceSkills($cvProfile, 'language', $this->parseList($data['languages_text'] ?? ''));
-        $this->replaceSkills($cvProfile, 'soft_skill', $this->parseList($data['soft_skills_text'] ?? ''));
+        $this->replaceSkills($cvProfile, 'certification', $this->parseList($data['certifications_text'] ?? ''));
+        $cvProfile->update(['awards' => null]);
     }
 
     private function profileDataFromTalent(Talent $talent, string $language = 'es', ?CvProfile $sourceProfile = null): array
@@ -649,12 +650,6 @@ class CvProfileController extends Controller
         }
 
         $defaults = $this->profileImportData($profileData);
-        $awards = $this->awardsTextFromImport($import['parsed']['awards'] ?? null);
-
-        if (filled($awards)) {
-            $defaults['awards'] = $awards;
-        }
-
         if (filled($defaults['full_name'] ?? null) && blank($profile->title)) {
             $defaults['title'] = 'CV '.$defaults['full_name'];
         }
@@ -736,7 +731,7 @@ class CvProfileController extends Controller
             'apply_software' => ['nullable', 'boolean'],
             'apply_skills' => ['nullable', 'boolean'],
             'apply_languages' => ['nullable', 'boolean'],
-            'apply_soft_skills' => ['nullable', 'boolean'],
+            'apply_certifications' => ['nullable', 'boolean'],
         ]);
     }
 
@@ -744,11 +739,6 @@ class CvProfileController extends Controller
     {
         if ($data['apply_profile'] ?? false) {
             $profileData = $this->profileImportData($parsed['profile'] ?? []);
-            $awards = $this->awardsTextFromImport($parsed['awards'] ?? null);
-
-            if (filled($awards)) {
-                $profileData['awards'] = $awards;
-            }
 
             $cvProfile->update($profileData);
         }
@@ -773,9 +763,11 @@ class CvProfileController extends Controller
             $this->replaceSkills($cvProfile, 'language', $parsed['languages'] ?? []);
         }
 
-        if ($data['apply_soft_skills'] ?? false) {
-            $this->replaceSkills($cvProfile, 'soft_skill', $parsed['soft_skills'] ?? []);
+        if ($data['apply_certifications'] ?? false) {
+            $this->replaceSkills($cvProfile, 'certification', $parsed['awards'] ?? []);
+            $cvProfile->update(['awards' => null]);
         }
+
     }
 
     private function createTranslatedProfile(CvProfile $source, array $translated, string $targetLanguage): CvProfile
@@ -985,7 +977,8 @@ class CvProfileController extends Controller
             'software' => $cvProfile->skills->where('type', 'software')->pluck('name')->implode('; '),
             'skills' => $cvProfile->skills->where('type', 'skill')->pluck('name')->implode('; '),
             'languages' => $cvProfile->skills->where('type', 'language')->pluck('name')->implode('; '),
-            'soft_skills' => $cvProfile->skills->where('type', 'soft_skill')->pluck('name')->implode('; '),
+            'certifications' => $cvProfile->skills->where('type', 'certification')->pluck('name')->implode('; ')
+                ?: $this->awardsTextFromImport($cvProfile->awards),
         ];
     }
 
@@ -1027,7 +1020,7 @@ class CvProfileController extends Controller
             'software' => collect($parsed['software'] ?? [])->filter()->implode('; '),
             'skills' => collect($parsed['skills'] ?? [])->filter()->implode('; '),
             'languages' => collect($parsed['languages'] ?? [])->filter()->implode('; '),
-            'soft_skills' => collect($parsed['soft_skills'] ?? [])->filter()->implode('; '),
+            'certifications' => collect($parsed['awards'] ?? [])->filter()->implode('; '),
         ];
     }
 

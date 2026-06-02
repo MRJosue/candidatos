@@ -9,17 +9,18 @@
     $softwareSkills = $profile->skills->filter(fn ($skill) => $skill->type === 'software')->values();
     $technicalSkills = $profile->skills->filter(fn ($skill) => ($skill->type ?: 'skill') === 'skill')->values();
     $languageSkills = $profile->skills->filter(fn ($skill) => $skill->type === 'language')->values();
-    $softSkills = $profile->skills->filter(fn ($skill) => $skill->type === 'soft_skill')->values();
+    $certificationSkills = $profile->skills->filter(fn ($skill) => $skill->type === 'certification')->values();
+    $certificationLines = $certificationSkills->isNotEmpty()
+        ? $certificationSkills->pluck('name')->filter()->values()
+        : $lines($profile->awards);
     $skillGroups = $technicalSkills->groupBy(fn ($skill) => $skill->category ?: ($profile->skills_section_title ?: 'Habilidades'));
     $languageGroups = $languageSkills->groupBy(fn ($skill) => $skill->category ?: (($profile->language ?: 'es') === 'en' ? 'Languages' : 'Idiomas'));
-    $softSkillGroups = $softSkills->groupBy(fn ($skill) => $skill->category ?: ($profile->soft_skills_section_title ?: 'Habilidades blandas'));
     $skillLine = fn ($skills, bool $withLevel = false) => $skills
         ->map(fn ($skill) => $skill->name.($withLevel && $skill->level ? ': '.$skill->level.'/5' : ''))
         ->join('; ');
     $skillsTitle = $profile->skills_section_title ?: 'Habilidades';
-    $softSkillsTitle = $profile->soft_skills_section_title ?: 'Habilidades blandas';
     $sectionOrder = $profile->normalizedSectionOrder();
-    $sideSectionKeys = ['software', 'skills', 'languages', 'soft_skills'];
+    $sideSectionKeys = ['software', 'skills', 'languages', 'certifications'];
     $mainSectionKeys = ['experiences', 'education'];
     $sideSectionOrder = collect($sectionOrder['side'])
         ->filter(fn ($section) => in_array($section, $sideSectionKeys, true))
@@ -637,7 +638,7 @@
             @endif
         @endforeach
 
-        @if ($softwareSkills->isNotEmpty() || $languageSkills->isNotEmpty() || $profile->awards)
+        @if ($softwareSkills->isNotEmpty() || $languageSkills->isNotEmpty() || $certificationLines->isNotEmpty())
             <table class="act-section"><tr><td class="act-section-mark"></td><td class="act-section-title">{{ $labels['technical_certifications'] }}</td></tr></table>
             <table class="act-skill-table">
                 <tr>
@@ -661,8 +662,8 @@
                         @endif
                     </td>
                     <td class="act-certifications-col">
-                        @if ($profile->awards)
-                            @foreach ($lines($profile->awards) as $line)
+                        @if ($certificationLines->isNotEmpty())
+                            @foreach ($certificationLines as $line)
                                 <p><strong>{{ $line }}</strong></p>
                             @endforeach
                         @else
@@ -703,11 +704,6 @@
                     </p>
                 @endforeach
 
-                @if ($profile->awards)
-                    <h2>{{ $labels['awards'] }}</h2>
-                    <ul>@foreach ($lines($profile->awards) as $line)<li>{{ $line }}</li>@endforeach</ul>
-                @endif
-
                 @foreach ($sideSectionOrder as $section)
                     @if ($section === 'software' && $softwareSkills->isNotEmpty())
                         <h2>{{ $labels['software'] }}</h2>
@@ -728,14 +724,9 @@
                                 <p class="small">{{ $skillLine($skills, true) }}</p>
                             </div>
                         @endforeach
-                    @elseif ($section === 'soft_skills' && $softSkills->isNotEmpty())
-                        <h2>{{ $softSkillsTitle }}</h2>
-                        @foreach ($softSkillGroups as $category => $skills)
-                            <div class="skill-list">
-                                <p><strong>{{ $category }}</strong></p>
-                                <p class="small">{{ $skillLine($skills, true) }}</p>
-                            </div>
-                        @endforeach
+                    @elseif ($section === 'certifications' && $certificationLines->isNotEmpty())
+                        <h2>{{ $labels['awards'] }}</h2>
+                        <ul>@foreach ($certificationLines as $line)<li>{{ $line }}</li>@endforeach</ul>
                     @endif
                 @endforeach
 
@@ -855,11 +846,9 @@
                 @foreach ($languageGroups as $category => $skills)
                     <p><strong>{{ $category }}:</strong> {{ $skillLine($skills, true) }}</p>
                 @endforeach
-            @elseif ($section === 'soft_skills' && $softSkills->isNotEmpty())
-                <h2>{{ $softSkillsTitle }}</h2>
-                @foreach ($softSkillGroups as $category => $skills)
-                    <p><strong>{{ $category }}:</strong> {{ $skillLine($skills) }}</p>
-                @endforeach
+            @elseif ($section === 'certifications' && $certificationLines->isNotEmpty())
+                <h2>{{ $labels['awards'] }}</h2>
+                <ul>@foreach ($certificationLines as $line)<li>{{ $line }}</li>@endforeach</ul>
             @endif
         @endforeach
         @if ($profile->interests)<h2>{{ $labels['interests'] }}</h2><p>{{ $lines($profile->interests)->join(', ') }}</p>@endif
@@ -950,20 +939,13 @@
                                 <p class="label">{{ $labels['languages'] }}</p>
                                 <p>{{ $skillLine($languageSkills, true) }}</p>
                             </div>
-                        @elseif ($section === 'soft_skills' && $softSkills->isNotEmpty())
+                        @elseif ($section === 'certifications' && $certificationLines->isNotEmpty())
                             <div class="side-block">
-                                <p class="label">{{ $softSkillsTitle }}</p>
-                                <p>{{ $skillLine($softSkills, true) }}</p>
+                                <p class="label">{{ $labels['awards'] }}</p>
+                                <ul>@foreach ($certificationLines as $line)<li>{{ $line }}</li>@endforeach</ul>
                             </div>
                         @endif
                     @endforeach
-
-                    @if ($profile->awards)
-                        <div class="side-block">
-                            <p class="label">{{ $labels['awards'] }}</p>
-                            <ul>@foreach ($lines($profile->awards) as $line)<li>{{ $line }}</li>@endforeach</ul>
-                        </div>
-                    @endif
 
                     @if ($profile->leadership_activities)
                         <div class="side-block">

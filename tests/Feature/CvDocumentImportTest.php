@@ -31,10 +31,38 @@ class CvDocumentImportTest extends TestCase
             ->assertSee('Analizar cv')
             ->assertSee('Estamos procesando su solicitud.')
             ->assertSee('Secciones del CV')
+            ->assertDontSee('Habilidades blandas')
+            ->assertDontSee('soft_skills_text')
             ->assertDontSee('Guardar secciones')
             ->assertSee('name="cv_document"', false)
             ->assertSee(route('cv.import-document-ai', $profile), false)
             ->assertDontSee('Parser actual');
+    }
+
+    public function test_cv_show_hides_soft_skills_section(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = CvProfile::create([
+            'user_id' => $user->id,
+            'title' => 'CV en proceso',
+            'full_name' => 'Andrea Lopez',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $profile->skills()->create([
+            'name' => 'Comunicacion',
+            'type' => 'soft_skill',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('cv.show', $profile))
+            ->assertOk()
+            ->assertSee('Software / Habilidades / Idiomas')
+            ->assertSee('Certificaciones')
+            ->assertDontSee('Habilidades blandas')
+            ->assertDontSee('Comunicacion')
+            ->assertDontSee('data-skill-list="soft_skills"', false);
     }
 
     public function test_cv_create_shows_document_import_form(): void
@@ -73,7 +101,7 @@ class CvDocumentImportTest extends TestCase
                 'software_text' => "Jira\nGitHub",
                 'skills_text' => "Laravel\nPHP\nMySQL",
                 'languages_text' => "Espanol\nIngles",
-                'soft_skills_text' => "Liderazgo\nComunicacion",
+                'certifications_text' => "Scrum Master\nAWS Practitioner",
             ])
             ->assertRedirect(route('cv.edit', $profile))
             ->assertSessionHasNoErrors();
@@ -109,6 +137,11 @@ class CvDocumentImportTest extends TestCase
             'type' => 'language',
         ]);
         $this->assertDatabaseHas('cv_skills', [
+            'cv_profile_id' => $profile->id,
+            'name' => 'Scrum Master',
+            'type' => 'certification',
+        ]);
+        $this->assertDatabaseMissing('cv_skills', [
             'cv_profile_id' => $profile->id,
             'name' => 'Liderazgo',
             'type' => 'soft_skill',
@@ -178,7 +211,7 @@ class CvDocumentImportTest extends TestCase
                 'education_text' => 'Ingenieria en Sistemas | Universidad Demo | 2017 - 2021',
                 'skills_text' => "Laravel\nPHP\nMySQL",
                 'languages_text' => "Espanol\nIngles",
-                'soft_skills_text' => "Liderazgo\nComunicacion",
+                'certifications_text' => "Scrum Master\nAWS Practitioner",
             ])
             ->assertSessionHasNoErrors()
             ->assertRedirect(route('talents.index'));
@@ -194,6 +227,11 @@ class CvDocumentImportTest extends TestCase
             'company' => 'Acme Software',
         ]);
         $this->assertDatabaseHas('cv_skills', [
+            'cv_profile_id' => $profile->id,
+            'name' => 'AWS Practitioner',
+            'type' => 'certification',
+        ]);
+        $this->assertDatabaseMissing('cv_skills', [
             'cv_profile_id' => $profile->id,
             'name' => 'Comunicacion',
             'type' => 'soft_skill',
@@ -296,7 +334,7 @@ class CvDocumentImportTest extends TestCase
                 'apply_software' => '1',
                 'apply_skills' => '1',
                 'apply_languages' => '1',
-                'apply_soft_skills' => '1',
+                'apply_certifications' => '1',
             ])
             ->assertRedirect(route('cv.edit', $profile));
 
@@ -305,7 +343,6 @@ class CvDocumentImportTest extends TestCase
             'full_name' => 'Andrea IA',
             'email' => 'andrea.ai@example.com',
             'location' => 'Ciudad de Mexico',
-            'awards' => "Curso de Arquitectura Laravel\nCertificacion Scrum Master",
         ]);
         $this->assertDatabaseHas('cv_experiences', [
             'cv_profile_id' => $profile->id,
@@ -329,6 +366,11 @@ class CvDocumentImportTest extends TestCase
             'type' => 'skill',
         ]);
         $this->assertDatabaseHas('cv_skills', [
+            'cv_profile_id' => $profile->id,
+            'name' => 'Certificacion Scrum Master',
+            'type' => 'certification',
+        ]);
+        $this->assertDatabaseMissing('cv_skills', [
             'cv_profile_id' => $profile->id,
             'name' => 'Liderazgo',
             'type' => 'soft_skill',
@@ -416,13 +458,13 @@ class CvDocumentImportTest extends TestCase
                 'apply_software' => '1',
                 'apply_skills' => '1',
                 'apply_languages' => '1',
-                'apply_soft_skills' => '1',
+                'apply_certifications' => '1',
             ])
             ->assertSessionHasNoErrors();
 
         $profile = CvProfile::where('email', 'andrea.create@example.com')->firstOrFail();
 
-        $this->assertSame('Curso de Product Discovery', $profile->awards);
+        $this->assertNull($profile->awards);
         $this->assertDatabaseHas('cv_experiences', [
             'cv_profile_id' => $profile->id,
             'position' => 'Product Engineer',
@@ -445,6 +487,11 @@ class CvDocumentImportTest extends TestCase
             'type' => 'skill',
         ]);
         $this->assertDatabaseHas('cv_skills', [
+            'cv_profile_id' => $profile->id,
+            'name' => 'Curso de Product Discovery',
+            'type' => 'certification',
+        ]);
+        $this->assertDatabaseMissing('cv_skills', [
             'cv_profile_id' => $profile->id,
             'name' => 'Comunicacion',
             'type' => 'soft_skill',

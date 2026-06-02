@@ -12,7 +12,7 @@
             <label class="flex items-center gap-2"><input type="checkbox" name="apply_software" value="1" class="rounded border-gray-300" checked> Software</label>
             <label class="flex items-center gap-2"><input type="checkbox" name="apply_skills" value="1" class="rounded border-gray-300" checked> Habilidades</label>
             <label class="flex items-center gap-2"><input type="checkbox" name="apply_languages" value="1" class="rounded border-gray-300" checked> Idiomas</label>
-            <label class="flex items-center gap-2"><input type="checkbox" name="apply_soft_skills" value="1" class="rounded border-gray-300" checked> Habilidades blandas</label>
+            <label class="flex items-center gap-2"><input type="checkbox" name="apply_certifications" value="1" class="rounded border-gray-300" checked> Certificaciones</label>
         </div>
     </div>
 @endif

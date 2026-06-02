@@ -218,7 +218,7 @@ class CvTranslationService
                 ->map(fn ($item) => [
                     'name' => $this->cleanText($item['name'] ?? null),
                     'category' => $this->cleanText($item['category'] ?? null),
-                    'type' => in_array($item['type'] ?? 'skill', ['software', 'skill', 'language', 'soft_skill'], true) ? $item['type'] : 'skill',
+                    'type' => in_array($item['type'] ?? 'skill', ['software', 'skill', 'language', 'certification', 'soft_skill'], true) ? $item['type'] : 'skill',
                 ])
                 ->values()
                 ->all(),
