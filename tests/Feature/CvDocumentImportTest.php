@@ -32,12 +32,15 @@ class CvDocumentImportTest extends TestCase
             ->assertOk()
             ->assertSee('Crear CV con IA')
             ->assertSee('Analizar cv')
+            ->assertSee('Sugerencias para documentos no soportados')
+            ->assertSee('Guardar como <strong>.txt</strong>.', false)
             ->assertSee('Estamos procesando su solicitud.')
             ->assertSee('Secciones del CV')
             ->assertDontSee('Habilidades blandas')
             ->assertDontSee('soft_skills_text')
             ->assertDontSee('Guardar secciones')
             ->assertSee('name="cv_document"', false)
+            ->assertSee('accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"', false)
             ->assertSee(route('cv.import-document-ai', $profile), false)
             ->assertDontSee('Parser actual');
     }
@@ -77,6 +80,7 @@ class CvDocumentImportTest extends TestCase
             ->assertOk()
             ->assertSee('Crear CV con IA')
             ->assertSee('Analizar cv')
+            ->assertSee('Sugerencias para documentos no soportados')
             ->assertSee('Estamos procesando su solicitud.')
             ->assertSee('Datos principales')
             ->assertSee('name="cv_document"', false)
@@ -673,47 +677,8 @@ class CvDocumentImportTest extends TestCase
             ->assertSessionMissing("cv_document_import.{$profile->id}");
     }
 
-    public function test_ai_document_import_accepts_legacy_doc_files(): void
+    public function test_ai_document_import_rejects_legacy_doc_files_with_friendly_message(): void
     {
-        config()->set('services.gemini.key', 'test-key');
-
-        $this->instance(CvDocumentImportService::class, new class extends CvDocumentImportService
-        {
-            public function extractText(UploadedFile $file): string
-            {
-                TestCase::assertSame('doc', strtolower($file->getClientOriginalExtension()));
-
-                return 'Salvador Ungsec Villarreal salvador@example.com SAP ABAP Consultant';
-            }
-        });
-
-        $this->instance(CvAiDocumentImportService::class, new class extends CvAiDocumentImportService
-        {
-            public function analyze(string $text): array
-            {
-                TestCase::assertStringContainsString('Salvador Ungsec Villarreal', $text);
-
-                return [
-                    'profile' => [
-                        'full_name' => 'Salvador Ungsec Villarreal',
-                        'email' => 'salvador@example.com',
-                        'phone' => '',
-                        'location' => '',
-                        'headline' => 'SAP ABAP Consultant',
-                        'summary' => '',
-                        'linkedin_url' => '',
-                        'portfolio_url' => '',
-                    ],
-                    'experiences' => [],
-                    'education' => [],
-                    'software' => [],
-                    'skills' => ['SAP ABAP'],
-                    'languages' => [],
-                    'awards' => [],
-                ];
-            }
-        });
-
         $user = User::factory()->create();
         $profile = CvProfile::create([
             'user_id' => $user->id,
@@ -726,8 +691,10 @@ class CvDocumentImportTest extends TestCase
             ->post(route('cv.import-document-ai', $profile), [
                 'cv_document' => UploadedFile::fake()->createWithContent('salvador.doc', 'legacy word bytes'),
             ])
-            ->assertRedirect(route('cv.edit', $profile))
-            ->assertSessionHas("cv_document_import.{$profile->id}");
+            ->assertSessionHasErrors([
+                'cv_document' => 'Este servidor no admite archivos .doc. Si tu CV está en Word antiguo, abre el documento, guarda o copia todo el contenido a un archivo .txt, y súbelo como TXT, DOCX o PDF con texto real.',
+            ])
+            ->assertSessionMissing("cv_document_import.{$profile->id}");
     }
 
     public function test_ai_document_import_uses_fallback_model_when_primary_is_unavailable(): void

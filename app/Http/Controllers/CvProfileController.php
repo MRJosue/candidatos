@@ -694,9 +694,21 @@ class CvProfileController extends Controller
         CvUsageService $usageService,
         ?CvProfile $cvProfile = null,
     ): array|RedirectResponse {
-        $data = $request->validate([
-            'cv_document' => ['required', 'file', 'mimes:pdf,doc,docx,txt', 'max:6144'],
-        ]);
+        $data = Validator::make(
+            $request->all(),
+            [
+                'cv_document' => ['required', 'file', 'mimes:pdf,docx,txt', 'max:6144'],
+            ],
+            [
+                'cv_document.required' => 'Selecciona un archivo para analizar.',
+                'cv_document.file' => 'El documento del CV no se pudo leer correctamente.',
+                'cv_document.mimes' => 'Este servidor no admite archivos .doc. Si tu CV está en Word antiguo, abre el documento, guarda o copia todo el contenido a un archivo .txt, y súbelo como TXT, DOCX o PDF con texto real.',
+                'cv_document.max' => 'El archivo del CV supera el límite de 6 MB. Reduce el tamaño o guárdalo como TXT o DOCX.',
+            ],
+            [
+                'cv_document' => 'documento del CV',
+            ],
+        )->validate();
 
         try {
             $usageService->ensureCanConsume($request->user());
@@ -741,7 +753,7 @@ class CvProfileController extends Controller
             ]);
 
             return back()
-                ->withErrors(['cv_document_ai' => 'No se pudo analizar el documento con IA. Intenta de nuevo con un PDF con texto real, DOC, DOCX o TXT.'])
+                ->withErrors(['cv_document_ai' => 'No se pudo analizar el documento con IA. Intenta de nuevo con un PDF con texto real, DOCX o TXT.'])
                 ->withInput();
         }
     }
