@@ -4,23 +4,9 @@
     <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
             <h3 class="text-lg font-semibold text-gray-900">Crear CV con IA</h3>
-            <p class="text-sm text-gray-500">Sube un PDF con texto real, DOCX o TXT. La IA preparara una previsualizacion y solo se guardara cuando confirmes.</p>
+            <p class="text-sm text-gray-500">Sube un PDF con texto real, DOCX o TXT.</p>
         </div>
-        <span class="text-xs font-medium uppercase tracking-wide text-indigo-600">Demo IA</span>
     </div>
-
-    <details class="mt-4 rounded border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900">
-        <summary class="cursor-pointer font-medium">Sugerencias para documentos no soportados</summary>
-        <div class="mt-3 space-y-2 text-amber-800">
-            <p>Si tu archivo termina en <strong>.doc</strong>, este servidor no puede leerlo directamente.</p>
-            <p>Abre el documento en Word, Google Docs o LibreOffice y usa una de estas opciones:</p>
-            <ul class="list-disc ps-5 space-y-1">
-                <li>Guardar como <strong>.docx</strong>.</li>
-                <li>Guardar como <strong>.txt</strong>.</li>
-                <li>Copiar todo el contenido del CV a un archivo <strong>.txt</strong> y subir ese TXT para procesarlo.</li>
-            </ul>
-        </div>
-    </details>
 
     <form method="POST" action="{{ $action }}" enctype="multipart/form-data" class="mt-5 grid gap-4 md:grid-cols-[1fr_auto] md:items-end" x-on:submit="if (unsupportedDoc) { $event.preventDefault(); return; } processing = true">
         @csrf
@@ -40,6 +26,18 @@
                 required
             >
         </label>
+        <details class="rounded border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900 md:col-span-2">
+            <summary class="cursor-pointer font-medium">Sugerencias para documentos no soportados</summary>
+            <div class="mt-3 space-y-2 text-amber-800">
+                <p>Si tu archivo termina en <strong>.doc</strong>, este servidor no puede leerlo directamente.</p>
+                <p>Abre el documento en Word, Google Docs o LibreOffice y usa una de estas opciones:</p>
+                <ul class="list-disc ps-5 space-y-1">
+                    <li>Guardar como <strong>.docx</strong>.</li>
+                    <li>Guardar como <strong>.txt</strong>.</li>
+                    <li>Copiar todo el contenido del CV a un archivo <strong>.txt</strong> y subir ese TXT para procesarlo.</li>
+                </ul>
+            </div>
+        </details>
         <button
             type="submit"
             class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
