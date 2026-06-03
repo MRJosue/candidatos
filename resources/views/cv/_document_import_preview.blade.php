@@ -2,7 +2,7 @@
     @php($parsed = $documentImport['parsed'] ?? [])
     <section class="bg-white p-6 rounded shadow-sm space-y-5">
         <div>
-            <h3 class="text-lg font-semibold text-gray-900">Previsualizacion de IA</h3>
+            <h3 class="text-lg font-semibold text-gray-900">Previsualizacion del documento</h3>
             <p class="text-sm text-gray-500">Archivo: {{ $documentImport['original_name'] ?? 'documento cargado' }}. Al aplicar se reemplazaran las secciones seleccionadas.</p>
         </div>
 
@@ -72,7 +72,7 @@
             <form method="POST" action="{{ $applyAction }}" class="space-y-4">
                 @csrf
                 @include('cv._document_import_options')
-                <button class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-gray-800">Aplicar IA al CV</button>
+                <button class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-gray-800">Aplicar al CV</button>
             </form>
         @endif
     </section>

@@ -1,9 +1,9 @@
-<section class="bg-white p-6 rounded shadow-sm" x-data="{ processing: false, unsupportedDoc: false }">
+<section class="bg-white p-6 rounded shadow-sm" x-data="{ processing: false, unsupportedDoc: false, fileName: '', fileLoaded: false }">
     <style>[x-cloak] { display: none !important; }</style>
 
     <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-            <h3 class="text-lg font-semibold text-gray-900">Crear CV con IA</h3>
+            <h3 class="text-lg font-semibold text-gray-900">Analizar documento del CV</h3>
             <p class="text-sm text-gray-500">Sube un PDF con texto real, DOCX o TXT.</p>
         </div>
     </div>
@@ -15,17 +15,21 @@
         @elseif (filled(old('talent_id', $profile->talent_id ?? null)))
             <input type="hidden" name="talent_id" value="{{ old('talent_id', $profile->talent_id ?? null) }}">
         @endif
-        <label class="block">
+        <label class="block cursor-pointer">
             <span class="text-sm text-gray-700">Documento del CV</span>
             <input
                 type="file"
                 name="cv_document"
                 accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
-                class="mt-1 block w-full rounded border border-gray-300 text-sm file:mr-4 file:border-0 file:bg-indigo-100 file:px-4 file:py-2 file:text-sm file:text-indigo-800"
-                x-on:change="unsupportedDoc = ($event.target.files[0]?.name || '').toLowerCase().endsWith('.doc')"
+                class="mt-1 block w-full cursor-pointer rounded border border-gray-300 text-sm file:mr-4 file:cursor-pointer file:border-0 file:bg-indigo-100 file:px-4 file:py-2 file:text-sm file:text-indigo-800"
+                x-on:change="fileName = $event.target.files[0]?.name || ''; fileLoaded = fileName !== ''; unsupportedDoc = fileName.toLowerCase().endsWith('.doc')"
                 required
             >
         </label>
+        <div x-cloak x-show="fileLoaded" class="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 md:col-span-2">
+            <span class="font-medium">Archivo cargado:</span>
+            <span x-text="fileName"></span>
+        </div>
         <details class="rounded border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900 md:col-span-2">
             <summary class="cursor-pointer font-medium">Sugerencias para documentos no soportados</summary>
             <div class="mt-3 space-y-2 text-amber-800">
@@ -43,7 +47,7 @@
             class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
             x-bind:disabled="processing || unsupportedDoc"
         >
-            Analizar cv
+            Analizar documento
         </button>
         <p x-cloak x-show="unsupportedDoc" class="text-sm text-red-700 md:col-span-2">Los archivos .doc no están soportados aquí. Guarda el contenido como TXT o conviértelo a DOCX antes de analizarlo.</p>
         @error('cv_document')
@@ -61,11 +65,11 @@
         class="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/60 px-4"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="cv-ai-processing-title"
+        aria-labelledby="cv-processing-title"
     >
         <div class="w-full max-w-sm rounded bg-white p-6 text-center shadow-xl">
             <div class="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-600"></div>
-            <h3 id="cv-ai-processing-title" class="mt-4 text-lg font-semibold text-gray-900">Estamos procesando su solicitud.</h3>
+            <h3 id="cv-processing-title" class="mt-4 text-lg font-semibold text-gray-900">Estamos procesando su solicitud.</h3>
             <p class="mt-2 text-sm text-gray-500">El analisis puede tardar unos momentos.</p>
         </div>
     </div>

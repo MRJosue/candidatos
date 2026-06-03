@@ -404,7 +404,7 @@ class CvProfileController extends Controller
 
         return redirect()
             ->route('cv.edit', $cvProfile)
-            ->with('status', 'Analisis con IA listo. Revisa la previsualizacion antes de aplicar cambios.');
+            ->with('status', 'Análisis listo. Revisa la previsualización antes de aplicar cambios.');
     }
 
     public function importDocumentForCreateWithAi(
@@ -427,7 +427,7 @@ class CvProfileController extends Controller
 
         return redirect()
             ->route($talent ? 'talents.cv.create' : 'cv.create', $talent ?: [])
-            ->with('status', 'Analisis con IA listo. Revisa la previsualizacion antes de guardar el CV.');
+            ->with('status', 'Análisis listo. Revisa la previsualización antes de guardar el CV.');
     }
 
     public function updateSections(Request $request, CvProfile $cvProfile)
@@ -753,7 +753,7 @@ class CvProfileController extends Controller
             ]);
 
             return back()
-                ->withErrors(['cv_document_ai' => 'No se pudo analizar el documento con IA. Intenta de nuevo con un PDF con texto real, DOCX o TXT.'])
+                ->withErrors(['cv_document_ai' => 'No se pudo analizar el documento. Intenta de nuevo con un PDF con texto real, DOCX o TXT.'])
                 ->withInput();
         }
     }
