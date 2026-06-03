@@ -16,15 +16,79 @@
                 <div class="bg-red-50 text-red-700 p-4 rounded mb-4">{{ $errors->first() }}</div>
             @endif
 
+            <form id="cv-filters" method="GET" action="{{ route('cv.index') }}"></form>
+
+            <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button type="submit" form="cv-filters" class="rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50">Filtrar</button>
+                    @if (collect($filters)->filter(fn ($value, $key) => $key !== 'per_page' && $value !== '')->isNotEmpty())
+                        <a href="{{ route('cv.index') }}" class="rounded bg-gray-100 px-3 py-2 text-sm text-gray-700 hover:bg-gray-200">Limpiar</a>
+                    @endif
+                </div>
+                <label class="block">
+                    <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Paginacion</span>
+                    <select name="per_page" form="cv-filters" onchange="document.getElementById('cv-filters').submit()" class="mt-1 w-full rounded border-gray-300 text-sm shadow-sm sm:w-32">
+                        @foreach ($perPageOptions as $option)
+                            <option value="{{ $option }}" @selected($perPage === $option)>{{ $option }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            </div>
+
             <div class="bg-white rounded shadow-sm overflow-x-auto">
                 <table class="min-w-[1040px] w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Talento</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CV</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Idioma</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plantilla</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actualizado</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <span>Talento</span>
+                                <input
+                                    type="search"
+                                    name="talent"
+                                    value="{{ $filters['talent'] }}"
+                                    form="cv-filters"
+                                    placeholder="Buscar talento"
+                                    class="mt-2 block w-52 rounded border-gray-300 text-xs normal-case font-normal"
+                                >
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <span>CV</span>
+                                <input
+                                    type="search"
+                                    name="cv"
+                                    value="{{ $filters['cv'] }}"
+                                    form="cv-filters"
+                                    placeholder="Buscar CV"
+                                    class="mt-2 block w-52 rounded border-gray-300 text-xs normal-case font-normal"
+                                >
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <span>Idioma</span>
+                                <select name="language" form="cv-filters" class="mt-2 block w-32 rounded border-gray-300 text-xs normal-case font-normal">
+                                    <option value="">Todos</option>
+                                    @foreach ($filterOptions['languages'] as $value => $label)
+                                        <option value="{{ $value }}" @selected($filters['language'] === $value)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <span>Plantilla</span>
+                                <select name="template" form="cv-filters" class="mt-2 block w-40 rounded border-gray-300 text-xs normal-case font-normal">
+                                    <option value="">Todas</option>
+                                    @foreach ($filterOptions['templates'] as $templateId => $templateName)
+                                        <option value="{{ $templateId }}" @selected($filters['template'] === (string) $templateId)>{{ $templateName }}</option>
+                                    @endforeach
+                                </select>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <span>Actualizado</span>
+                                <input
+                                    type="date"
+                                    name="updated_date"
+                                    value="{{ $filters['updated_date'] }}"
+                                    form="cv-filters"
+                                    class="mt-2 block w-40 rounded border-gray-300 text-xs normal-case font-normal"
+                                >
+                            </th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase w-64">Acciones</th>
                         </tr>
                     </thead>
@@ -214,6 +278,10 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+
+            <div class="mt-4">
+                {{ $profiles->links() }}
             </div>
         </div>
     </div>

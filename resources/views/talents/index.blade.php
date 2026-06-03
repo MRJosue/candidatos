@@ -31,6 +31,14 @@
                     @if ($filters['name'] !== '' || $filters['created_date'] !== '')
                         <a href="{{ route('talents.index') }}" class="rounded bg-gray-100 px-3 py-2 text-sm text-gray-700 hover:bg-gray-200">Limpiar</a>
                     @endif
+                    <label class="block">
+                        <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Paginacion</span>
+                        <select name="per_page" form="talent-filters" onchange="document.getElementById('talent-filters').submit()" class="mt-1 w-full rounded border-gray-300 text-sm shadow-sm sm:w-32">
+                            @foreach ($perPageOptions as $option)
+                                <option value="{{ $option }}" @selected($perPage === $option)>{{ $option }}</option>
+                            @endforeach
+                        </select>
+                    </label>
                 </div>
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
                     <label class="block">

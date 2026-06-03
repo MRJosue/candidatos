@@ -39,23 +39,64 @@ class CvProfileController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
         $visibleUserIds = $user->visibleCvUserIds();
+        $filters = $this->indexFilters($request);
+        $perPage = $this->perPage($request);
 
         $profiles = CvProfile::query()
             ->with(['template', 'talent', 'user'])
             ->whereIn('user_id', $visibleUserIds)
-            ->latest()
-            ->get();
+            ->when($filters['talent'] !== '', function ($query) use ($filters): void {
+                $query->whereHas('talent', function ($query) use ($filters): void {
+                    collect(preg_split('/\s+/', $filters['talent']) ?: [])
+                        ->filter()
+                        ->each(function (string $term) use ($query): void {
+                            $query->where(function ($query) use ($term): void {
+                                $query->where('first_name', 'like', "%{$term}%")
+                                    ->orWhere('last_name', 'like', "%{$term}%")
+                                    ->orWhere('email', 'like', "%{$term}%");
+                            });
+                        });
+                });
+            })
+            ->when($filters['cv'] !== '', function ($query) use ($filters): void {
+                collect(preg_split('/\s+/', $filters['cv']) ?: [])
+                    ->filter()
+                    ->each(function (string $term) use ($query): void {
+                        $query->where(function ($query) use ($term): void {
+                            $query->where('title', 'like', "%{$term}%")
+                                ->orWhere('full_name', 'like', "%{$term}%")
+                                ->orWhere('email', 'like', "%{$term}%");
+                        });
+                    });
+            })
+            ->when($filters['language'] !== '', fn ($query) => $query->where('language', $filters['language']))
+            ->when($filters['template'] !== '', fn ($query) => $query->where('cv_template_id', $filters['template']))
+            ->when($filters['updated_date'] !== '', fn ($query) => $query->whereDate('updated_at', $filters['updated_date']))
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->appends($request->query());
 
         return view('cv.index', [
             'profiles' => $profiles,
             'profilesByTalent' => $profiles
-                ->groupBy(fn (CvProfile $profile) => $profile->talent_id ?: 'unassigned')
-                ->sortBy(fn ($group, $key) => $key === 'unassigned' ? 'zzzzzz' : ($group->first()->talent?->full_name ?? 'zzzzzy')),
+                ->getCollection()
+                ->groupBy(fn (CvProfile $profile) => $profile->talent_id ?: 'unassigned'),
             'talents' => $user->talents()->with('cvProfiles:id,talent_id,title,language,is_primary')->orderBy('last_name')->orderBy('first_name')->get(),
+            'filters' => $filters,
+            'filterOptions' => [
+                'languages' => CvProfile::languageOptions(),
+                'templates' => CvTemplate::query()
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->pluck('name', 'id'),
+            ],
+            'perPage' => $perPage,
+            'perPageOptions' => $this->perPageOptions(),
         ]);
     }
 
@@ -1310,5 +1351,36 @@ class CvProfileController extends Controller
             'end_date' => (! $isCurrent && isset($years[1])) ? "{$years[1]}-12-31" : null,
             'is_current' => $isCurrent,
         ];
+    }
+
+    private function indexFilters(Request $request): array
+    {
+        $validated = $request->validate([
+            'talent' => ['nullable', 'string', 'max:160'],
+            'cv' => ['nullable', 'string', 'max:160'],
+            'language' => ['nullable', Rule::in(array_keys(CvProfile::languageOptions()))],
+            'template' => ['nullable', 'integer'],
+            'updated_date' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+
+        return [
+            'talent' => trim((string) ($validated['talent'] ?? '')),
+            'cv' => trim((string) ($validated['cv'] ?? '')),
+            'language' => (string) ($validated['language'] ?? ''),
+            'template' => isset($validated['template']) ? (string) $validated['template'] : '',
+            'updated_date' => (string) ($validated['updated_date'] ?? ''),
+        ];
+    }
+
+    private function perPage(Request $request): int
+    {
+        $perPage = (int) $request->query('per_page', 10);
+
+        return in_array($perPage, $this->perPageOptions(), true) ? $perPage : 10;
+    }
+
+    private function perPageOptions(): array
+    {
+        return [5, 10, 20, 50, 100];
     }
 }

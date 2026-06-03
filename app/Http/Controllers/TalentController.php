@@ -19,6 +19,7 @@ class TalentController extends Controller
             'name' => ['nullable', 'string', 'max:160'],
             'created_date' => ['nullable', 'string', 'max:40'],
         ]);
+        $perPage = $this->perPage($request);
 
         $name = trim((string) ($filters['name'] ?? ''));
         $createdDate = trim((string) ($filters['created_date'] ?? ''));
@@ -44,8 +45,9 @@ class TalentController extends Controller
                 ->when($createdDate !== '', function ($query) use ($createdDate, $normalizedCreatedDate): void {
                     $query->whereDate('created_at', 'like', '%'.($normalizedCreatedDate ?: $createdDate).'%');
                 })
+                ->orderByDesc('created_at')
                 ->orderByDesc('id')
-                ->paginate(15)
+                ->paginate($perPage)
                 ->appends($request->query()),
             'vacancies' => $request->user()
                 ->vacancies()
@@ -57,6 +59,8 @@ class TalentController extends Controller
                 'name' => $name,
                 'created_date' => $createdDate,
             ],
+            'perPage' => $perPage,
+            'perPageOptions' => $this->perPageOptions(),
             'filterOptions' => [
                 'createdDates' => Talent::query()
                     ->whereIn('recruiter_id', $visibleRecruiterIds)
@@ -266,6 +270,18 @@ class TalentController extends Controller
         }
 
         return null;
+    }
+
+    private function perPage(Request $request): int
+    {
+        $perPage = (int) $request->query('per_page', 10);
+
+        return in_array($perPage, $this->perPageOptions(), true) ? $perPage : 10;
+    }
+
+    private function perPageOptions(): array
+    {
+        return [5, 10, 20, 50, 100];
     }
 
     private function profileForLanguage(Talent $talent, ?string $language): ?\App\Models\CvProfile
