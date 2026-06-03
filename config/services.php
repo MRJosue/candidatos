@@ -28,6 +28,18 @@ return [
         'cv_import_fallback_models' => array_filter(array_map('trim', explode(',', env('GEMINI_CV_IMPORT_FALLBACK_MODELS', 'gemini-2.5-flash-lite')))),
     ],
 
+    'cv_import' => [
+        'pdf_extract_timeout' => (int) env('CV_PDF_EXTRACT_TIMEOUT', 60),
+        'pdf_ocr_enabled' => env('CV_PDF_OCR_ENABLED', true),
+        'pdf_ocr_dpi' => (int) env('CV_PDF_OCR_DPI', 180),
+        'pdf_ocr_language' => env('CV_PDF_OCR_LANGUAGE', 'spa+eng'),
+        'binaries' => [
+            'pdftotext' => env('PDFTOTEXT_BINARY'),
+            'pdftoppm' => env('PDFTOPPM_BINARY'),
+            'tesseract' => env('TESSERACT_BINARY'),
+        ],
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),

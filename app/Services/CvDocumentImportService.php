@@ -7,6 +7,10 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Smalot\PdfParser\Parser as PdfParser;
+use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\ExecutableFinder;
+use Symfony\Component\Process\Process;
+use Throwable;
 use ZipArchive;
 
 class CvDocumentImportService
@@ -14,13 +18,6 @@ class CvDocumentImportService
     public function import(UploadedFile $file): array
     {
         $text = $this->extractText($file);
-
-        $software = $this->itemsFromSection($sections['software'] ?? '');
-        $skills = $this->itemsFromSection($sections['skills'] ?? '');
-
-        if ($software === [] && $skills !== []) {
-            [$software, $skills] = $this->partitionSoftwareItems($skills);
-        }
 
         return [
             'original_name' => $file->getClientOriginalName(),
@@ -50,6 +47,13 @@ class CvDocumentImportService
             ->values();
 
         $sections = $this->sections($lines->all());
+        $software = $this->itemsFromSection($sections['software'] ?? '');
+        $skills = $this->itemsFromSection($sections['skills'] ?? '');
+
+        if ($software === [] && $skills !== []) {
+            [$software, $skills] = $this->partitionSoftwareItems($skills);
+        }
+
         $summary = Arr::first([
             $sections['summary'] ?? null,
             $sections['profile'] ?? null,
@@ -129,12 +133,16 @@ class CvDocumentImportService
 
     private function extractPdfText(string $path): string
     {
-        $parser = new PdfParser;
-        $pdf = $parser->parseFile($path);
-        $text = $this->normalizeText($pdf->getText());
+        $candidates = array_filter([
+            $this->extractPdfTextWithParser($path),
+            $this->extractPdfTextWithPdftotext($path),
+            $this->extractPdfTextWithOcr($path),
+        ]);
 
-        if (mb_strlen($text) < 40) {
-            throw new RuntimeException('El PDF no tiene texto suficiente. Puede ser escaneado o estar como imagen.');
+        $text = $this->bestPdfTextCandidate($candidates);
+
+        if ($text === null) {
+            throw new RuntimeException('No se pudo extraer texto util del PDF. Puede venir como imagen o con una capa de texto incompatible. Intenta con un PDF exportado desde Word, DOCX o habilita pdftotext/tesseract en el servidor.');
         }
 
         return $text;
@@ -143,10 +151,214 @@ class CvDocumentImportService
     private function normalizeText(string $text): string
     {
         $text = str_replace(["\r\n", "\r"], "\n", $text);
+        $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', ' ', $text) ?? $text;
         $text = preg_replace('/[ \t]+/u', ' ', $text) ?? $text;
         $text = preg_replace("/\n{3,}/u", "\n\n", $text) ?? $text;
 
         return trim($text);
+    }
+
+    private function extractPdfTextWithParser(string $path): string
+    {
+        try {
+            $parser = new PdfParser;
+            $pdf = $parser->parseFile($path);
+
+            return $this->normalizeText($pdf->getText());
+        } catch (Throwable) {
+            return '';
+        }
+    }
+
+    private function extractPdfTextWithPdftotext(string $path): string
+    {
+        return $this->runTextExtractorCommand(
+            'pdftotext',
+            ['-layout', '-enc', 'UTF-8', $path, '-'],
+        );
+    }
+
+    private function extractPdfTextWithOcr(string $path): string
+    {
+        if (! config('services.cv_import.pdf_ocr_enabled', true)) {
+            return '';
+        }
+
+        $pdftoppm = $this->binaryPath('pdftoppm');
+        $tesseract = $this->binaryPath('tesseract');
+
+        if ($pdftoppm === null || $tesseract === null) {
+            return '';
+        }
+
+        $tempDir = storage_path('app/tmp/cv-import-ocr-'.Str::uuid());
+
+        if (! is_dir($tempDir) && ! @mkdir($tempDir, 0777, true) && ! is_dir($tempDir)) {
+            return '';
+        }
+
+        try {
+            $prefix = $tempDir.DIRECTORY_SEPARATOR.'page';
+
+            $this->runCommand([
+                $pdftoppm,
+                '-png',
+                '-r',
+                (string) config('services.cv_import.pdf_ocr_dpi', 180),
+                $path,
+                $prefix,
+            ]);
+
+            $images = glob($prefix.'-*.png') ?: [];
+
+            if ($images === []) {
+                return '';
+            }
+
+            sort($images);
+
+            $language = (string) config('services.cv_import.pdf_ocr_language', 'spa+eng');
+            $chunks = [];
+
+            foreach ($images as $image) {
+                $text = $this->runCommand([
+                    $tesseract,
+                    $image,
+                    'stdout',
+                    '-l',
+                    $language,
+                    '--psm',
+                    '6',
+                ]);
+
+                if ($text !== '') {
+                    $chunks[] = $text;
+                }
+            }
+
+            return $this->normalizeText(implode("\n\n", $chunks));
+        } catch (Throwable) {
+            return '';
+        } finally {
+            $this->deleteDirectory($tempDir);
+        }
+    }
+
+    private function runTextExtractorCommand(string $binary, array $arguments): string
+    {
+        $resolved = $this->binaryPath($binary);
+
+        if ($resolved === null) {
+            return '';
+        }
+
+        try {
+            return $this->normalizeText($this->runCommand([$resolved, ...$arguments]));
+        } catch (Throwable) {
+            return '';
+        }
+    }
+
+    private function runCommand(array $command): string
+    {
+        $process = new Process($command);
+        $process->setTimeout((int) config('services.cv_import.pdf_extract_timeout', 60));
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            throw new ProcessFailedException($process);
+        }
+
+        return $process->getOutput();
+    }
+
+    private function binaryPath(string $binary): ?string
+    {
+        $configured = config("services.cv_import.binaries.{$binary}");
+
+        if (is_string($configured) && trim($configured) !== '') {
+            return $configured;
+        }
+
+        return (new ExecutableFinder)->find($binary);
+    }
+
+    /**
+     * @param  array<int, string>  $candidates
+     */
+    private function bestPdfTextCandidate(array $candidates): ?string
+    {
+        $bestText = null;
+        $bestScore = 0;
+
+        foreach ($candidates as $candidate) {
+            $normalized = $this->normalizeText($candidate);
+            $score = $this->pdfTextScore($normalized);
+
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestText = $normalized;
+            }
+        }
+
+        return $bestScore >= 50 ? $bestText : null;
+    }
+
+    private function pdfTextScore(string $text): int
+    {
+        if ($text === '') {
+            return 0;
+        }
+
+        $length = mb_strlen($text);
+        $wordCount = preg_match_all('/[\p{L}\p{N}][\p{L}\p{N}\-+.@]{1,}/u', $text);
+        $lineCount = count(array_filter(preg_split('/\R/u', $text) ?: [], fn ($line) => trim($line) !== ''));
+        $emails = preg_match_all('/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/iu', $text);
+        $links = preg_match_all('/https?:\/\/|linkedin\.com|github\.com/iu', $text);
+        $badGlyphs = preg_match_all('/[�]/u', $text);
+        $garbageRuns = preg_match_all('/[^\s\p{L}\p{N}]{6,}/u', $text);
+
+        $score = 0;
+        $score += min($length, 4000) / 40;
+        $score += min((int) $wordCount, 250);
+        $score += min((int) $lineCount * 2, 80);
+        $score += (int) $emails * 20;
+        $score += (int) $links * 10;
+        $score -= (int) $badGlyphs * 12;
+        $score -= (int) $garbageRuns * 8;
+
+        return max(0, (int) round($score));
+    }
+
+    private function deleteDirectory(string $path): void
+    {
+        if (! is_dir($path)) {
+            return;
+        }
+
+        $items = scandir($path);
+
+        if ($items === false) {
+            return;
+        }
+
+        foreach ($items as $item) {
+            if (in_array($item, ['.', '..'], true)) {
+                continue;
+            }
+
+            $itemPath = $path.DIRECTORY_SEPARATOR.$item;
+
+            if (is_dir($itemPath)) {
+                $this->deleteDirectory($itemPath);
+
+                continue;
+            }
+
+            @unlink($itemPath);
+        }
+
+        @rmdir($path);
     }
 
     /**
