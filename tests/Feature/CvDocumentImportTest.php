@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Requests\StoreCvProfileRequest;
 use App\Models\CvProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -236,6 +237,58 @@ class CvDocumentImportTest extends TestCase
             'name' => 'Comunicacion',
             'type' => 'soft_skill',
         ]);
+    }
+
+    public function test_user_can_save_large_imported_section_text(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = CvProfile::create([
+            'user_id' => $user->id,
+            'title' => 'CV largo',
+            'full_name' => 'Carlos Poucell Arrona',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $largeExperiences = collect(range(1, 180))
+            ->map(fn ($index) => "Consultor SAP {$index} | Empresa {$index} | 2020 - presente\nImplementacion ABAP, BTP y CPI para cliente {$index}.")
+            ->implode("\n\n");
+
+        $this->actingAs($user)
+            ->put(route('cv.sections.update', $profile), [
+                'experiences_text' => $largeExperiences,
+                'education_text' => 'Ingenieria en Sistemas | Universidad Demo | 2010 - 2014',
+                'software_text' => "SAP GUI\nEclipse",
+                'skills_text' => "ABAP\nBTP\nCPI",
+                'languages_text' => "Espanol\nIngles",
+                'certifications_text' => "SAP Certified Development Associate",
+            ])
+            ->assertRedirect(route('cv.edit', $profile))
+            ->assertSessionHasNoErrors();
+
+        $this->assertGreaterThan(20, $profile->fresh()->experiences()->count());
+    }
+
+    public function test_cv_update_shows_friendly_message_when_text_is_too_long(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = CvProfile::create([
+            'user_id' => $user->id,
+            'title' => 'CV extenso',
+            'full_name' => 'Carlos Poucell Arrona',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $this->actingAs($user)
+            ->put(route('cv.update', $profile), [
+                'title' => 'CV extenso',
+                'full_name' => 'Carlos Poucell Arrona',
+                'summary' => str_repeat('A', StoreCvProfileRequest::LARGE_TEXT_MAX + 1),
+            ])
+            ->assertSessionHasErrors([
+                'summary' => 'El campo resumen profesional es demasiado largo. Reduce un poco el texto o divídelo en secciones.',
+            ]);
     }
 
     public function test_user_can_analyze_document_with_ai_preview_then_apply_detected_data(): void

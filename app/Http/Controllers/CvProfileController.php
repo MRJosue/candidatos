@@ -19,6 +19,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -26,6 +27,15 @@ use Throwable;
 
 class CvProfileController extends Controller
 {
+    private const SECTION_TEXT_LIMITS = [
+        'experiences_text' => 60000,
+        'education_text' => 30000,
+        'software_text' => 20000,
+        'skills_text' => 20000,
+        'languages_text' => 12000,
+        'certifications_text' => 20000,
+    ];
+
     /**
      * Display a listing of the resource.
      */
@@ -571,14 +581,28 @@ class CvProfileController extends Controller
      */
     private function validatedSectionText(Request $request): array
     {
-        return $request->validate([
-            'experiences_text' => ['nullable', 'string', 'max:12000'],
-            'education_text' => ['nullable', 'string', 'max:8000'],
-            'software_text' => ['nullable', 'string', 'max:4000'],
-            'skills_text' => ['nullable', 'string', 'max:4000'],
-            'languages_text' => ['nullable', 'string', 'max:4000'],
-            'certifications_text' => ['nullable', 'string', 'max:4000'],
-        ]);
+        return Validator::make(
+            $request->all(),
+            [
+                'experiences_text' => ['nullable', 'string', 'max:'.self::SECTION_TEXT_LIMITS['experiences_text']],
+                'education_text' => ['nullable', 'string', 'max:'.self::SECTION_TEXT_LIMITS['education_text']],
+                'software_text' => ['nullable', 'string', 'max:'.self::SECTION_TEXT_LIMITS['software_text']],
+                'skills_text' => ['nullable', 'string', 'max:'.self::SECTION_TEXT_LIMITS['skills_text']],
+                'languages_text' => ['nullable', 'string', 'max:'.self::SECTION_TEXT_LIMITS['languages_text']],
+                'certifications_text' => ['nullable', 'string', 'max:'.self::SECTION_TEXT_LIMITS['certifications_text']],
+            ],
+            [
+                'max.string' => 'El campo :attribute es demasiado largo. Puedes pegar bastante contenido, pero este bloque excede el límite permitido.',
+            ],
+            [
+                'experiences_text' => 'experiencia',
+                'education_text' => 'educación',
+                'software_text' => 'software',
+                'skills_text' => 'habilidades',
+                'languages_text' => 'idiomas',
+                'certifications_text' => 'certificaciones',
+            ],
+        )->validate();
     }
 
     private function hasSectionTextInput(Request $request): bool

@@ -24,4 +24,20 @@ class UpdateCvProfileRequest extends FormRequest
     {
         return (new StoreCvProfileRequest())->rules();
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return (new StoreCvProfileRequest())->messages();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return (new StoreCvProfileRequest())->attributes();
+    }
 }
