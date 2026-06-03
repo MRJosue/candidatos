@@ -34,8 +34,10 @@ return [
         'pdf_ocr_dpi' => (int) env('CV_PDF_OCR_DPI', 180),
         'pdf_ocr_language' => env('CV_PDF_OCR_LANGUAGE', 'spa+eng'),
         'binaries' => [
+            'antiword' => env('ANTIWORD_BINARY'),
             'pdftotext' => env('PDFTOTEXT_BINARY'),
             'pdftoppm' => env('PDFTOPPM_BINARY'),
+            'soffice' => env('SOFFICE_BINARY'),
             'tesseract' => env('TESSERACT_BINARY'),
         ],
     ],

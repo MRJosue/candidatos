@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Http\Requests\StoreCvProfileRequest;
 use App\Models\CvProfile;
 use App\Models\User;
+use App\Services\CvAiDocumentImportService;
+use App\Services\CvDocumentImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -669,6 +671,63 @@ class CvDocumentImportTest extends TestCase
             ])
             ->assertSessionHasErrors('cv_document_ai')
             ->assertSessionMissing("cv_document_import.{$profile->id}");
+    }
+
+    public function test_ai_document_import_accepts_legacy_doc_files(): void
+    {
+        config()->set('services.gemini.key', 'test-key');
+
+        $this->instance(CvDocumentImportService::class, new class extends CvDocumentImportService
+        {
+            public function extractText(UploadedFile $file): string
+            {
+                TestCase::assertSame('doc', strtolower($file->getClientOriginalExtension()));
+
+                return 'Salvador Ungsec Villarreal salvador@example.com SAP ABAP Consultant';
+            }
+        });
+
+        $this->instance(CvAiDocumentImportService::class, new class extends CvAiDocumentImportService
+        {
+            public function analyze(string $text): array
+            {
+                TestCase::assertStringContainsString('Salvador Ungsec Villarreal', $text);
+
+                return [
+                    'profile' => [
+                        'full_name' => 'Salvador Ungsec Villarreal',
+                        'email' => 'salvador@example.com',
+                        'phone' => '',
+                        'location' => '',
+                        'headline' => 'SAP ABAP Consultant',
+                        'summary' => '',
+                        'linkedin_url' => '',
+                        'portfolio_url' => '',
+                    ],
+                    'experiences' => [],
+                    'education' => [],
+                    'software' => [],
+                    'skills' => ['SAP ABAP'],
+                    'languages' => [],
+                    'awards' => [],
+                ];
+            }
+        });
+
+        $user = User::factory()->create();
+        $profile = CvProfile::create([
+            'user_id' => $user->id,
+            'title' => 'CV IA DOC',
+            'full_name' => 'Nombre anterior',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('cv.import-document-ai', $profile), [
+                'cv_document' => UploadedFile::fake()->createWithContent('salvador.doc', 'legacy word bytes'),
+            ])
+            ->assertRedirect(route('cv.edit', $profile))
+            ->assertSessionHas("cv_document_import.{$profile->id}");
     }
 
     public function test_ai_document_import_uses_fallback_model_when_primary_is_unavailable(): void

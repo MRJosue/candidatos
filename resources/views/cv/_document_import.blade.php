@@ -4,7 +4,7 @@
     <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
             <h3 class="text-lg font-semibold text-gray-900">Crear CV con IA</h3>
-            <p class="text-sm text-gray-500">Sube un PDF con texto real, DOCX o TXT. La IA preparara una previsualizacion y solo se guardara cuando confirmes.</p>
+            <p class="text-sm text-gray-500">Sube un PDF con texto real, DOC, DOCX o TXT. La IA preparara una previsualizacion y solo se guardara cuando confirmes.</p>
         </div>
         <span class="text-xs font-medium uppercase tracking-wide text-indigo-600">Demo IA</span>
     </div>
@@ -21,7 +21,7 @@
             <input
                 type="file"
                 name="cv_document"
-                accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
                 class="mt-1 block w-full rounded border border-gray-300 text-sm file:mr-4 file:border-0 file:bg-indigo-100 file:px-4 file:py-2 file:text-sm file:text-indigo-800"
                 required
             >

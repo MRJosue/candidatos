@@ -695,7 +695,7 @@ class CvProfileController extends Controller
         ?CvProfile $cvProfile = null,
     ): array|RedirectResponse {
         $data = $request->validate([
-            'cv_document' => ['required', 'file', 'mimes:pdf,docx,txt', 'max:6144'],
+            'cv_document' => ['required', 'file', 'mimes:pdf,doc,docx,txt', 'max:6144'],
         ]);
 
         try {
@@ -741,7 +741,7 @@ class CvProfileController extends Controller
             ]);
 
             return back()
-                ->withErrors(['cv_document_ai' => 'No se pudo analizar el documento con IA. Intenta de nuevo con un PDF con texto real, DOCX o TXT.'])
+                ->withErrors(['cv_document_ai' => 'No se pudo analizar el documento con IA. Intenta de nuevo con un PDF con texto real, DOC, DOCX o TXT.'])
                 ->withInput();
         }
     }

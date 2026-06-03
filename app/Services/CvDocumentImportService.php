@@ -32,6 +32,7 @@ class CvDocumentImportService
 
         return match ($extension) {
             'txt' => $this->extractTxtText($path),
+            'doc' => $this->extractDocText($path),
             'docx' => $this->extractDocxText($path),
             'pdf' => $this->extractPdfText($path),
             default => throw new RuntimeException('Formato de CV no soportado.'),
@@ -131,6 +132,22 @@ class CvDocumentImportService
         return $this->normalizeText($text);
     }
 
+    private function extractDocText(string $path): string
+    {
+        $candidates = array_filter([
+            $this->extractDocTextWithAntiword($path),
+            $this->extractDocTextWithLibreOffice($path),
+        ]);
+
+        $text = $this->bestPdfTextCandidate($candidates);
+
+        if ($text === null) {
+            throw new RuntimeException('No se pudo leer el archivo DOC. Intenta con un DOCX o habilita antiword/LibreOffice en el servidor para convertir documentos antiguos de Word.');
+        }
+
+        return $text;
+    }
+
     private function extractPdfText(string $path): string
     {
         $candidates = array_filter([
@@ -146,6 +163,55 @@ class CvDocumentImportService
         }
 
         return $text;
+    }
+
+    private function extractDocTextWithAntiword(string $path): string
+    {
+        return $this->runTextExtractorCommand(
+            'antiword',
+            ['-m', 'UTF-8.txt', $path],
+        );
+    }
+
+    private function extractDocTextWithLibreOffice(string $path): string
+    {
+        $soffice = $this->binaryPath('soffice');
+
+        if ($soffice === null) {
+            return '';
+        }
+
+        $tempDir = storage_path('app/tmp/cv-import-doc-'.Str::uuid());
+
+        if (! is_dir($tempDir) && ! @mkdir($tempDir, 0777, true) && ! is_dir($tempDir)) {
+            return '';
+        }
+
+        try {
+            $this->runCommand([
+                $soffice,
+                '--headless',
+                '--convert-to',
+                'txt:Text',
+                '--outdir',
+                $tempDir,
+                $path,
+            ]);
+
+            $converted = $tempDir.DIRECTORY_SEPARATOR.pathinfo($path, PATHINFO_FILENAME).'.txt';
+
+            if (! is_file($converted)) {
+                return '';
+            }
+
+            $text = file_get_contents($converted);
+
+            return is_string($text) ? $this->normalizeText($text) : '';
+        } catch (Throwable) {
+            return '';
+        } finally {
+            $this->deleteDirectory($tempDir);
+        }
     }
 
     private function normalizeText(string $text): string
