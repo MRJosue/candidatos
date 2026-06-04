@@ -20,6 +20,7 @@ class CvWordDownloadTest extends TestCase
             'title' => 'CV Andrea Lopez',
             'full_name' => 'Andrea Lopez',
             'email' => 'andrea@example.com',
+            'linkedin_url' => 'linkedin.com/in/andrea-lopez',
             'headline' => 'Laravel Engineer',
             'summary' => 'Construye productos internos.',
             'awards' => "Oracle Cloud Infrastructure Foundations\nScrum Master",
@@ -60,6 +61,7 @@ class CvWordDownloadTest extends TestCase
         $this->assertStringNotContainsString('9 average', $document);
         $this->assertStringNotContainsString('Promedio GPA 9', $document);
         $this->assertStringContainsString('Proyecto final de integraciones', $document);
+        $this->assertStringNotContainsString('linkedin.com/in/andrea-lopez', $document);
 
         $certificationsPosition = strpos($document, 'CERTIFICACIONES');
         $awardPosition = strpos($document, 'Oracle Cloud Infrastructure Foundations');

@@ -264,7 +264,7 @@ class CvWordDocumentService
 
     private function topBlock(CvProfile $profile): string
     {
-        $contact = collect([$profile->email, $profile->phone, $profile->location, $profile->linkedin_url, $profile->portfolio_url])
+        $contact = collect([$profile->email, $profile->phone, $profile->location, $profile->portfolio_url])
             ->filter()
             ->implode("\n");
 

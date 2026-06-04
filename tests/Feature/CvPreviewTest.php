@@ -101,6 +101,7 @@ class CvPreviewTest extends TestCase
             'title' => 'ACT CV',
             'full_name' => 'Abdiel Salas Perez',
             'email' => 'abdiel@example.com',
+            'linkedin_url' => 'linkedin.com/in/abdiel-salas',
             'headline' => 'Developer',
             'summary' => 'Full Stack Developer with enterprise web application experience.',
             'awards' => 'Oracle Cloud Platform Application Integration 2025 Certified Professional (OIC)',
@@ -137,6 +138,7 @@ class CvPreviewTest extends TestCase
             ->assertSee('template-act', false)
             ->assertSee('ACT Digital', false)
             ->assertDontSee('abdiel@example.com')
+            ->assertDontSee('linkedin.com/in/abdiel-salas')
             ->assertSee('Resumen profesional')
             ->assertSee('Periodo')
             ->assertSee('Puesto')

@@ -45,7 +45,7 @@ class StoreCvProfileRequest extends FormRequest
             'awards' => ['nullable', 'string', 'max:'.self::LARGE_TEXT_MAX],
             'leadership_activities' => ['nullable', 'string', 'max:'.self::LARGE_TEXT_MAX],
             'interests' => ['nullable', 'string', 'max:'.self::LARGE_TEXT_MAX],
-            'linkedin_url' => ['nullable', 'url', 'max:255'],
+            'linkedin_url' => ['nullable', 'string', 'max:255'],
             'portfolio_url' => ['nullable', 'url', 'max:255'],
             'is_primary' => ['sometimes', 'boolean'],
         ];

@@ -70,7 +70,7 @@ class PublicTalentProfileController extends Controller
             'awards' => ['nullable', 'string', 'max:2000'],
             'leadership_activities' => ['nullable', 'string', 'max:2000'],
             'interests' => ['nullable', 'string', 'max:1000'],
-            'linkedin_url' => ['nullable', 'url', 'max:255'],
+            'linkedin_url' => ['nullable', 'string', 'max:255'],
             'portfolio_url' => ['nullable', 'url', 'max:255'],
             'experiences_text' => ['nullable', 'string', 'max:12000'],
             'education_text' => ['nullable', 'string', 'max:8000'],
