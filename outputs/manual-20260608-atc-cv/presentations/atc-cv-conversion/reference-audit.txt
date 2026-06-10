@@ -1,0 +1,11 @@
+Referencia principal: producto local CV Studio.
+No se uso plantilla externa.
+Direccion narrativa elegida:
+- presentacion ejecutiva
+- 6 slides
+- tono comercial para directivos
+- foco en conversion de CVs para ATC
+Anti-patrones a evitar:
+- explicar modulos no relacionados con conversion
+- slides llenas de texto
+- lenguaje demasiado tecnico para directivos

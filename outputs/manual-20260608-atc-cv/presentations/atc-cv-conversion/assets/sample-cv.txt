@@ -1,0 +1,42 @@
+ANA LOPEZ
+Backend Developer Laravel
+Ciudad de Mexico, Mexico
+ana.lopez.demo@example.com
++52 55 1200 0101
+https://linkedin.com/in/ana-lopez-demo
+
+RESUMEN
+Desarrolladora backend con experiencia en APIs, automatizacion, migraciones de datos e integraciones para productos digitales.
+
+EXPERIENCIA
+Backend Developer | Fintech MX | 2022 - Actualidad
+Lidere el desarrollo de APIs REST, automatizacion de procesos internos y despliegues con Docker y AWS.
+Herramientas: Laravel, PHP, MySQL, Redis, Docker, AWS
+
+Software Engineer | Consultora Tech | 2020 - 2022
+Desarrolle integraciones, optimizacion de consultas y soporte a sistemas internos.
+Herramientas: PHP, Laravel, MySQL, Git
+
+EDUCACION
+Ingenieria en Sistemas | Universidad Demo | 2015 - 2019
+
+SOFTWARE
+Docker
+AWS
+Redis
+MySQL
+Git
+
+SKILLS
+PHP
+Laravel
+REST APIs
+SQL
+Automatizacion
+
+IDIOMAS
+Espanol nativo
+Ingles B2
+
+CERTIFICACIONES
+AWS Cloud Practitioner

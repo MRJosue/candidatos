@@ -1,0 +1,17 @@
+Fuentes revisadas:
+- README del proyecto: gestion de talento, vacantes, postulaciones y generacion de CVs.
+- app/Services/CvDocumentImportService.php: extrae texto de PDF, DOCX y TXT.
+- app/Services/CvAiDocumentImportService.php: estructura CV con Gemini y separa perfil, experiencia, educacion, software, skills, idiomas y certificaciones.
+- app/Http/Controllers/CvProfileController.php: flujo de analizar documento, previsualizar, aplicar al CV, traducir y descargar PDF/Word.
+- resources/views/cv/_document_import.blade.php: pantalla de carga del documento.
+- resources/views/cv/_document_import_preview.blade.php: pantalla de previsualizacion antes de aplicar.
+- resources/views/cv/show.blade.php: acciones de traduccion, plantilla y descarga.
+Credenciales demo locales:
+- demo@example.com / password
+Activos usados:
+- public/images/cv-templates/act-digital-logo.png
+Capturas planeadas:
+- login o dashboard
+- formulario de analisis del CV
+- previsualizacion del documento analizado
+- pantalla de CV con botones de descarga

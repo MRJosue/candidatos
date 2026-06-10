@@ -6,6 +6,12 @@
             <p class="text-sm text-gray-500">Archivo: {{ $documentImport['original_name'] ?? 'documento cargado' }}. Al aplicar se reemplazaran las secciones seleccionadas.</p>
         </div>
 
+        @if (filled($documentImport['notice'] ?? null))
+            <div class="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                {{ $documentImport['notice'] }}
+            </div>
+        @endif
+
         <div class="grid md:grid-cols-2 gap-4 text-sm">
             <div class="rounded border border-gray-200 p-4">
                 <h4 class="font-semibold text-gray-900">Perfil</h4>

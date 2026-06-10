@@ -1,0 +1,22 @@
+task mode: create
+primary deck-profile: product-platform
+secondary profile gates: strategy-leadership
+required proof objects:
+- workflow de conversion de CV a CV estructurado
+- evidencia visual del demo real
+- beneficios operativos para ATC
+- cierre ejecutivo con propuesta de piloto/demo
+source/asset requirements:
+- usar capturas reales del demo local
+- usar solo logos/activos existentes en el proyecto
+- no inventar marcas externas
+brand authenticity constraints:
+- mantener un look ejecutivo y limpio
+- usar el logo ACT Digital existente solo como activo del proyecto
+profile-specific QA gates:
+- deck corto y directo
+- cada slide debe responder a una pregunta ejecutiva
+- foco exclusivo en conversion a CVs
+known missing inputs:
+- no se proporcionaron KPIs historicos de ahorro/volumen
+- se asumira impacto cualitativo y potencial operativo

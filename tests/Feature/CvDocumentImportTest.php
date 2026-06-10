@@ -624,7 +624,7 @@ class CvDocumentImportTest extends TestCase
         ]);
     }
 
-    public function test_ai_document_import_requires_gemini_api_key(): void
+    public function test_ai_document_import_falls_back_to_local_parser_when_gemini_api_key_is_missing(): void
     {
         config()->set('services.gemini.key', null);
         Http::fake();
@@ -639,15 +639,28 @@ class CvDocumentImportTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('cv.import-document-ai', $profile), [
-                'cv_document' => UploadedFile::fake()->createWithContent('cv-ai.txt', 'Andrea Lopez'),
+                'cv_document' => UploadedFile::fake()->createWithContent('cv-ai.txt', implode("\n", [
+                    'Andrea Lopez',
+                    'Backend Engineer',
+                    'Email: andrea@example.com',
+                    'Habilidades',
+                    'Laravel',
+                    'PHP',
+                ])),
             ])
-            ->assertSessionHasErrors('cv_document_ai')
-            ->assertSessionMissing("cv_document_import.{$profile->id}");
+            ->assertRedirect(route('cv.edit', $profile))
+            ->assertSessionHas("cv_document_import.{$profile->id}");
 
         Http::assertNothingSent();
+
+        $import = session("cv_document_import.{$profile->id}");
+
+        $this->assertSame('parser', $import['source']);
+        $this->assertNotEmpty($import['notice'] ?? null);
+        $this->assertSame('Andrea Lopez', $import['parsed']['profile']['full_name'] ?? null);
     }
 
-    public function test_ai_document_import_handles_invalid_json_response(): void
+    public function test_ai_document_import_falls_back_to_local_parser_for_invalid_json_response(): void
     {
         config()->set('services.gemini.key', 'test-key');
 
@@ -673,10 +686,23 @@ class CvDocumentImportTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('cv.import-document-ai', $profile), [
-                'cv_document' => UploadedFile::fake()->createWithContent('cv-ai.txt', 'Andrea Lopez'),
+                'cv_document' => UploadedFile::fake()->createWithContent('cv-ai.txt', implode("\n", [
+                    'Andrea Lopez',
+                    'Backend Engineer',
+                    'Email: andrea@example.com',
+                    'Experiencia',
+                    'Tech Lead | Acme | 2021 - presente',
+                    'Arquitectura de APIs',
+                ])),
             ])
-            ->assertSessionHasErrors('cv_document_ai')
-            ->assertSessionMissing("cv_document_import.{$profile->id}");
+            ->assertRedirect(route('cv.edit', $profile))
+            ->assertSessionHas("cv_document_import.{$profile->id}");
+
+        $import = session("cv_document_import.{$profile->id}");
+
+        $this->assertSame('parser', $import['source']);
+        $this->assertSame('Andrea Lopez', $import['parsed']['profile']['full_name'] ?? null);
+        $this->assertNotEmpty($import['parsed']['experiences'] ?? []);
     }
 
     public function test_ai_document_import_rejects_legacy_doc_files_with_friendly_message(): void

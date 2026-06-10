@@ -264,10 +264,6 @@ class CvWordDocumentService
 
     private function topBlock(CvProfile $profile): string
     {
-        $contact = collect([$profile->email, $profile->phone, $profile->location, $profile->portfolio_url])
-            ->filter()
-            ->implode("\n");
-
         $left = '<w:p><w:pPr><w:pStyle w:val="ActName"/></w:pPr>'.$this->runs($profile->full_name ?: $profile->title ?: 'CV').'</w:p>';
 
         if (filled($profile->headline)) {
@@ -278,14 +274,9 @@ class CvWordDocumentService
             $left .= '<w:p><w:pPr><w:pStyle w:val="ActRole"/></w:pPr>'.$this->runs($profile->tagline).'</w:p>';
         }
 
-        $right = filled($contact)
-            ? '<w:p><w:pPr><w:pStyle w:val="ActContact"/><w:jc w:val="right"/></w:pPr>'.$this->runs($contact).'</w:p>'
-            : '<w:p><w:pPr><w:pStyle w:val="ActContact"/></w:pPr></w:p>';
-
-        return '<w:tbl>'.$this->tableProperties([6728, 2616])
+        return '<w:tbl>'.$this->tableProperties([self::CONTENT_WIDTH])
             .'<w:tr>'
-            .'<w:tc><w:tcPr><w:tcW w:w="6728" w:type="dxa"/><w:tcBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/></w:tcBorders></w:tcPr>'.$left.'</w:tc>'
-            .'<w:tc><w:tcPr><w:tcW w:w="2616" w:type="dxa"/><w:tcBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/></w:tcBorders></w:tcPr>'.$right.'</w:tc>'
+            .'<w:tc><w:tcPr><w:tcW w:w="'.self::CONTENT_WIDTH.'" w:type="dxa"/><w:tcBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/></w:tcBorders></w:tcPr>'.$left.'</w:tc>'
             .'</w:tr>'
             .'</w:tbl>';
     }

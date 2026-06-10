@@ -61,6 +61,7 @@ class CvWordDownloadTest extends TestCase
         $this->assertStringNotContainsString('9 average', $document);
         $this->assertStringNotContainsString('Promedio GPA 9', $document);
         $this->assertStringContainsString('Proyecto final de integraciones', $document);
+        $this->assertStringNotContainsString('andrea@example.com', $document);
         $this->assertStringNotContainsString('linkedin.com/in/andrea-lopez', $document);
 
         $certificationsPosition = strpos($document, 'CERTIFICACIONES');

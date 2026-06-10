@@ -754,6 +754,22 @@ class CvProfileController extends Controller
         try {
             $usageService->ensureCanConsume($request->user());
             $text = $importService->extractText($data['cv_document']);
+        } catch (RuntimeException $exception) {
+            Log::warning('CV document extraction failed.', [
+                'cv_profile_id' => $request->route('cvProfile')?->id,
+                'user_id' => $request->user()?->id,
+                'file_name' => $data['cv_document']->getClientOriginalName(),
+                'file_mime' => $data['cv_document']->getClientMimeType(),
+                'file_size' => $data['cv_document']->getSize(),
+                'message' => $exception->getMessage(),
+            ]);
+
+            return back()
+                ->withErrors(['cv_document_ai' => $exception->getMessage()])
+                ->withInput();
+        }
+
+        try {
             $analysis = $aiImportService->analyze($text);
 
             $usageService->record($request->user(), CvUsageEvent::TYPE_IMPORT_AI, $cvProfile, [
@@ -771,26 +787,57 @@ class CvProfileController extends Controller
                 ],
             ];
         } catch (RuntimeException $exception) {
-            Log::warning('CV AI document import failed.', [
+            return $this->fallbackDocumentImport($request, $importService, $data['cv_document'], $text, $exception);
+        } catch (Throwable $exception) {
+            return $this->fallbackDocumentImport($request, $importService, $data['cv_document'], $text, $exception);
+        }
+    }
+
+    private function fallbackDocumentImport(
+        Request $request,
+        CvDocumentImportService $importService,
+        \Illuminate\Http\UploadedFile $file,
+        string $text,
+        Throwable $exception,
+    ): array|RedirectResponse {
+        if ($exception instanceof RuntimeException) {
+            Log::warning('CV AI document import failed, using local parser fallback.', [
                 'cv_profile_id' => $request->route('cvProfile')?->id,
                 'user_id' => $request->user()?->id,
-                'file_name' => $data['cv_document']->getClientOriginalName(),
-                'file_mime' => $data['cv_document']->getClientMimeType(),
-                'file_size' => $data['cv_document']->getSize(),
+                'file_name' => $file->getClientOriginalName(),
+                'file_mime' => $file->getClientMimeType(),
+                'file_size' => $file->getSize(),
                 'message' => $exception->getMessage(),
             ]);
-
-            return back()
-                ->withErrors(['cv_document_ai' => $exception->getMessage()])
-                ->withInput();
-        } catch (Throwable $exception) {
-            Log::error('Unexpected CV AI document import error.', [
+        } else {
+            Log::error('Unexpected CV AI document import error, using local parser fallback.', [
                 'cv_profile_id' => $request->route('cvProfile')?->id,
                 'user_id' => $request->user()?->id,
-                'file_name' => $data['cv_document']->getClientOriginalName(),
-                'file_mime' => $data['cv_document']->getClientMimeType(),
-                'file_size' => $data['cv_document']->getSize(),
+                'file_name' => $file->getClientOriginalName(),
+                'file_mime' => $file->getClientMimeType(),
+                'file_size' => $file->getSize(),
                 'exception' => $exception,
+            ]);
+        }
+
+        try {
+            return [
+                'original_name' => $file->getClientOriginalName(),
+                'source' => 'parser',
+                'notice' => 'Se generó una previsualización con el parser local para que puedas revisarla y aplicarla.',
+                'parsed' => [
+                    ...$importService->parseText($text),
+                    'raw_text' => str($text)->limit(12000, '')->toString(),
+                ],
+            ];
+        } catch (Throwable $fallbackException) {
+            Log::error('CV local parser fallback failed after AI import error.', [
+                'cv_profile_id' => $request->route('cvProfile')?->id,
+                'user_id' => $request->user()?->id,
+                'file_name' => $file->getClientOriginalName(),
+                'file_mime' => $file->getClientMimeType(),
+                'file_size' => $file->getSize(),
+                'exception' => $fallbackException,
             ]);
 
             return back()
