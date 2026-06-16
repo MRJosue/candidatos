@@ -61,6 +61,9 @@ class CvDocumentImportService
             $sections['objective'] ?? null,
         ]);
         $experiences = $this->entriesFromSection($sections['experience'] ?? '');
+        if ($experiences === [] && filled($sections['experience'] ?? null)) {
+            $experiences = $this->structuredExperienceEntriesFromSection($sections['experience']);
+        }
         if ($experiences === []) {
             $experiences = $this->experienceEntriesFromLines($lines->all());
         }
@@ -69,8 +72,8 @@ class CvDocumentImportService
             'profile' => [
                 'full_name' => $this->guessName($lines->all()),
                 'email' => $this->firstMatch('/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/iu', $cleanText),
-                'phone' => $this->firstMatch('/(?:\+?\d[\d\s().-]{7,}\d)/u', $lines->take(12)->implode("\n")),
-                'headline' => $lines->get(1),
+                'phone' => $this->firstMatch('/(?:\+?\(?\d[\d\s().-]{7,}\d)/u', $this->contactSearchText($lines->all())),
+                'headline' => $this->guessHeadline($lines->all()),
                 'summary' => $summary,
                 'linkedin_url' => $this->firstLink($cleanText, 'linkedin.com'),
                 'portfolio_url' => $this->firstPortfolioLink($cleanText),
@@ -471,6 +474,14 @@ class CvDocumentImportService
 
         return collect($sections)
             ->map(fn ($sectionLines) => trim(implode("\n", $sectionLines)))
+            ->map(function ($content, $section) {
+                if ($section === 'summary') {
+                    return $this->sanitizeSummarySection($content);
+                }
+
+                return $content;
+            })
+            ->filter(fn ($content) => $content !== '')
             ->all();
     }
 
@@ -480,6 +491,96 @@ class CvDocumentImportService
         $value = preg_replace('/[^a-z ]/u', '', $value) ?? $value;
 
         return trim($value);
+    }
+
+    private function sanitizeSummarySection(string $section): string
+    {
+        $lines = collect(preg_split('/\R/u', $section) ?: [])
+            ->map(fn ($line) => trim($line))
+            ->filter()
+            ->values();
+
+        if ($lines->isEmpty()) {
+            return '';
+        }
+
+        $summary = [];
+        $capturing = false;
+
+        foreach ($lines as $line) {
+            if ($this->isMetadataLabel($line)) {
+                if ($capturing) {
+                    break;
+                }
+
+                continue;
+            }
+
+            if (! $capturing && $this->looksLikeMetadataValue($line)) {
+                continue;
+            }
+
+            $summary[] = $line;
+            $capturing = true;
+        }
+
+        return trim(implode("\n", $summary));
+    }
+
+    private function isMetadataLabel(string $line): bool
+    {
+        if (! str_contains($line, ':')) {
+            return false;
+        }
+
+        return in_array($this->headingKey(Str::before($line, ':')), [
+            'full name',
+            'name',
+            'nombre',
+            'nombre completo',
+            'nationality',
+            'nationalidad',
+            'birthplace',
+            'lugar de nacimiento',
+            'address',
+            'direccion',
+            'location',
+            'ubicacion',
+            'cell phone',
+            'phone',
+            'telefono',
+            'telefono celular',
+            'emails',
+            'email',
+            'correo',
+            'correos',
+            'age',
+            'edad',
+            'profession',
+            'profesion',
+            'visa and pasaport',
+            'visa and passport',
+            'visa y pasaporte',
+            'passport',
+            'pasaporte',
+            'linkedin',
+            'portfolio',
+        ], true);
+    }
+
+    private function looksLikeMetadataValue(string $line): bool
+    {
+        if (str_contains($line, '@') || preg_match('/(?:\+?\(?\d[\d\s().-]{7,}\d)/u', $line)) {
+            return true;
+        }
+
+        return in_array($this->headingKey($line), [
+            'mexican',
+            'mexico df',
+            'cdmx',
+            'developer',
+            'yes',
+        ], true);
     }
 
     /**
@@ -498,6 +599,54 @@ class CvDocumentImportService
         }
 
         return null;
+    }
+
+    /**
+     * @param  array<int, string>  $lines
+     */
+    private function guessHeadline(array $lines): ?string
+    {
+        $name = $this->guessName($lines);
+
+        foreach (array_slice($lines, 0, 12) as $line) {
+            $trimmed = trim($line);
+
+            if ($trimmed === '' || $trimmed === $name) {
+                continue;
+            }
+
+            if ($this->headingKey($trimmed) === 'summary' || $this->isMetadataLabel($trimmed)) {
+                continue;
+            }
+
+            if (str_contains($trimmed, '@') || preg_match('/(?:\+?\(?\d[\d\s().-]{7,}\d)/u', $trimmed)) {
+                continue;
+            }
+
+            if (mb_strlen($trimmed) <= 100) {
+                return $trimmed;
+            }
+        }
+
+        return $lines[1] ?? null;
+    }
+
+    /**
+     * @param  array<int, string>  $lines
+     */
+    private function contactSearchText(array $lines): string
+    {
+        $window = [];
+
+        foreach (array_slice($lines, 0, 40) as $line) {
+            if (in_array($this->headingKey($line), ['experience', 'experiencia'], true)) {
+                break;
+            }
+
+            $window[] = $line;
+        }
+
+        return implode("\n", $window);
     }
 
     private function firstMatch(string $pattern, string $text): ?string
@@ -607,6 +756,42 @@ class CvDocumentImportService
     }
 
     /**
+     * @return array<int, array<string, string|null>>
+     */
+    private function structuredExperienceEntriesFromSection(string $section): array
+    {
+        $lines = collect(preg_split('/\R/u', $section) ?: [])
+            ->map(fn ($line) => trim($line))
+            ->filter()
+            ->values()
+            ->all();
+
+        $periodIndexes = [];
+
+        foreach ($lines as $index => $line) {
+            if ($this->looksLikeStructuredExperiencePeriod($line)) {
+                $periodIndexes[] = $index;
+            }
+        }
+
+        return collect($periodIndexes)
+            ->map(function ($lineIndex, $entryIndex) use ($lines, $periodIndexes) {
+                $nextPeriodIndex = $periodIndexes[$entryIndex + 1] ?? count($lines);
+                $descriptionLines = array_slice($lines, $lineIndex + 1, $nextPeriodIndex - $lineIndex - 1);
+
+                return [
+                    'title' => $this->structuredExperienceTitle($lines, $lineIndex),
+                    'organization' => $this->structuredExperienceOrganization($lines, $lineIndex),
+                    'period' => $this->structuredExperiencePeriod($lines[$lineIndex]),
+                    'description' => $this->structuredExperienceDescription($descriptionLines),
+                ];
+            })
+            ->filter(fn ($entry) => filled($entry['title']) || filled($entry['organization']) || filled($entry['period']))
+            ->values()
+            ->all();
+    }
+
+    /**
      * PDF text extraction can interleave columns, so some resumes expose dates and
      * companies without keeping them under the detected "Experiencia" heading.
      *
@@ -627,14 +812,32 @@ class CvDocumentImportService
             ->map(function ($lineIndex, $entryIndex) use ($lines, $periodIndexes) {
                 $nextPeriodIndex = $periodIndexes[$entryIndex + 1] ?? count($lines);
                 $periodLine = $lines[$lineIndex];
+                $isStructured = $this->looksLikeStructuredExperiencePeriod($periodLine);
+                $isLabeled = $this->looksLikeLabeledExperiencePeriod($periodLine);
                 [$period, $organization] = $this->periodAndOrganization($periodLine);
                 $descriptionLines = array_slice($lines, $lineIndex + 1, $nextPeriodIndex - $lineIndex - 1);
 
                 return [
-                    'title' => $this->titleBeforePeriod($lines, $lineIndex),
-                    'organization' => $organization,
-                    'period' => $period,
-                    'description' => $this->descriptionFromLines($descriptionLines),
+                    'title' => $isLabeled
+                        ? $this->labeledExperienceTitle($lines, $lineIndex)
+                        : ($isStructured
+                        ? $this->structuredExperienceTitle($lines, $lineIndex)
+                        : $this->titleBeforePeriod($lines, $lineIndex)),
+                    'organization' => $isLabeled
+                        ? $this->labeledExperienceOrganization($lines, $lineIndex)
+                        : ($isStructured
+                        ? $this->structuredExperienceOrganization($lines, $lineIndex)
+                        : $organization),
+                    'period' => $isLabeled
+                        ? $this->labeledExperiencePeriod($periodLine)
+                        : ($isStructured
+                        ? $this->structuredExperiencePeriod($periodLine)
+                        : $period),
+                    'description' => $isLabeled
+                        ? $this->labeledExperienceDescription($descriptionLines)
+                        : ($isStructured
+                        ? $this->structuredExperienceDescription($descriptionLines)
+                        : $this->descriptionFromLines($descriptionLines)),
                 ];
             })
             ->filter(fn ($entry) => filled($entry['period']) || filled($entry['organization']))
@@ -644,9 +847,25 @@ class CvDocumentImportService
 
     private function looksLikeExperiencePeriod(string $line): bool
     {
-        return str_contains($line, '//')
+        return (
+            str_contains($line, '//')
             && preg_match('/(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|actualidad|actual|presente|present|(?:19|20)\d{2})/iu', $line)
-            && preg_match('/(?:19|20)\d{2}/', $line);
+            && preg_match('/(?:19|20)\d{2}/', $line)
+        ) || $this->looksLikeStructuredExperiencePeriod($line) || $this->looksLikeLabeledExperiencePeriod($line);
+    }
+
+    private function looksLikeStructuredExperiencePeriod(string $line): bool
+    {
+        if (! str_contains($line, '/')) {
+            return false;
+        }
+
+        return (bool) preg_match('/(?:jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre).*(?:19|20)\d{2}/iu', $line);
+    }
+
+    private function looksLikeLabeledExperiencePeriod(string $line): bool
+    {
+        return (bool) preg_match('/^Period:\s*.+\d{2}\/\d{4}\s*(?:-|–)\s*\d{2}\/\d{4}/iu', trim($line));
     }
 
     /**
@@ -714,5 +933,175 @@ class CvDocumentImportService
             ->implode("\n");
 
         return $description ?: null;
+    }
+
+    /**
+     * @param  array<int, string>  $lines
+     */
+    private function structuredExperienceTitle(array $lines, int $periodIndex): ?string
+    {
+        for ($index = $periodIndex - 1; $index >= max(0, $periodIndex - 12); $index--) {
+            if (preg_match('/^Position\s+(.+)/iu', $lines[$index], $matches)) {
+                return trim($matches[1]);
+            }
+        }
+
+        return $this->titleBeforePeriod($lines, $periodIndex);
+    }
+
+    /**
+     * @param  array<int, string>  $lines
+     */
+    private function structuredExperienceOrganization(array $lines, int $periodIndex): ?string
+    {
+        $positionIndex = null;
+
+        for ($index = $periodIndex - 1; $index >= max(0, $periodIndex - 12); $index--) {
+            if (preg_match('/^Position\s+/iu', $lines[$index])) {
+                $positionIndex = $index;
+                break;
+            }
+        }
+
+        $searchStart = $positionIndex !== null ? $positionIndex - 1 : $periodIndex - 1;
+
+        for ($index = $searchStart; $index >= max(0, $searchStart - 10); $index--) {
+            $line = trim($lines[$index]);
+
+            if ($line === '' || $this->isStructuredExperienceLabel($line)) {
+                continue;
+            }
+
+            if (preg_match('/^Project\b|^Place\b|^Date\b|^Responsibilit/iu', $line)) {
+                continue;
+            }
+
+            return $line;
+        }
+
+        return null;
+    }
+
+    private function structuredExperiencePeriod(string $line): string
+    {
+        $parts = preg_split('/\s+\/\s+/u', trim($line), 2) ?: [];
+
+        return trim($parts[1] ?? $line);
+    }
+
+    /**
+     * @param  array<int, string>  $lines
+     */
+    private function structuredExperienceDescription(array $lines): ?string
+    {
+        $description = [];
+
+        foreach ($lines as $line) {
+            if (preg_match('/^(Tools|Referencia|cliente)\b/iu', $line)) {
+                break;
+            }
+
+            if (preg_match('/\bCell:|\bEmail:/iu', $line)) {
+                break;
+            }
+
+            if ($this->isStructuredExperienceLabel($line)) {
+                if ($description !== []) {
+                    break;
+                }
+
+                continue;
+            }
+
+            $normalized = trim(preg_replace('/^[\-*•➢]\s*/u', '', $line) ?? $line);
+
+            if ($normalized === '' || mb_strlen($normalized) === 1) {
+                continue;
+            }
+
+            $description[] = $normalized;
+        }
+
+        return $description !== [] ? implode("\n", $description) : null;
+    }
+
+    private function isStructuredExperienceLabel(string $line): bool
+    {
+        return (bool) preg_match('/^(Consulting|house\s*\/|Industry|Project\b|Project phase\b|Place\s*\/\s*Begin|Date- End Date|Responsibilitie|Responsibilitie\s*s|Responsibility|Responsibilities|Tools\b|Referencia\b|cliente\b)$/iu', trim($line));
+    }
+
+    /**
+     * @param  array<int, string>  $lines
+     */
+    private function labeledExperienceTitle(array $lines, int $periodIndex): ?string
+    {
+        for ($index = $periodIndex + 1; $index <= min(count($lines) - 1, $periodIndex + 4); $index++) {
+            if (preg_match('/^Position:\s*(.+)/iu', $lines[$index], $matches)) {
+                return trim($matches[1]);
+            }
+        }
+
+        for ($index = $periodIndex - 1; $index >= max(0, $periodIndex - 4); $index--) {
+            if (preg_match('/^Position:\s*(.+)/iu', $lines[$index], $matches)) {
+                return trim($matches[1]);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<int, string>  $lines
+     */
+    private function labeledExperienceOrganization(array $lines, int $periodIndex): ?string
+    {
+        for ($index = $periodIndex - 1; $index >= max(0, $periodIndex - 4); $index--) {
+            $line = trim($lines[$index]);
+
+            if ($line === '' || preg_match('/^(Experience|Period:|Position:|Responsibilities:?)/iu', $line)) {
+                continue;
+            }
+
+            return $line;
+        }
+
+        return null;
+    }
+
+    private function labeledExperiencePeriod(string $line): string
+    {
+        return trim((string) preg_replace('/^Period:\s*/iu', '', trim($line)));
+    }
+
+    /**
+     * @param  array<int, string>  $lines
+     */
+    private function labeledExperienceDescription(array $lines): ?string
+    {
+        $description = [];
+
+        foreach ($lines as $line) {
+            if ($this->looksLikeLabeledExperiencePeriod($line)) {
+                break;
+            }
+
+            if (preg_match('/^Position:\s*/iu', $line)) {
+                continue;
+            }
+
+            if (preg_match('/^Responsibilities:?\s*$/iu', $line)) {
+                continue;
+            }
+
+            $normalized = trim(preg_replace('/^[\-*•➢]\s*/u', '', $line) ?? $line);
+
+            if ($normalized === '') {
+                continue;
+            }
+
+            $description[] = $normalized;
+        }
+
+        return $description !== [] ? implode("\n", $description) : null;
     }
 }
