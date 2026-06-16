@@ -223,7 +223,7 @@ class CvDocumentImportTest extends TestCase
                 'certifications_text' => "Scrum Master\nAWS Practitioner",
             ])
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('talents.index'));
+            ->assertRedirect(route('cv.edit', $profile));
 
         $this->assertDatabaseHas('cv_profiles', [
             'id' => $profile->id,

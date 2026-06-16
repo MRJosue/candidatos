@@ -282,7 +282,7 @@ class CvProfileController extends Controller
         });
 
         return redirect()
-            ->route('talents.index')
+            ->route('cv.edit', $cvProfile)
             ->with('status', 'CV actualizado.');
     }
 
