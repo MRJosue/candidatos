@@ -172,4 +172,55 @@ class CvDocumentImportServiceTest extends TestCase
         $this->assertSame('SAP CPI Sr.', $parsed['experiences'][0]['title']);
         $this->assertStringContainsString('Executed cutovers', $parsed['experiences'][0]['description'] ?? '');
     }
+
+    public function test_parse_text_handles_resume_with_fecha_and_rol_y_proyecto_blocks(): void
+    {
+        $service = new CvDocumentImportService;
+
+        $parsed = $service->parseText(implode("\n", [
+            'Ariel García Colín',
+            'Consultor SAP SD / TI',
+            'Resumen Ejecutivo',
+            'Consultor SAP con experiencia en proyectos enterprise.',
+            'Habilidades',
+            'LENGUAJES DE PROGRAMACION:',
+            'Elemento',
+            'Experiencia',
+            'ABAP',
+            '4 Years',
+            'PHP',
+            '1 Year',
+            'ERP:',
+            'SAP',
+            '11 años',
+            'Experiencia Laboral',
+            'HAND BRIDGE Consulting (México)',
+            'Fecha: 10/2023 a 09/2025',
+            'Rol y Proyecto: ERP SAP Senior SD Specialyst',
+            'Proyecto Rainbow , Prospira, TAWA, ZD',
+            'Fecha: 10/2023 a Actual',
+            'Responsabilidades:',
+            'Participación en el proyecto configuración y desarrollo en el proceso de facturación.',
+            'Entorno:',
+            'SAP R/3 6.5, S/4 hana',
+            'NTT DATA Services (México)',
+            'Rol y Proyecto: ERP SAP Senior SD Specialyst',
+            'Proyecto Dematic',
+            'Fecha: 02/2022 a 07/2022',
+            'Responsabilidades:',
+            'Configuración de SAP SD',
+            'Jira',
+        ]));
+
+        $this->assertSame('Consultor SAP con experiencia en proyectos enterprise.', $parsed['profile']['summary']);
+        $this->assertSame(['ABAP', 'PHP'], $parsed['skills']);
+        $this->assertContains('SAP', $parsed['software']);
+        $this->assertCount(2, $parsed['experiences']);
+        $this->assertSame('ERP SAP Senior SD Specialyst', $parsed['experiences'][0]['title']);
+        $this->assertSame('HAND BRIDGE Consulting (México)', $parsed['experiences'][0]['organization']);
+        $this->assertSame('10/2023 - Actual', $parsed['experiences'][0]['period']);
+        $this->assertStringContainsString('Proyecto Rainbow', $parsed['experiences'][0]['description'] ?? '');
+        $this->assertSame('NTT DATA Services (México)', $parsed['experiences'][1]['organization']);
+        $this->assertSame('02/2022 - 07/2022', $parsed['experiences'][1]['period']);
+    }
 }

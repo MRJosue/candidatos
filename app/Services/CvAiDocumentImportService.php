@@ -10,6 +10,8 @@ use RuntimeException;
 
 class CvAiDocumentImportService
 {
+    private const ANALYSIS_QUALITY_THRESHOLD = 30;
+
     public function analyze(string $text): array
     {
         $apiKey = config('services.gemini.key');
@@ -20,53 +22,53 @@ class CvAiDocumentImportService
 
         $models = $this->models();
         $lastException = null;
+        $bestCandidate = null;
+        $bestScore = 0;
 
         foreach ($models as $model) {
-            $response = Http::withHeaders([
-                'X-goog-api-key' => $apiKey,
-            ])
-                ->acceptJson()
-                ->timeout(45)
-                ->retry(2, 1500, throw: false)
-                ->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent", [
-                    'systemInstruction' => [
-                        'parts' => [[
-                            'text' => 'Extrae datos de CV y responde solo JSON valido segun el esquema. Si falta un dato usa cadena vacia o lista vacia.',
-                        ]],
-                    ],
-                    'contents' => [
-                        [
-                            'role' => 'user',
-                            'parts' => [[
-                                'text' => "Analiza este CV y devuelve JSON estructurado. Separa software de habilidades: software debe contener herramientas, aplicaciones, plataformas, sistemas operativos, IDEs, suites y productos usados; skills debe contener lenguajes de programacion, frameworks, bases de datos, metodologias y capacidades tecnicas. No extraigas ni devuelvas habilidades blandas. En experiences separa responsabilidades en description y herramientas/plataformas especificas de ese puesto en tools_used. En awards incluye solo certificaciones, cursos profesionales y diplomados detectados, uno por elemento. No incluyas reconocimientos generales, premios, hobbies ni logros laborales en awards:\n\n".Str::limit($text, 24000, ''),
-                            ]],
-                        ],
-                    ],
-                    'generationConfig' => [
-                        'responseMimeType' => 'application/json',
-                        'responseSchema' => $this->schema(),
-                    ],
-                ]);
-
             try {
-                $response->throw();
+                $direct = $this->analyzeStructuredText($apiKey, $model, $text);
+                $directScore = $this->analysisQualityScore($direct);
+
+                if ($directScore >= self::ANALYSIS_QUALITY_THRESHOLD) {
+                    return $direct;
+                }
+
+                if ($directScore > $bestScore) {
+                    $bestScore = $directScore;
+                    $bestCandidate = $direct;
+                }
+
+                $orderedText = $this->reorderText($apiKey, $model, $text);
+
+                if ($orderedText === '') {
+                    continue;
+                }
+
+                $ordered = $this->analyzeStructuredText($apiKey, $model, $orderedText, ordered: true);
+                $orderedScore = $this->analysisQualityScore($ordered);
+
+                if ($orderedScore >= self::ANALYSIS_QUALITY_THRESHOLD) {
+                    return $ordered;
+                }
+
+                if ($orderedScore > $bestScore) {
+                    $bestScore = $orderedScore;
+                    $bestCandidate = $ordered;
+                }
             } catch (RequestException $exception) {
                 $lastException = $exception;
 
-                if ($this->shouldTryNextModel($response->status())) {
+                if ($this->shouldTryNextModel($exception->response?->status() ?? 0)) {
                     continue;
                 }
 
                 throw new RuntimeException($this->requestErrorMessage($exception), previous: $exception);
             }
+        }
 
-            $decoded = json_decode($this->responseText($response->json()), true);
-
-            if (! is_array($decoded)) {
-                throw new RuntimeException('Gemini no devolvio JSON valido para previsualizar.');
-            }
-
-            return $this->normalize($decoded);
+        if ($bestCandidate !== null) {
+            return $bestCandidate;
         }
 
         if ($lastException instanceof RequestException) {
@@ -74,6 +76,93 @@ class CvAiDocumentImportService
         }
 
         throw new RuntimeException('Gemini no pudo analizar el documento. Revisa la API key, cuota o intenta de nuevo.');
+    }
+
+    /**
+     * @throws RequestException
+     */
+    private function analyzeStructuredText(string $apiKey, string $model, string $text, bool $ordered = false): array
+    {
+        $response = $this->request(
+            $apiKey,
+            $model,
+            [
+                'systemInstruction' => [
+                    'parts' => [[
+                        'text' => 'Extrae datos de CV y responde solo JSON valido segun el esquema. Si falta un dato usa cadena vacia o lista vacia.',
+                    ]],
+                ],
+                'contents' => [
+                    [
+                        'role' => 'user',
+                        'parts' => [[
+                            'text' => $ordered
+                                ? "Analiza este CV ya reordenado por secciones y devuelve JSON estructurado. Conserva separacion estricta entre software y skills. No devuelvas habilidades blandas. En experiences separa responsabilidades en description y herramientas/plataformas especificas de ese puesto en tools_used. En awards incluye solo certificaciones, cursos profesionales y diplomados detectados, uno por elemento:\n\n".Str::limit($text, 24000, '')
+                                : "Analiza este CV y devuelve JSON estructurado. Separa software de habilidades: software debe contener herramientas, aplicaciones, plataformas, sistemas operativos, IDEs, suites y productos usados; skills debe contener lenguajes de programacion, frameworks, bases de datos, metodologias y capacidades tecnicas. No extraigas ni devuelvas habilidades blandas. En experiences separa responsabilidades en description y herramientas/plataformas especificas de ese puesto en tools_used. En awards incluye solo certificaciones, cursos profesionales y diplomados detectados, uno por elemento. No incluyas reconocimientos generales, premios, hobbies ni logros laborales en awards:\n\n".Str::limit($text, 24000, ''),
+                        ]],
+                    ],
+                ],
+                'generationConfig' => [
+                    'responseMimeType' => 'application/json',
+                    'responseSchema' => $this->schema(),
+                ],
+            ],
+        );
+
+        $decoded = json_decode($this->responseText($response->json()), true);
+
+        if (! is_array($decoded)) {
+            throw new RuntimeException('Gemini no devolvio JSON valido para previsualizar.');
+        }
+
+        return $this->normalize($decoded);
+    }
+
+    /**
+     * @throws RequestException
+     */
+    private function reorderText(string $apiKey, string $model, string $text): string
+    {
+        $response = $this->request(
+            $apiKey,
+            $model,
+            [
+                'systemInstruction' => [
+                    'parts' => [[
+                        'text' => 'Reordena CVs desestructurados sin inventar datos. Devuelve solo texto plano legible.',
+                    ]],
+                ],
+                'contents' => [
+                    [
+                        'role' => 'user',
+                        'parts' => [[
+                            'text' => "Ordena este CV en texto plano con secciones claras para facilitar su extracción posterior. Usa encabezados exactos cuando existan datos: PROFILE, SUMMARY, EXPERIENCE, EDUCATION, SOFTWARE, SKILLS, LANGUAGES, AWARDS. Dentro de EXPERIENCE crea bloques consistentes con Company, Position, Period, Description y Tools cuando existan. No inventes nada, no traduzcas, no resumas y conserva los datos originales aunque el formato venga roto:\n\n".Str::limit($text, 24000, ''),
+                        ]],
+                    ],
+                ],
+            ],
+        );
+
+        return trim($this->responseText($response->json()));
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @throws RequestException
+     */
+    private function request(string $apiKey, string $model, array $payload): \Illuminate\Http\Client\Response
+    {
+        $response = Http::withHeaders([
+            'X-goog-api-key' => $apiKey,
+        ])
+            ->acceptJson()
+            ->timeout(45)
+            ->retry(2, 1500, throw: false)
+            ->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent", $payload);
+
+        $response->throw();
+
+        return $response;
     }
 
     /**
@@ -130,6 +219,42 @@ class CvAiDocumentImportService
     private function shouldTryNextModel(int $status): bool
     {
         return in_array($status, [429, 500, 502, 503, 504], true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function analysisQualityScore(array $data): int
+    {
+        $profile = (array) ($data['profile'] ?? []);
+        $score = 0;
+        $score += $this->filledStringScore($profile['full_name'] ?? null, 8);
+        $score += $this->filledStringScore($profile['headline'] ?? null, 8);
+        $score += $this->filledStringScore($profile['summary'] ?? null, 12);
+        $score += $this->filledStringScore($profile['email'] ?? null, 6);
+        $score += $this->filledStringScore($profile['phone'] ?? null, 4);
+        $score += min(count($data['software'] ?? []), 12);
+        $score += min(count($data['skills'] ?? []), 12);
+        $score += min(count($data['languages'] ?? []), 6);
+        $score += min(count($data['education'] ?? []), 10) * 2;
+
+        foreach ((array) ($data['experiences'] ?? []) as $experience) {
+            if (! is_array($experience)) {
+                continue;
+            }
+
+            $score += $this->filledStringScore($experience['position'] ?? null, 8);
+            $score += $this->filledStringScore($experience['company'] ?? null, 8);
+            $score += $this->filledStringScore($experience['period'] ?? null, 6);
+            $score += $this->filledStringScore($experience['description'] ?? null, 4);
+        }
+
+        return $score;
+    }
+
+    private function filledStringScore(mixed $value, int $points): int
+    {
+        return is_string($value) && trim($value) !== '' ? $points : 0;
     }
 
     /**

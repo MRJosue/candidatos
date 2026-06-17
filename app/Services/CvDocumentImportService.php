@@ -60,13 +60,7 @@ class CvDocumentImportService
             $sections['profile'] ?? null,
             $sections['objective'] ?? null,
         ]);
-        $experiences = $this->entriesFromSection($sections['experience'] ?? '');
-        if ($experiences === [] && filled($sections['experience'] ?? null)) {
-            $experiences = $this->structuredExperienceEntriesFromSection($sections['experience']);
-        }
-        if ($experiences === []) {
-            $experiences = $this->experienceEntriesFromLines($lines->all());
-        }
+        $experiences = $this->bestExperienceEntries($sections['experience'] ?? '', $lines->all());
 
         return [
             'profile' => [
@@ -437,7 +431,7 @@ class CvDocumentImportService
     private function sections(array $lines): array
     {
         $aliases = [
-            'summary' => ['resumen', 'extracto', 'sobre mi', 'acerca de mi', 'perfil profesional', 'professional summary', 'summary'],
+            'summary' => ['resumen', 'resumen ejecutivo', 'extracto', 'sobre mi', 'acerca de mi', 'perfil profesional', 'professional summary', 'summary'],
             'profile' => ['perfil', 'profile'],
             'objective' => ['objetivo', 'objective'],
             'experience' => ['experiencia', 'experiencia laboral', 'experiencia profesional', 'work experience', 'professional experience', 'employment'],
@@ -457,12 +451,21 @@ class CvDocumentImportService
         $current = null;
         $sections = [];
 
+        $previousKey = null;
+
         foreach ($lines as $line) {
             $key = $this->headingKey($line);
+
+            if ($this->isTableHeaderSectionAlias($previousKey, $key)) {
+                $previousKey = $key;
+
+                continue;
+            }
 
             if (isset($lookup[$key])) {
                 $current = $lookup[$key];
                 $sections[$current] ??= [];
+                $previousKey = $key;
 
                 continue;
             }
@@ -470,6 +473,8 @@ class CvDocumentImportService
             if ($current) {
                 $sections[$current][] = $line;
             }
+
+            $previousKey = $key;
         }
 
         return collect($sections)
@@ -483,6 +488,11 @@ class CvDocumentImportService
             })
             ->filter(fn ($content) => $content !== '')
             ->all();
+    }
+
+    private function isTableHeaderSectionAlias(?string $previousKey, string $currentKey): bool
+    {
+        return $previousKey === 'elemento' && in_array($currentKey, ['experiencia', 'experience'], true);
     }
 
     private function headingKey(string $value): string
@@ -695,8 +705,41 @@ class CvDocumentImportService
         return collect($parts)
             ->map(fn ($item) => trim(preg_replace('/^[\-*•]\s*/u', '', $item) ?? $item))
             ->filter(fn ($item) => mb_strlen($item) >= 2)
+            ->reject(fn ($item) => $this->isSectionNoiseItem($item))
             ->values()
             ->all();
+    }
+
+    private function isSectionNoiseItem(string $item): bool
+    {
+        $normalized = trim(Str::lower(Str::ascii($item)), " :");
+
+        if ($normalized === '' || in_array($normalized, ['elemento', 'experiencia'], true)) {
+            return true;
+        }
+
+        if (preg_match('/^\d+\s*(year|years|ano|anos|mes|meses)\b/u', $normalized)) {
+            return true;
+        }
+
+        return $this->looksLikeSkillCategoryHeading($item);
+    }
+
+    private function looksLikeSkillCategoryHeading(string $item): bool
+    {
+        $normalized = trim(Str::lower(Str::ascii($item)), " :");
+
+        if (in_array($normalized, [
+            'lenguajes de programacion',
+            'sistemas operativos',
+            'case',
+            'erp',
+            'data ware house',
+        ], true)) {
+            return true;
+        }
+
+        return str_ends_with(trim($item), ':');
     }
 
     /**
@@ -753,6 +796,205 @@ class CvDocumentImportService
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  array<int, string>  $lines
+     * @return array<int, array<string, string|null>>
+     */
+    private function bestExperienceEntries(string $section, array $lines): array
+    {
+        $candidates = [
+            $this->entriesFromSection($section),
+            $this->labeledRoleExperienceEntriesFromSection($section),
+            $this->structuredExperienceEntriesFromSection($section),
+            $this->experienceEntriesFromLines($lines),
+        ];
+
+        $best = [];
+        $bestScore = 0;
+
+        foreach ($candidates as $candidate) {
+            $score = $this->experienceEntriesScore($candidate);
+
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $best = $candidate;
+            }
+        }
+
+        return $best;
+    }
+
+    /**
+     * @param  array<int, array<string, string|null>>  $entries
+     */
+    private function experienceEntriesScore(array $entries): int
+    {
+        $score = min(count($entries), 12) * 12;
+
+        foreach ($entries as $entry) {
+            if (filled($entry['title'] ?? $entry['position'] ?? null)) {
+                $score += 15;
+            }
+
+            if (filled($entry['organization'] ?? $entry['company'] ?? null)) {
+                $score += 15;
+            }
+
+            if (filled($entry['period'] ?? null)) {
+                $score += 10;
+            }
+
+            if (filled($entry['description'] ?? null)) {
+                $score += 5;
+            }
+
+            if (mb_strlen((string) ($entry['description'] ?? '')) > 1200) {
+                $score -= 12;
+            }
+        }
+
+        return max(0, $score);
+    }
+
+    /**
+     * @return array<int, array<string, string|null>>
+     */
+    private function labeledRoleExperienceEntriesFromSection(string $section): array
+    {
+        $lines = collect(preg_split('/\R/u', $section) ?: [])
+            ->map(fn ($line) => trim($line))
+            ->filter()
+            ->values()
+            ->all();
+
+        $entries = [];
+        $currentCompany = null;
+        $employmentPeriod = null;
+        $currentEntry = null;
+        $description = [];
+
+        $flushCurrent = function () use (&$entries, &$currentEntry, &$description): void {
+            if ($currentEntry === null) {
+                return;
+            }
+
+            $currentEntry['description'] = $description !== [] ? implode("\n", $description) : null;
+
+            if (filled($currentEntry['title']) || filled($currentEntry['organization']) || filled($currentEntry['period'])) {
+                $entries[] = $currentEntry;
+            }
+
+            $currentEntry = null;
+            $description = [];
+        };
+
+        foreach ($lines as $index => $line) {
+            if ($this->looksLikeLabeledRoleLine($line)) {
+                $flushCurrent();
+
+                $currentEntry = [
+                    'title' => $this->labeledRoleTitle($line),
+                    'organization' => $currentCompany,
+                    'period' => $employmentPeriod,
+                    'description' => null,
+                ];
+
+                continue;
+            }
+
+            if ($this->looksLikeLabeledCompanyLine($lines, $index)) {
+                $flushCurrent();
+                $currentCompany = $line;
+                $employmentPeriod = null;
+
+                continue;
+            }
+
+            if ($this->looksLikeLabeledDateLine($line)) {
+                $period = $this->normalizeLabeledDate($line);
+
+                if ($currentEntry !== null) {
+                    $currentEntry['period'] = $period;
+                } else {
+                    $employmentPeriod = $period;
+                }
+
+                continue;
+            }
+
+            if ($currentEntry === null) {
+                continue;
+            }
+
+            if ($this->isLabeledRoleMetaLabel($line)) {
+                continue;
+            }
+
+            $normalized = trim(preg_replace('/^[\-*•➢]\s*/u', '', $line) ?? $line);
+
+            if ($normalized !== '') {
+                $description[] = $normalized;
+            }
+        }
+
+        $flushCurrent();
+
+        return $entries;
+    }
+
+    private function looksLikeLabeledRoleLine(string $line): bool
+    {
+        return (bool) preg_match('/^Rol y Proyecto:\s*(.+)/iu', $line);
+    }
+
+    private function labeledRoleTitle(string $line): string
+    {
+        return trim((string) preg_replace('/^Rol y Proyecto:\s*/iu', '', $line));
+    }
+
+    /**
+     * @param  array<int, string>  $lines
+     */
+    private function looksLikeLabeledCompanyLine(array $lines, int $index): bool
+    {
+        $line = trim($lines[$index] ?? '');
+
+        if (
+            $line === ''
+            || $this->looksLikeLabeledRoleLine($line)
+            || $this->looksLikeLabeledDateLine($line)
+            || $this->isLabeledRoleMetaLabel($line)
+            || preg_match('/^Proyecto\b/iu', $line)
+        ) {
+            return false;
+        }
+
+        $next = trim($lines[$index + 1] ?? '');
+        $nextTwo = trim($lines[$index + 2] ?? '');
+
+        return $this->looksLikeLabeledDateLine($next)
+            || $this->looksLikeLabeledRoleLine($next)
+            || ($this->looksLikeLabeledDateLine($next) && $this->looksLikeLabeledRoleLine($nextTwo));
+    }
+
+    private function looksLikeLabeledDateLine(string $line): bool
+    {
+        return (bool) preg_match('/^Fecha:\s*.+/iu', $line);
+    }
+
+    private function normalizeLabeledDate(string $line): string
+    {
+        $line = trim((string) preg_replace('/^Fecha:\s*/iu', '', $line));
+        $line = preg_replace('/\s+a\s+/iu', ' - ', $line) ?? $line;
+
+        return trim((string) (preg_replace('/(?<=\d{2}\/\d{4})\s+(?=(?:\d{2}\/\d{4}|Actual|Presente))/iu', ' - ', $line) ?? $line));
+    }
+
+    private function isLabeledRoleMetaLabel(string $line): bool
+    {
+        return (bool) preg_match('/^(Responsabilidades|Resultados\/Logros|Entorno):?$/iu', $line);
     }
 
     /**

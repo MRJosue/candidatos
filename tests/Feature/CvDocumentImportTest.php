@@ -784,4 +784,127 @@ class CvDocumentImportTest extends TestCase
         Http::assertSent(fn ($request) => str_contains($request->url(), 'models/gemini-2.5-flash:generateContent'));
         Http::assertSent(fn ($request) => str_contains($request->url(), 'models/gemini-2.5-flash-lite:generateContent'));
     }
+
+    public function test_ai_document_import_reorders_difficult_cv_before_extracting_structured_data(): void
+    {
+        config()->set('services.gemini.key', 'test-key');
+        config()->set('services.gemini.cv_import_model', 'gemini-2.5-flash');
+
+        Http::fake([
+            'generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent' => Http::sequence()
+                ->push([
+                    'candidates' => [[
+                        'content' => [
+                            'parts' => [[
+                                'text' => json_encode([
+                                    'profile' => [
+                                        'full_name' => 'Ariel García Colín',
+                                        'email' => '',
+                                        'phone' => '',
+                                        'location' => '',
+                                        'headline' => '',
+                                        'summary' => '',
+                                        'linkedin_url' => '',
+                                        'portfolio_url' => '',
+                                    ],
+                                    'experiences' => [],
+                                    'education' => [],
+                                    'software' => [],
+                                    'skills' => [],
+                                    'languages' => [],
+                                    'awards' => [],
+                                ]),
+                            ]],
+                        ],
+                    ]],
+                ], 200)
+                ->push([
+                    'candidates' => [[
+                        'content' => [
+                            'parts' => [[
+                                'text' => implode("\n", [
+                                    'PROFILE',
+                                    'Ariel García Colín',
+                                    'SUMMARY',
+                                    'Consultor SAP SD / TI con experiencia en proyectos enterprise.',
+                                    'EXPERIENCE',
+                                    'Company: HAND BRIDGE Consulting (México)',
+                                    'Position: ERP SAP Senior SD Specialist',
+                                    'Period: 10/2023 - Actual',
+                                    'Description: Participación en configuración y desarrollo en facturación SAP EDI.',
+                                    'Tools: SAP R/3 6.5, S/4 hana, Jira',
+                                    'SOFTWARE',
+                                    'SAP GUI',
+                                    'Jira',
+                                    'SKILLS',
+                                    'SAP SD',
+                                    'EDI',
+                                ]),
+                            ]],
+                        ],
+                    ]],
+                ], 200)
+                ->push([
+                    'candidates' => [[
+                        'content' => [
+                            'parts' => [[
+                                'text' => json_encode([
+                                    'profile' => [
+                                        'full_name' => 'Ariel García Colín',
+                                        'email' => '',
+                                        'phone' => '',
+                                        'location' => 'México',
+                                        'headline' => 'Consultor SAP SD / TI',
+                                        'summary' => 'Consultor SAP SD / TI con experiencia en proyectos enterprise.',
+                                        'linkedin_url' => '',
+                                        'portfolio_url' => '',
+                                    ],
+                                    'experiences' => [[
+                                        'position' => 'ERP SAP Senior SD Specialist',
+                                        'company' => 'HAND BRIDGE Consulting (México)',
+                                        'period' => '10/2023 - Actual',
+                                        'description' => 'Participación en configuración y desarrollo en facturación SAP EDI.',
+                                        'tools_used' => 'SAP R/3 6.5, S/4 hana, Jira',
+                                    ]],
+                                    'education' => [],
+                                    'software' => ['SAP GUI', 'Jira'],
+                                    'skills' => ['SAP SD', 'EDI'],
+                                    'languages' => [],
+                                    'awards' => [],
+                                ]),
+                            ]],
+                        ],
+                    ]],
+                ], 200),
+        ]);
+
+        $user = User::factory()->create();
+        $profile = CvProfile::create([
+            'user_id' => $user->id,
+            'title' => 'CV IA dificil',
+            'full_name' => 'Nombre anterior',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('cv.import-document-ai', $profile), [
+                'cv_document' => UploadedFile::fake()->createWithContent(
+                    'cv-dificil.txt',
+                    'HAND BRIDGE Consulting Fecha 10/2023 a Actual Rol y Proyecto ERP SAP Senior SD Specialist Jira'
+                ),
+            ])
+            ->assertRedirect(route('cv.edit', $profile))
+            ->assertSessionHas("cv_document_import.{$profile->id}");
+
+        Http::assertSentCount(3);
+
+        $this->actingAs($user)
+            ->get(route('cv.edit', $profile))
+            ->assertOk()
+            ->assertSee('Ariel García Colín')
+            ->assertSee('ERP SAP Senior SD Specialist')
+            ->assertSee('HAND BRIDGE Consulting (México)')
+            ->assertSee('SAP GUI; Jira')
+            ->assertSee('SAP SD; EDI');
+    }
 }
