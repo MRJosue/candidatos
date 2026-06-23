@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
@@ -56,6 +57,10 @@ class CvAiDocumentImportService
                     $bestScore = $orderedScore;
                     $bestCandidate = $ordered;
                 }
+            } catch (ConnectionException $exception) {
+                $lastException = $exception;
+
+                continue;
             } catch (RequestException $exception) {
                 $lastException = $exception;
 
@@ -73,6 +78,10 @@ class CvAiDocumentImportService
 
         if ($lastException instanceof RequestException) {
             throw new RuntimeException($this->requestErrorMessage($lastException), previous: $lastException);
+        }
+
+        if ($lastException instanceof ConnectionException) {
+            throw new RuntimeException($this->connectionErrorMessage($lastException), previous: $lastException);
         }
 
         throw new RuntimeException('Gemini no pudo analizar el documento. Revisa la API key, cuota o intenta de nuevo.');
@@ -156,7 +165,8 @@ class CvAiDocumentImportService
             'X-goog-api-key' => $apiKey,
         ])
             ->acceptJson()
-            ->timeout(45)
+            ->connectTimeout((int) config('services.gemini.cv_import_connect_timeout', 15))
+            ->timeout((int) config('services.gemini.cv_import_timeout', 75))
             ->retry(2, 1500, throw: false)
             ->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent", $payload);
 
@@ -214,6 +224,17 @@ class CvAiDocumentImportService
         }
 
         return 'Gemini no pudo analizar el documento. Revisa la API key, cuota o intenta de nuevo.';
+    }
+
+    private function connectionErrorMessage(ConnectionException $exception): string
+    {
+        $message = trim($exception->getMessage());
+
+        if ($message !== '') {
+            return "Gemini no respondio antes del tiempo limite o hubo un problema de red: {$message}";
+        }
+
+        return 'Gemini no respondio antes del tiempo limite o hubo un problema de red.';
     }
 
     private function shouldTryNextModel(int $status): bool

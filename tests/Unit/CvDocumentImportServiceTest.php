@@ -223,4 +223,48 @@ class CvDocumentImportServiceTest extends TestCase
         $this->assertSame('NTT DATA Services (México)', $parsed['experiences'][1]['organization']);
         $this->assertSame('02/2022 - 07/2022', $parsed['experiences'][1]['period']);
     }
+
+    public function test_parse_text_handles_inline_duration_client_labels_and_custom_headings(): void
+    {
+        $service = new CvDocumentImportService;
+
+        $parsed = $service->parseText(implode("\n", [
+            'Efrén Serrano',
+            'SAP MM/WM/EWM/SD Senior Manager Consultant +1 210 803 1773',
+            'Introduction',
+            'Efren has led end-to-end capability development across Manufacturing and SAP EWM.',
+            'Profile',
+            'Proactive, committed and results-driven SAP Consultant with over 12 years of IT experience.',
+            'Experience/Project Work',
+            'DC Delivery Manager (Accenture)',
+            'Industry: Consulting, Monterrey MX Duration: October 26 – Actual Responsibilities/Deliverables:',
+            'Expert in multi-country SAP logistics implementations across MM, SD, WM, LE-TRA, TM, EWM, QM y PP.',
+            'Industry: AutomotiveDuration: Jul 24 –Oct 26',
+            'Responsibilities/Deliverables:',
+            'Client: EY',
+            'Automotive JIT/JIS & EDI Integration Experience',
+            'Key expertise includes:',
+            'Configuration and support of SAP Automotive JIT and JIS Call processing.',
+            'Responsibilities / Deliverables Client: AVVALE Duration: Jan 23 – Jul 24',
+            'Led the design and implementation of SAP S/4HANA Cloud Extended Warehouse Management (EWM) solutions.',
+            'Languages: Spanish - Native English – Fluent',
+            'Portugues-Conversational.',
+        ]));
+
+        $this->assertSame('SAP MM/WM/EWM/SD Senior Manager Consultant', $parsed['profile']['headline']);
+        $this->assertSame('Efren has led end-to-end capability development across Manufacturing and SAP EWM.', $parsed['profile']['summary']);
+        $this->assertSame('+1 210 803 1773', $parsed['profile']['phone']);
+        $this->assertSame(['Spanish - Native', 'English – Fluent', 'Portugues-Conversational'], $parsed['languages']);
+        $this->assertCount(3, $parsed['experiences']);
+        $this->assertSame('DC Delivery Manager', $parsed['experiences'][0]['title']);
+        $this->assertSame('Accenture', $parsed['experiences'][0]['organization']);
+        $this->assertSame('October 26 – Actual', $parsed['experiences'][0]['period']);
+        $this->assertStringContainsString('multi-country SAP logistics implementations', $parsed['experiences'][0]['description'] ?? '');
+        $this->assertSame('EY', $parsed['experiences'][1]['organization']);
+        $this->assertSame('Jul 24 –Oct 26', $parsed['experiences'][1]['period']);
+        $this->assertSame('Automotive JIT/JIS & EDI Integration Experience', $parsed['experiences'][1]['title']);
+        $this->assertSame('AVVALE', $parsed['experiences'][2]['organization']);
+        $this->assertSame('Jan 23 – Jul 24', $parsed['experiences'][2]['period']);
+        $this->assertSame('Led the design and implementation of SAP S/4HANA Cloud Extended Warehouse Management (EWM) solutions', $parsed['experiences'][2]['title']);
+    }
 }

@@ -9,6 +9,19 @@
         @if (filled($documentImport['notice'] ?? null))
             <div class="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                 {{ $documentImport['notice'] }}
+
+                @if (filled($documentImport['notice_details'] ?? null))
+                    <div class="mt-2 rounded border border-amber-300 bg-white/70 px-3 py-2 text-xs text-amber-950 whitespace-pre-line">
+                        <span class="font-semibold">Detalle tecnico:</span>
+                        {{ $documentImport['notice_details'] }}
+
+                        @if (filled($documentImport['notice_exception'] ?? null))
+                            <div class="mt-1 text-[11px] text-amber-900/80">
+                                {{ $documentImport['notice_exception'] }}
+                            </div>
+                        @endif
+                    </div>
+                @endif
             </div>
         @endif
 

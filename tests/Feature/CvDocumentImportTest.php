@@ -8,8 +8,10 @@ use App\Models\User;
 use App\Services\CvAiDocumentImportService;
 use App\Services\CvDocumentImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class CvDocumentImportTest extends TestCase
@@ -657,7 +659,45 @@ class CvDocumentImportTest extends TestCase
 
         $this->assertSame('parser', $import['source']);
         $this->assertNotEmpty($import['notice'] ?? null);
+        $this->assertArrayNotHasKey('notice_details', $import);
         $this->assertSame('Andrea Lopez', $import['parsed']['profile']['full_name'] ?? null);
+    }
+
+    public function test_admin_ai_document_import_fallback_includes_detailed_error_message(): void
+    {
+        Role::findOrCreate('admin');
+        config()->set('services.gemini.key', null);
+        Http::fake();
+
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $profile = CvProfile::create([
+            'user_id' => $admin->id,
+            'title' => 'CV IA Admin',
+            'full_name' => 'Andrea Lopez',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('cv.import-document-ai', $profile), [
+                'cv_document' => UploadedFile::fake()->createWithContent('cv-ai.txt', implode("\n", [
+                    'Andrea Lopez',
+                    'Backend Engineer',
+                    'Email: andrea@example.com',
+                    'Habilidades',
+                    'Laravel',
+                    'PHP',
+                ])),
+            ])
+            ->assertRedirect(route('cv.edit', $profile))
+            ->assertSessionHas("cv_document_import.{$profile->id}");
+
+        $import = session("cv_document_import.{$profile->id}");
+
+        $this->assertSame('parser', $import['source']);
+        $this->assertSame('Configura GEMINI_API_KEY para analizar el CV con IA.', $import['notice_details'] ?? null);
+        $this->assertSame(\RuntimeException::class, $import['notice_exception'] ?? null);
     }
 
     public function test_ai_document_import_falls_back_to_local_parser_for_invalid_json_response(): void
@@ -783,6 +823,77 @@ class CvDocumentImportTest extends TestCase
 
         Http::assertSent(fn ($request) => str_contains($request->url(), 'models/gemini-2.5-flash:generateContent'));
         Http::assertSent(fn ($request) => str_contains($request->url(), 'models/gemini-2.5-flash-lite:generateContent'));
+    }
+
+    public function test_ai_document_import_uses_fallback_model_when_primary_times_out(): void
+    {
+        config()->set('services.gemini.key', 'test-key');
+        config()->set('services.gemini.cv_import_model', 'gemini-2.5-flash');
+        config()->set('services.gemini.cv_import_fallback_models', ['gemini-2.5-flash-lite']);
+        $attemptedModels = [];
+
+        Http::fake([
+            'generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent' => function () use (&$attemptedModels) {
+                $attemptedModels[] = 'gemini-2.5-flash';
+                throw new ConnectionException('cURL error 28: Operation timed out after 75000 milliseconds with 0 bytes received');
+            },
+            'generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent' => function () use (&$attemptedModels) {
+                $attemptedModels[] = 'gemini-2.5-flash-lite';
+
+                return Http::response([
+                'candidates' => [[
+                    'content' => [
+                        'parts' => [[
+                            'text' => json_encode([
+                                'profile' => [
+                                    'full_name' => 'Andrea Timeout',
+                                    'email' => '',
+                                    'phone' => '',
+                                    'location' => '',
+                                    'headline' => '',
+                                    'summary' => '',
+                                    'linkedin_url' => '',
+                                    'portfolio_url' => '',
+                                ],
+                                'experiences' => [],
+                                'education' => [],
+                                'software' => [],
+                                'skills' => [],
+                                'languages' => [],
+                                'awards' => [],
+                            ]),
+                        ]],
+                    ],
+                ]],
+                ], 200);
+            },
+        ]);
+
+        $user = User::factory()->create();
+        $profile = CvProfile::create([
+            'user_id' => $user->id,
+            'title' => 'CV IA Timeout',
+            'full_name' => 'Nombre anterior',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('cv.import-document-ai', $profile), [
+                'cv_document' => UploadedFile::fake()->createWithContent('cv-ai.txt', 'Andrea Timeout'),
+            ])
+            ->assertRedirect(route('cv.edit', $profile))
+            ->assertSessionHas("cv_document_import.{$profile->id}");
+
+        $import = session("cv_document_import.{$profile->id}");
+
+        $this->assertSame('ai', $import['source']);
+        $this->assertSame('Andrea Timeout', $import['parsed']['profile']['full_name'] ?? null);
+        $this->assertContains('gemini-2.5-flash', $attemptedModels);
+        $this->assertContains('gemini-2.5-flash-lite', $attemptedModels);
+        $this->assertGreaterThan(
+            array_search('gemini-2.5-flash', $attemptedModels, true),
+            array_search('gemini-2.5-flash-lite', $attemptedModels, true)
+        );
     }
 
     public function test_ai_document_import_reorders_difficult_cv_before_extracting_structured_data(): void

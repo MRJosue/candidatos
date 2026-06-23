@@ -821,10 +821,13 @@ class CvProfileController extends Controller
         }
 
         try {
+            $adminFallbackDetails = $this->adminImportFallbackDetails($request, $exception);
+
             return [
                 'original_name' => $file->getClientOriginalName(),
                 'source' => 'parser',
                 'notice' => 'Se generó una previsualización con el parser local para que puedas revisarla y aplicarla.',
+                ...$adminFallbackDetails,
                 'parsed' => [
                     ...$importService->parseText($text),
                     'raw_text' => str($text)->limit(12000, '')->toString(),
@@ -844,6 +847,27 @@ class CvProfileController extends Controller
                 ->withErrors(['cv_document_ai' => 'No se pudo analizar el documento. Intenta de nuevo con un PDF con texto real, DOCX o TXT.'])
                 ->withInput();
         }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function adminImportFallbackDetails(Request $request, Throwable $exception): array
+    {
+        if (! $request->user()?->hasAnyRole(['admin', 'administrator'])) {
+            return [];
+        }
+
+        $message = trim($exception->getMessage());
+
+        if ($message === '') {
+            $message = $exception::class;
+        }
+
+        return [
+            'notice_details' => $message,
+            'notice_exception' => $exception::class,
+        ];
     }
 
     private function validatedImportApplyOptions(Request $request): array

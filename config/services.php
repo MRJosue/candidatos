@@ -26,6 +26,8 @@ return [
         'key' => env('GEMINI_API_KEY'),
         'cv_import_model' => env('GEMINI_CV_IMPORT_MODEL', 'gemini-2.5-flash'),
         'cv_import_fallback_models' => array_filter(array_map('trim', explode(',', env('GEMINI_CV_IMPORT_FALLBACK_MODELS', 'gemini-2.5-flash-lite')))),
+        'cv_import_timeout' => (int) env('GEMINI_CV_IMPORT_TIMEOUT', 75),
+        'cv_import_connect_timeout' => (int) env('GEMINI_CV_IMPORT_CONNECT_TIMEOUT', 15),
     ],
 
     'cv_import' => [
