@@ -25,6 +25,18 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100 text-gray-700">
                             <tr>
+                                <td class="px-4 py-3 font-medium text-gray-900">Inicial 50</td>
+                                <td class="px-4 py-3">$1,250</td>
+                                <td class="px-4 py-3 font-semibold text-gray-900">$1,450</td>
+                                <td class="px-4 py-3">50 CV/mes</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-3 font-medium text-gray-900">Inicial 100</td>
+                                <td class="px-4 py-3">$1,950</td>
+                                <td class="px-4 py-3 font-semibold text-gray-900">$2,262</td>
+                                <td class="px-4 py-3">100 CV/mes</td>
+                            </tr>
+                            <tr>
                                 <td class="px-4 py-3 font-medium text-gray-900">Basico</td>
                                 <td class="px-4 py-3">$4,151</td>
                                 <td class="px-4 py-3 font-semibold text-gray-900">$4,815</td>

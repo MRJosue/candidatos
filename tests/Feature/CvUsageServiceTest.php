@@ -26,6 +26,24 @@ class CvUsageServiceTest extends TestCase
         $this->assertTrue($plan->is_active);
     }
 
+    public function test_initial_usage_plans_are_available_for_low_volume_accounts(): void
+    {
+        $initial50 = CvUsagePlan::where('slug', 'inicial-50')->firstOrFail();
+        $initial100 = CvUsagePlan::where('slug', 'inicial-100')->firstOrFail();
+
+        $this->assertSame('Inicial 50', $initial50->name);
+        $this->assertSame(50, $initial50->monthly_quota);
+        $this->assertSame(125000, $initial50->price_before_tax_cents);
+        $this->assertSame(145000, $initial50->price_with_tax_cents);
+        $this->assertTrue($initial50->is_active);
+
+        $this->assertSame('Inicial 100', $initial100->name);
+        $this->assertSame(100, $initial100->monthly_quota);
+        $this->assertSame(195000, $initial100->price_before_tax_cents);
+        $this->assertSame(226200, $initial100->price_with_tax_cents);
+        $this->assertTrue($initial100->is_active);
+    }
+
     public function test_it_creates_default_usage_subscription_and_tracks_consumption(): void
     {
         $user = User::factory()->create();

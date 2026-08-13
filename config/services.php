@@ -32,13 +32,18 @@ return [
 
     'cv_import' => [
         'pdf_extract_timeout' => (int) env('CV_PDF_EXTRACT_TIMEOUT', 60),
+        'pdf_inspector_enabled' => env('CV_PDF_INSPECTOR_ENABLED', true),
+        'pdf_native_text_score_threshold' => (int) env('CV_PDF_NATIVE_TEXT_SCORE_THRESHOLD', 120),
         'pdf_ocr_enabled' => env('CV_PDF_OCR_ENABLED', true),
         'pdf_ocr_dpi' => (int) env('CV_PDF_OCR_DPI', 180),
         'pdf_ocr_language' => env('CV_PDF_OCR_LANGUAGE', 'spa+eng'),
         'binaries' => [
             'antiword' => env('ANTIWORD_BINARY'),
+            'detect-pdf' => env('DETECT_PDF_BINARY'),
+            'node' => env('NODE_BINARY'),
             'pdftotext' => env('PDFTOTEXT_BINARY'),
             'pdftoppm' => env('PDFTOPPM_BINARY'),
+            'pdf2md' => env('PDF2MD_BINARY'),
             'soffice' => env('SOFFICE_BINARY'),
             'tesseract' => env('TESSERACT_BINARY'),
         ],

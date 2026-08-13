@@ -47,6 +47,30 @@ public/build/manifest.json
 public/build/assets/*
 ```
 
+## Extraccion de PDFs
+
+La importacion de CVs usa `@firecrawl/pdf-inspector` como extractor preferente para PDFs con texto real cuando las dependencias de Node estan instaladas:
+
+```bash
+pnpm install --frozen-lockfile
+```
+
+Tambien puedes instalar los binarios nativos de Rust y dejarlos disponibles en el `PATH`; la app los intentara antes del puente Node:
+
+```bash
+cargo install pdf-inspector
+```
+
+Si el hosting no expone esos binarios o Node en el `PATH`, configura sus rutas absolutas en `.env`:
+
+```env
+PDF2MD_BINARY=/ruta/a/pdf2md
+DETECT_PDF_BINARY=/ruta/a/detect-pdf
+NODE_BINARY=/ruta/a/node
+```
+
+Si `pdf-inspector` no esta instalado, la app conserva los extractores existentes (`smalot/pdfparser`, `pdftotext` y OCR con `tesseract`).
+
 ## Deploy en Hostinger
 
 En este hosting el codigo vive en `app/`, pero el dominio sirve archivos publicos desde `public_html/`. Despues de `git pull`, sincroniza el build:

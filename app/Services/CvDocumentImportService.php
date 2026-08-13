@@ -15,6 +15,8 @@ use ZipArchive;
 
 class CvDocumentImportService
 {
+    private const PDF_NATIVE_TEXT_SCORE_THRESHOLD = 120;
+
     public function import(UploadedFile $file): array
     {
         $text = $this->extractText($file);
@@ -147,13 +149,22 @@ class CvDocumentImportService
 
     private function extractPdfText(string $path): string
     {
-        $candidates = array_filter([
+        $nativeCandidates = array_filter([
+            $this->extractPdfTextWithPdfInspector($path),
             $this->extractPdfTextWithParser($path),
             $this->extractPdfTextWithPdftotext($path),
-            $this->extractPdfTextWithOcr($path),
         ]);
 
-        $text = $this->bestPdfTextCandidate($candidates);
+        $nativeText = $this->bestPdfTextCandidate($nativeCandidates);
+
+        if ($nativeText !== null && ! $this->shouldRunPdfOcr($path, $nativeText)) {
+            return $nativeText;
+        }
+
+        $text = $this->bestPdfTextCandidate(array_filter([
+            ...$nativeCandidates,
+            $this->extractPdfTextWithOcr($path),
+        ]));
 
         if ($text === null) {
             throw new RuntimeException('No se pudo extraer texto util del PDF. Puede venir como imagen o con una capa de texto incompatible. Intenta con un PDF exportado desde Word, DOCX o habilita pdftotext/tesseract en el servidor.');
@@ -221,6 +232,55 @@ class CvDocumentImportService
         $text = preg_replace("/\n{3,}/u", "\n\n", $text) ?? $text;
 
         return trim($text);
+    }
+
+    private function extractPdfTextWithPdfInspector(string $path): string
+    {
+        if (! config('services.cv_import.pdf_inspector_enabled', true)) {
+            return '';
+        }
+
+        $cliText = $this->bestPdfTextCandidate(array_filter([
+            $this->extractPdfTextWithPdfInspectorCli($path),
+        ]));
+
+        if ($cliText !== null) {
+            return $cliText;
+        }
+
+        $nodeText = $this->bestPdfTextCandidate(array_filter([
+            $this->extractPdfTextWithPdfInspectorNode($path),
+        ]));
+
+        if ($nodeText !== null) {
+            return $nodeText;
+        }
+
+        return '';
+    }
+
+    private function extractPdfTextWithPdfInspectorCli(string $path): string
+    {
+        return $this->runTextExtractorCommand(
+            'pdf2md',
+            [$path, '--raw', '--compact'],
+        );
+    }
+
+    private function extractPdfTextWithPdfInspectorNode(string $path): string
+    {
+        $node = $this->binaryPath('node');
+        $bridge = base_path('scripts/pdf-inspector-bridge.mjs');
+
+        if ($node === null || ! is_file($bridge)) {
+            return '';
+        }
+
+        try {
+            return $this->normalizeText($this->runCommand([$node, $bridge, 'extract', $path]));
+        } catch (Throwable) {
+            return '';
+        }
     }
 
     private function extractPdfTextWithParser(string $path): string
@@ -307,6 +367,98 @@ class CvDocumentImportService
         } finally {
             $this->deleteDirectory($tempDir);
         }
+    }
+
+    private function shouldRunPdfOcr(string $path, string $nativeText): bool
+    {
+        if (! config('services.cv_import.pdf_ocr_enabled', true)) {
+            return false;
+        }
+
+        $classification = $this->pdfInspectorClassification($path);
+
+        if ($classification !== null) {
+            return $this->classificationNeedsOcr($classification);
+        }
+
+        $threshold = (int) config('services.cv_import.pdf_native_text_score_threshold', self::PDF_NATIVE_TEXT_SCORE_THRESHOLD);
+
+        return $this->pdfTextScore($nativeText) < $threshold;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function pdfInspectorClassification(string $path): ?array
+    {
+        if (! config('services.cv_import.pdf_inspector_enabled', true)) {
+            return null;
+        }
+
+        return $this->pdfInspectorCliClassification($path)
+            ?? $this->pdfInspectorNodeClassification($path);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function pdfInspectorCliClassification(string $path): ?array
+    {
+        $detectPdf = $this->binaryPath('detect-pdf');
+
+        if ($detectPdf === null) {
+            return null;
+        }
+
+        try {
+            $decoded = json_decode($this->runCommand([$detectPdf, $path, '--analyze', '--json']), true);
+
+            return is_array($decoded) ? $decoded : null;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function pdfInspectorNodeClassification(string $path): ?array
+    {
+        $node = $this->binaryPath('node');
+        $bridge = base_path('scripts/pdf-inspector-bridge.mjs');
+
+        if ($node === null || ! is_file($bridge)) {
+            return null;
+        }
+
+        try {
+            $decoded = json_decode($this->runCommand([$node, $bridge, 'classify', $path]), true);
+
+            return is_array($decoded) ? $decoded : null;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $classification
+     */
+    private function classificationNeedsOcr(array $classification): bool
+    {
+        $pagesNeedingOcr = $classification['pages_needing_ocr']
+            ?? $classification['pagesNeedingOcr']
+            ?? [];
+
+        if (is_array($pagesNeedingOcr) && $pagesNeedingOcr !== []) {
+            return true;
+        }
+
+        $pdfType = Str::of((string) ($classification['pdf_type'] ?? $classification['pdfType'] ?? ''))
+            ->lower()
+            ->replace(['-', '_', ' '], '')
+            ->toString();
+
+        return in_array($pdfType, ['scanned', 'imagebased', 'mixed'], true);
     }
 
     private function runTextExtractorCommand(string $binary, array $arguments): string
