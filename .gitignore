@@ -13,6 +13,8 @@
 /.zed
 /auth.json
 /node_modules
+node-v*-linux-*/
+node-v*-linux-*.zip
 /.npm-cache
 /package-lock.json
 /public/hot
