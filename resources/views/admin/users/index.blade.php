@@ -1,8 +1,13 @@
 <x-app-layout>
     <x-slot name="header">
-        <div>
-            <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Administración</p>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Usuarios</h2>
+        <div class="flex items-center justify-between gap-4">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Administración</p>
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Usuarios</h2>
+            </div>
+            <a href="{{ route('admin.users.create') }}" class="inline-flex items-center rounded-md border border-transparent bg-amber-700 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition hover:bg-amber-800 focus:bg-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 active:bg-amber-900">
+                Crear usuario
+            </a>
         </div>
     </x-slot>
 
@@ -10,6 +15,9 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @if (session('status') === 'user-roles-saved')
                 <p class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">Roles actualizados.</p>
+            @endif
+            @if (session('status') === 'user-created')
+                <p class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">Usuario creado.</p>
             @endif
 
             <div class="overflow-hidden bg-white shadow sm:rounded-lg">

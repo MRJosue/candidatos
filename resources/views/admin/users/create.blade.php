@@ -3,7 +3,7 @@
         <div class="flex items-center justify-between gap-4">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Administración</p>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Editar usuario</h2>
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Crear usuario</h2>
             </div>
             <a href="{{ route('admin.users.index') }}" class="text-sm font-medium text-gray-600 hover:text-gray-900">Volver</a>
         </div>
@@ -11,23 +11,12 @@
 
     <div class="py-12">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
-            @if (session('status') === 'user-roles-saved')
-                <p class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">Roles actualizados.</p>
-            @endif
-            @if (session('status') === 'user-updated')
-                <p class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">Usuario actualizado.</p>
-            @endif
-            @if (session('status') === 'user-created')
-                <p class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">Usuario creado.</p>
-            @endif
-
             @if ($errors->any())
                 <p class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ $errors->first() }}</p>
             @endif
 
-            <form method="POST" action="{{ route('admin.users.update', $account) }}" class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+            <form method="POST" action="{{ route('admin.users.store') }}" class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
                 @csrf
-                @method('patch')
 
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div class="sm:col-span-2">
@@ -37,8 +26,9 @@
                             name="name"
                             type="text"
                             class="mt-1 block w-full"
-                            :value="old('name', $account->name)"
+                            :value="old('name')"
                             required
+                            autofocus
                             autocomplete="name"
                         />
                         <x-input-error class="mt-2" :messages="$errors->get('name')" />
@@ -51,42 +41,37 @@
                             name="email"
                             type="email"
                             class="mt-1 block w-full"
-                            :value="old('email', $account->email)"
+                            :value="old('email')"
                             required
                             autocomplete="username"
                         />
                         <x-input-error class="mt-2" :messages="$errors->get('email')" />
                     </div>
-                </div>
 
-                <div class="mt-6 border-t border-gray-100 pt-6">
-                    <h3 class="text-sm font-medium text-gray-900">Contraseña</h3>
-                    <p class="mt-1 text-sm text-gray-500">Dejala en blanco para conservar la contraseña actual.</p>
+                    <div>
+                        <x-input-label for="password" value="Contraseña" />
+                        <x-text-input
+                            id="password"
+                            name="password"
+                            type="password"
+                            class="mt-1 block w-full"
+                            required
+                            autocomplete="new-password"
+                        />
+                        <x-input-error class="mt-2" :messages="$errors->get('password')" />
+                    </div>
 
-                    <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                        <div>
-                            <x-input-label for="password" value="Nueva contraseña" />
-                            <x-text-input
-                                id="password"
-                                name="password"
-                                type="password"
-                                class="mt-1 block w-full"
-                                autocomplete="new-password"
-                            />
-                            <x-input-error class="mt-2" :messages="$errors->get('password')" />
-                        </div>
-
-                        <div>
-                            <x-input-label for="password_confirmation" value="Confirmar nueva contraseña" />
-                            <x-text-input
-                                id="password_confirmation"
-                                name="password_confirmation"
-                                type="password"
-                                class="mt-1 block w-full"
-                                autocomplete="new-password"
-                            />
-                            <x-input-error class="mt-2" :messages="$errors->get('password_confirmation')" />
-                        </div>
+                    <div>
+                        <x-input-label for="password_confirmation" value="Confirmar contraseña" />
+                        <x-text-input
+                            id="password_confirmation"
+                            name="password_confirmation"
+                            type="password"
+                            class="mt-1 block w-full"
+                            required
+                            autocomplete="new-password"
+                        />
+                        <x-input-error class="mt-2" :messages="$errors->get('password_confirmation')" />
                     </div>
                 </div>
 
@@ -99,7 +84,7 @@
                                     type="checkbox"
                                     name="roles[]"
                                     value="{{ $role->name }}"
-                                    @checked(collect(old('roles', $account->roles->pluck('name')->all()))->contains($role->name))
+                                    @checked(collect(old('roles', []))->contains($role->name))
                                     class="rounded border-gray-300 text-amber-700 shadow-sm focus:ring-amber-500"
                                 >
                                 <span>{{ $role->name }}</span>
@@ -114,7 +99,7 @@
                     <select id="account_owner_id" name="account_owner_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
                         <option value="">Sin jefe asignado</option>
                         @foreach ($accountOwners as $owner)
-                            <option value="{{ $owner->id }}" @selected(old('account_owner_id', $account->account_owner_id) == $owner->id)>
+                            <option value="{{ $owner->id }}" @selected(old('account_owner_id') == $owner->id)>
                                 {{ $owner->name }} - {{ $owner->email }}
                             </option>
                         @endforeach
@@ -126,7 +111,7 @@
                 </div>
 
                 <div class="mt-6 flex items-center gap-3">
-                    <x-primary-button>Guardar cambios</x-primary-button>
+                    <x-primary-button>Crear usuario</x-primary-button>
                     <a href="{{ route('admin.users.index') }}" class="text-sm font-medium text-gray-600 hover:text-gray-900">Cancelar</a>
                 </div>
             </form>
