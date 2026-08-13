@@ -103,7 +103,7 @@ class CvProfileController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request, CvUsageService $usageService)
     {
         $documentImport = session($this->createDocumentImportSessionKey());
 
@@ -115,10 +115,11 @@ class CvProfileController extends Controller
             'languageOptions' => CvProfile::languageOptions(),
             'documentImport' => $documentImport,
             'sectionText' => $this->sectionTextFromImport($documentImport),
+            'aiUsage' => $this->aiUsageFor($request, $usageService),
         ]);
     }
 
-    public function createForTalent(Request $request, Talent $talent)
+    public function createForTalent(Request $request, Talent $talent, CvUsageService $usageService)
     {
         abort_unless($talent->recruiter_id === $request->user()->id, 403);
 
@@ -143,6 +144,7 @@ class CvProfileController extends Controller
             'languageOptions' => CvProfile::languageOptions(),
             'documentImport' => $documentImport,
             'sectionText' => $this->sectionTextFromImport($documentImport),
+            'aiUsage' => $this->aiUsageFor($request, $usageService),
         ]);
     }
 
@@ -244,7 +246,7 @@ class CvProfileController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(CvProfile $cvProfile)
+    public function edit(Request $request, CvProfile $cvProfile, CvUsageService $usageService)
     {
         $this->authorize('update', $cvProfile);
 
@@ -254,6 +256,7 @@ class CvProfileController extends Controller
             'languageOptions' => CvProfile::languageOptions(),
             'documentImport' => session($this->documentImportSessionKey($cvProfile)),
             'sectionText' => $this->sectionText($cvProfile),
+            'aiUsage' => $this->aiUsageFor($request, $usageService),
         ]);
     }
 
@@ -791,6 +794,32 @@ class CvProfileController extends Controller
         } catch (Throwable $exception) {
             return $this->fallbackDocumentImport($request, $importService, $data['cv_document'], $text, $exception);
         }
+    }
+
+    private function aiUsageFor(Request $request, CvUsageService $usageService): array
+    {
+        try {
+            $summary = $usageService->summary($request->user());
+        } catch (RuntimeException $exception) {
+            return [
+                'summary' => null,
+                'blocked' => true,
+                'message' => $exception->getMessage(),
+            ];
+        }
+
+        $subscription = $summary['subscription'];
+        $blocked = $subscription->status !== 'active' || $summary['remaining'] < 1;
+
+        return [
+            'summary' => $summary,
+            'blocked' => $blocked,
+            'message' => $subscription->status !== 'active'
+                ? 'La cuenta no tiene una suscripcion activa para procesar CVs.'
+                : ($summary['remaining'] < 1
+                    ? 'Has llegado al limite mensual de CVs de tu plan. Cambia de plan o solicita CVs adicionales para continuar.'
+                    : null),
+        ];
     }
 
     private function fallbackDocumentImport(

@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Http\Requests\StoreCvProfileRequest;
 use App\Models\CvProfile;
+use App\Models\CvUsageEvent;
+use App\Models\CvUsagePlan;
 use App\Models\User;
 use App\Services\CvAiDocumentImportService;
 use App\Services\CvDocumentImportService;
@@ -46,6 +48,117 @@ class CvDocumentImportTest extends TestCase
             ->assertSee('accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"', false)
             ->assertSee(route('cv.import-document-ai', $profile), false)
             ->assertDontSee('Parser actual');
+    }
+
+    public function test_cv_edit_blocks_ai_document_import_when_group_usage_reaches_plan_limit(): void
+    {
+        $this->travelTo('2026-05-15 10:30:00');
+
+        Role::findOrCreate('jefe_cuenta');
+        Role::findOrCreate('usuario_subordinado');
+
+        $owner = User::factory()->create();
+        $owner->assignRole('jefe_cuenta');
+        $firstSubordinate = User::factory()->create(['account_owner_id' => $owner->id]);
+        $firstSubordinate->assignRole('usuario_subordinado');
+        $secondSubordinate = User::factory()->create(['account_owner_id' => $owner->id]);
+        $secondSubordinate->assignRole('usuario_subordinado');
+
+        $plan = CvUsagePlan::create([
+            'name' => 'Plan grupal limitado',
+            'slug' => 'plan-grupal-limitado',
+            'monthly_quota' => 2,
+            'price_before_tax_cents' => 10000,
+            'price_with_tax_cents' => 11600,
+            'is_active' => true,
+        ]);
+
+        $subscription = $owner->cvUsageSubscription()->create([
+            'cv_usage_plan_id' => $plan->id,
+            'current_period_starts_at' => '2026-05-01 00:00:00',
+            'current_period_ends_at' => '2026-06-01 00:00:00',
+            'status' => 'active',
+        ]);
+
+        CvUsageEvent::create([
+            'user_id' => $firstSubordinate->id,
+            'cv_usage_subscription_id' => $subscription->id,
+            'type' => CvUsageEvent::TYPE_IMPORT_AI,
+            'quantity' => 1,
+            'occurred_at' => '2026-05-10 12:00:00',
+        ]);
+        CvUsageEvent::create([
+            'user_id' => $secondSubordinate->id,
+            'cv_usage_subscription_id' => $subscription->id,
+            'type' => CvUsageEvent::TYPE_TRANSLATION_AI,
+            'quantity' => 1,
+            'occurred_at' => '2026-05-11 12:00:00',
+        ]);
+
+        $profile = CvProfile::create([
+            'user_id' => $firstSubordinate->id,
+            'title' => 'CV en proceso',
+            'full_name' => 'Andrea Lopez',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $this->actingAs($firstSubordinate)
+            ->get(route('cv.edit', $profile))
+            ->assertOk()
+            ->assertSee('Plan grupal limitado')
+            ->assertSee('2 / 2 CV usados por el grupo')
+            ->assertSee('Has llegado al limite mensual de CVs de tu plan')
+            ->assertSee('x-bind:disabled="processing || unsupportedDoc || true"', false);
+    }
+
+    public function test_ai_document_import_request_is_rejected_when_group_usage_reaches_plan_limit(): void
+    {
+        $this->travelTo('2026-05-15 10:30:00');
+
+        Role::findOrCreate('jefe_cuenta');
+        Role::findOrCreate('usuario_subordinado');
+
+        $owner = User::factory()->create();
+        $owner->assignRole('jefe_cuenta');
+        $subordinate = User::factory()->create(['account_owner_id' => $owner->id]);
+        $subordinate->assignRole('usuario_subordinado');
+
+        $plan = CvUsagePlan::create([
+            'name' => 'Plan grupal limitado post',
+            'slug' => 'plan-grupal-limitado-post',
+            'monthly_quota' => 1,
+            'price_before_tax_cents' => 10000,
+            'price_with_tax_cents' => 11600,
+            'is_active' => true,
+        ]);
+
+        $subscription = $owner->cvUsageSubscription()->create([
+            'cv_usage_plan_id' => $plan->id,
+            'current_period_starts_at' => '2026-05-01 00:00:00',
+            'current_period_ends_at' => '2026-06-01 00:00:00',
+            'status' => 'active',
+        ]);
+
+        CvUsageEvent::create([
+            'user_id' => $subordinate->id,
+            'cv_usage_subscription_id' => $subscription->id,
+            'type' => CvUsageEvent::TYPE_IMPORT_AI,
+            'quantity' => 1,
+            'occurred_at' => '2026-05-10 12:00:00',
+        ]);
+
+        $profile = CvProfile::create([
+            'user_id' => $subordinate->id,
+            'title' => 'CV en proceso',
+            'full_name' => 'Andrea Lopez',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $this->actingAs($subordinate)
+            ->post(route('cv.import-document-ai', $profile), [
+                'cv_document' => UploadedFile::fake()->createWithContent('cv.txt', 'Andrea Lopez PHP Developer'),
+            ])
+            ->assertSessionHasErrors('cv_document_ai');
     }
 
     public function test_cv_show_hides_soft_skills_section(): void
