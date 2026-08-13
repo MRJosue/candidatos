@@ -86,6 +86,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/usage-subscriptions', [AdminCvUsageSubscriptionController::class, 'index'])->name('admin.usage-subscriptions.index');
         Route::get('/admin/usage-subscriptions/{user}/edit', [AdminCvUsageSubscriptionController::class, 'edit'])->name('admin.usage-subscriptions.edit');
         Route::patch('/admin/usage-subscriptions/{user}', [AdminCvUsageSubscriptionController::class, 'update'])->name('admin.usage-subscriptions.update');
+        Route::post('/admin/usage-subscriptions/{user}/reset-period', [AdminCvUsageSubscriptionController::class, 'resetPeriod'])->name('admin.usage-subscriptions.reset-period');
 
         Route::post('/admin/themes/import-json', [ApplicationThemeController::class, 'importJson'])->name('admin.themes.import-json');
         Route::resource('admin/themes', ApplicationThemeController::class)

@@ -8,6 +8,7 @@ use App\Models\CvUsagePlan;
 use App\Models\CvUsageSubscription;
 use App\Models\User;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -81,10 +82,46 @@ class CvUsageService
 
     public function usedInCurrentPeriod(CvUsageSubscription $subscription): int
     {
-        return (int) $subscription->events()
+        return (int) CvUsageEvent::query()
+            ->whereIn('user_id', $this->usageUserIdsFor($subscription->user))
             ->where('occurred_at', '>=', $subscription->current_period_starts_at)
             ->where('occurred_at', '<', $subscription->current_period_ends_at)
             ->sum('quantity');
+    }
+
+    public function subordinateUsageFor(User $accountOwner, CvUsageSubscription $subscription): EloquentCollection
+    {
+        $subordinates = $accountOwner->accountUsers()
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        if ($subordinates->isEmpty()) {
+            return $subordinates;
+        }
+
+        $usageByUser = CvUsageEvent::query()
+            ->whereIn('user_id', $subordinates->pluck('id'))
+            ->where('occurred_at', '>=', $subscription->current_period_starts_at)
+            ->where('occurred_at', '<', $subscription->current_period_ends_at)
+            ->selectRaw('user_id, SUM(quantity) as used')
+            ->groupBy('user_id')
+            ->pluck('used', 'user_id');
+
+        return $subordinates->each(function (User $subordinate) use ($usageByUser): void {
+            $subordinate->current_period_usage = (int) ($usageByUser[$subordinate->id] ?? 0);
+        });
+    }
+
+    public function resetCurrentPeriod(CvUsageSubscription $subscription): CvUsageSubscription
+    {
+        $startsAt = now();
+
+        $subscription->update([
+            'current_period_starts_at' => $startsAt,
+            'current_period_ends_at' => $startsAt->copy()->addMonthNoOverflow(),
+        ]);
+
+        return $subscription->refresh()->load('plan', 'user');
     }
 
     private function createDefaultSubscription(User $user): CvUsageSubscription
@@ -117,6 +154,19 @@ class CvUsageService
         }
 
         return $user;
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function usageUserIdsFor(User $accountOwner): array
+    {
+        return $accountOwner->accountUsers()
+            ->pluck('id')
+            ->push($accountOwner->id)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function advancePeriod(CvUsageSubscription $subscription): CvUsageSubscription

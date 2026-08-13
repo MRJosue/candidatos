@@ -14,6 +14,9 @@
             @if (session('status') === 'usage-subscription-saved')
                 <p class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">Plan actualizado.</p>
             @endif
+            @if (session('status') === 'usage-subscription-period-reset')
+                <p class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">Periodo reiniciado.</p>
+            @endif
 
             <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
                 <form method="POST" action="{{ route('admin.usage-subscriptions.update', $account) }}" class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
@@ -103,6 +106,18 @@
                                 </dd>
                             </div>
                         </dl>
+
+                        <form
+                            method="POST"
+                            action="{{ route('admin.usage-subscriptions.reset-period', $account) }}"
+                            class="mt-6"
+                            onsubmit="return confirm('Esto reiniciara el periodo actual desde este momento. ¿Continuar?')"
+                        >
+                            @csrf
+                            <button type="submit" class="inline-flex items-center rounded-md border border-amber-600 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-widest text-amber-700 transition hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">
+                                Reiniciar periodo
+                            </button>
+                        </form>
                     </div>
 
                     <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
@@ -112,6 +127,42 @@
                         </p>
                     </div>
                 </aside>
+            </div>
+
+            <div class="mt-6 overflow-hidden bg-white shadow sm:rounded-lg">
+                <div class="border-b border-gray-100 p-4 sm:px-8 sm:py-6">
+                    <h3 class="text-lg font-medium text-gray-900">Consumo por subordinado</h3>
+                    <p class="mt-1 text-sm text-gray-500">CV usados dentro del periodo actual de la cuenta.</p>
+                </div>
+
+                @if ($subordinateUsage->isEmpty())
+                    <p class="p-4 text-sm text-gray-500 sm:px-8">Esta cuenta no tiene usuarios subordinados.</p>
+                @else
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-600 sm:px-8">Subordinado</th>
+                                    <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-600">Correo</th>
+                                    <th scope="col" class="px-4 py-3 text-right font-semibold text-gray-600 sm:px-8">CV usados</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 bg-white">
+                                @foreach ($subordinateUsage as $subordinate)
+                                    <tr>
+                                        <td class="px-4 py-3 font-medium text-gray-900 sm:px-8">
+                                            <a href="{{ route('admin.users.edit', $subordinate) }}" class="hover:text-amber-700">
+                                                {{ $subordinate->name }}
+                                            </a>
+                                        </td>
+                                        <td class="px-4 py-3 text-gray-500">{{ $subordinate->email }}</td>
+                                        <td class="px-4 py-3 text-right font-semibold text-gray-900 sm:px-8">{{ number_format($subordinate->current_period_usage) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
             </div>
         </div>
     </div>

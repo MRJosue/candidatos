@@ -37,6 +37,7 @@ class AdminCvUsageSubscriptionController extends Controller
             'subscription' => $subscription,
             'plans' => CvUsagePlan::query()->where('is_active', true)->orderBy('monthly_quota')->get(),
             'summary' => $usageService->summary($user),
+            'subordinateUsage' => $usageService->subordinateUsageFor($user, $subscription),
         ]);
     }
 
@@ -57,5 +58,17 @@ class AdminCvUsageSubscriptionController extends Controller
         return redirect()
             ->route('admin.usage-subscriptions.edit', $user)
             ->with('status', 'usage-subscription-saved');
+    }
+
+    public function resetPeriod(User $user, CvUsageService $usageService)
+    {
+        abort_unless($user->isAccountOwner(), 404);
+
+        $subscription = $usageService->subscriptionFor($user);
+        $usageService->resetCurrentPeriod($subscription);
+
+        return redirect()
+            ->route('admin.usage-subscriptions.edit', $user)
+            ->with('status', 'usage-subscription-period-reset');
     }
 }
