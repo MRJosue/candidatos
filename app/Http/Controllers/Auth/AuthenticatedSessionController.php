@@ -28,6 +28,12 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        if ($request->user()->first_login) {
+            return redirect()
+                ->route('profile.edit')
+                ->with('status', 'first-login');
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

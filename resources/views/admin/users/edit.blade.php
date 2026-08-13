@@ -60,8 +60,15 @@
                 </div>
 
                 <div class="mt-6 border-t border-gray-100 pt-6">
-                    <h3 class="text-sm font-medium text-gray-900">Contraseña</h3>
-                    <p class="mt-1 text-sm text-gray-500">Dejala en blanco para conservar la contraseña actual.</p>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <h3 class="text-sm font-medium text-gray-900">Contraseña</h3>
+                        @if ($account->first_login)
+                            <span class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Primer inicio pendiente</span>
+                        @else
+                            <span class="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">Primer inicio completado</span>
+                        @endif
+                    </div>
+                    <p class="mt-1 text-sm text-gray-500">Dejala en blanco para conservar la contraseña actual. Si guardas una nueva contraseña, el primer inicio quedara pendiente otra vez.</p>
 
                     <div class="mt-4 grid gap-4 sm:grid-cols-2">
                         <div>

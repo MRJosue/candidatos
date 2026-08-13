@@ -142,7 +142,7 @@
                         </x-dropdown-link>
 
                         <x-dropdown-link :href="route('profile.edit')">
-                            {{ __('Profile') }}
+                            Mi usuario
                         </x-dropdown-link>
 
                         <!-- Authentication -->
@@ -250,7 +250,7 @@
                 </button>
 
                 <x-responsive-nav-link :href="route('profile.edit')">
-                    {{ __('Profile') }}
+                    Mi usuario
                 </x-responsive-nav-link>
 
                 <x-responsive-nav-link :href="route('pricing')" :active="request()->routeIs('pricing')">

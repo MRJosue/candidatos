@@ -28,6 +28,7 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Usuario</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Roles</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Jefe de cuenta</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Primer inicio</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Alta</th>
                                 <th class="px-6 py-3"></th>
                             </tr>
@@ -49,6 +50,13 @@
                                     <td class="px-6 py-4 text-sm text-gray-700">
                                         {{ $account->accountOwner?->name ?? 'No asignado' }}
                                     </td>
+                                    <td class="px-6 py-4 text-sm text-gray-700">
+                                        @if ($account->first_login)
+                                            <span class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Pendiente</span>
+                                        @else
+                                            <span class="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">Completado</span>
+                                        @endif
+                                    </td>
                                     <td class="px-6 py-4 text-sm text-gray-700">{{ $account->created_at?->format('d/m/Y') }}</td>
                                     <td class="px-6 py-4 text-right text-sm font-medium">
                                         <a href="{{ route('admin.users.edit', $account) }}" class="text-amber-700 hover:text-amber-900">Editar roles</a>
@@ -56,7 +64,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="px-6 py-8 text-center text-sm text-gray-500">No hay usuarios registrados.</td>
+                                    <td colspan="6" class="px-6 py-8 text-center text-sm text-gray-500">No hay usuarios registrados.</td>
                                 </tr>
                             @endforelse
                         </tbody>

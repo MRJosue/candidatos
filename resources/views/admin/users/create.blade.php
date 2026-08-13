@@ -110,6 +110,10 @@
                     <x-input-error class="mt-2" :messages="$errors->get('account_owner_id')" />
                 </div>
 
+                <div class="mt-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    El usuario se creara con primer inicio pendiente hasta que actualice su contraseña.
+                </div>
+
                 <div class="mt-6 flex items-center gap-3">
                     <x-primary-button>Crear usuario</x-primary-button>
                     <a href="{{ route('admin.users.index') }}" class="text-sm font-medium text-gray-600 hover:text-gray-900">Cancelar</a>

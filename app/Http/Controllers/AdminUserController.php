@@ -60,6 +60,7 @@ class AdminUserController extends Controller
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
+            'first_login' => true,
             'account_owner_id' => $roles->contains('usuario_subordinado') ? ($data['account_owner_id'] ?? null) : null,
         ]);
 
@@ -109,6 +110,7 @@ class AdminUserController extends Controller
 
         if (filled($data['password'] ?? null)) {
             $userData['password'] = Hash::make($data['password']);
+            $userData['first_login'] = true;
         }
 
         $user->forceFill($userData)->save();

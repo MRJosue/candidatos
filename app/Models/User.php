@@ -33,6 +33,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'first_login',
         'account_owner_id',
         'application_theme_id',
         'theme_mode',
@@ -58,6 +59,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'first_login' => 'boolean',
         ];
     }
 

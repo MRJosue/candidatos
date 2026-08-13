@@ -73,6 +73,7 @@ class AdminUserManagementTest extends TestCase
         $this->assertSame('Nombre actualizado', $account->name);
         $this->assertSame('actualizado@example.com', $account->email);
         $this->assertTrue(Hash::check('nueva-password', $account->password));
+        $this->assertTrue($account->first_login);
         $this->assertTrue($account->hasRole('cliente'));
     }
 
@@ -122,6 +123,7 @@ class AdminUserManagementTest extends TestCase
         $user = User::where('email', 'nueva.reclutadora@example.com')->firstOrFail();
 
         $this->assertTrue(Hash::check('password-seguro', $user->password));
+        $this->assertTrue($user->first_login);
         $this->assertTrue($user->hasRole('usuario_subordinado'));
         $this->assertSame($owner->id, $user->account_owner_id);
     }
