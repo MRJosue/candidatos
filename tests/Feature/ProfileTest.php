@@ -27,6 +27,24 @@ class ProfileTest extends TestCase
             ->assertSee('Actualizar contraseña');
     }
 
+    public function test_first_login_profile_hides_profile_information_and_delete_account_sections(): void
+    {
+        $user = User::factory()->create([
+            'first_login' => true,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get('/profile');
+
+        $response
+            ->assertOk()
+            ->assertSee('Datos de usuario')
+            ->assertSee('Actualizar contraseña')
+            ->assertDontSee('Informacion de perfil')
+            ->assertDontSee('Delete Account');
+    }
+
     public function test_profile_information_can_be_updated(): void
     {
         $user = User::factory()->create();
@@ -47,6 +65,31 @@ class ProfileTest extends TestCase
         $this->assertSame('Test User', $user->name);
         $this->assertSame('test@example.com', $user->email);
         $this->assertNull($user->email_verified_at);
+    }
+
+    public function test_first_login_user_cannot_update_profile_information(): void
+    {
+        $user = User::factory()->create([
+            'first_login' => true,
+            'name' => 'Nombre original',
+            'email' => 'original@example.com',
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->patch('/profile', [
+                'name' => 'Nombre cambiado',
+                'email' => 'cambiado@example.com',
+            ]);
+
+        $response
+            ->assertRedirect('/profile')
+            ->assertSessionHas('status', 'profile-locked');
+
+        $user->refresh();
+
+        $this->assertSame('Nombre original', $user->name);
+        $this->assertSame('original@example.com', $user->email);
     }
 
     public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged(): void
@@ -83,6 +126,26 @@ class ProfileTest extends TestCase
 
         $this->assertGuest();
         $this->assertNull($user->fresh());
+    }
+
+    public function test_first_login_user_cannot_delete_their_account(): void
+    {
+        $user = User::factory()->create([
+            'first_login' => true,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->delete('/profile', [
+                'password' => 'password',
+            ]);
+
+        $response
+            ->assertRedirect('/profile')
+            ->assertSessionHas('status', 'profile-locked');
+
+        $this->assertAuthenticated();
+        $this->assertNotNull($user->fresh());
     }
 
     public function test_correct_password_must_be_provided_to_delete_account(): void
