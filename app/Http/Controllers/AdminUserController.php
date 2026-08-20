@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
@@ -35,6 +36,21 @@ class AdminUserController extends Controller
             'roles' => $this->roles(),
             'accountOwners' => $this->accountOwners(),
         ]);
+    }
+
+    public function impersonate(Request $request, User $user)
+    {
+        Auth::login($user);
+
+        $request->session()->regenerate();
+
+        if ($user->first_login) {
+            return redirect()
+                ->route('profile.edit')
+                ->with('status', 'first-login');
+        }
+
+        return redirect()->route('dashboard');
     }
 
     public function store(Request $request)

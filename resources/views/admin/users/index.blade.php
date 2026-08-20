@@ -59,7 +59,17 @@
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-700">{{ $account->created_at?->format('d/m/Y') }}</td>
                                     <td class="px-6 py-4 text-right text-sm font-medium">
-                                        <a href="{{ route('admin.users.edit', $account) }}" class="text-amber-700 hover:text-amber-900">Editar roles</a>
+                                        <div class="flex flex-col items-end gap-2">
+                                            <a href="{{ route('admin.users.edit', $account) }}" class="text-amber-700 hover:text-amber-900">Editar roles</a>
+                                            @if (auth()->user()->hasAnyRole(['admin', 'administrator']) && ! auth()->user()->is($account))
+                                                <form method="POST" action="{{ route('admin.users.impersonate', $account) }}">
+                                                    @csrf
+                                                    <button type="submit" class="text-blue-700 hover:text-blue-900">
+                                                        Iniciar sesion
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        </div>
                                     </td>
                                 </tr>
                             @empty

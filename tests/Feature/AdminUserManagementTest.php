@@ -128,6 +128,47 @@ class AdminUserManagementTest extends TestCase
         $this->assertSame($owner->id, $user->account_owner_id);
     }
 
+    public function test_admin_can_impersonate_user_from_users_index(): void
+    {
+        Role::findOrCreate('admin');
+
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $account = User::factory()->create([
+            'first_login' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.users.index'))
+            ->assertOk()
+            ->assertSee(route('admin.users.impersonate', $account), false)
+            ->assertSee('Iniciar sesion');
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.impersonate', $account))
+            ->assertRedirect(route('dashboard'));
+
+        $this->assertAuthenticatedAs($account);
+    }
+
+    public function test_admin_impersonating_first_login_user_goes_to_profile(): void
+    {
+        Role::findOrCreate('admin');
+
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $account = User::factory()->create([
+            'first_login' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.impersonate', $account))
+            ->assertRedirect(route('profile.edit'))
+            ->assertSessionHas('status', 'first-login');
+
+        $this->assertAuthenticatedAs($account);
+    }
+
     public function test_admin_can_assign_atc_account_owner_to_subordinate(): void
     {
         Role::findOrCreate('admin');
