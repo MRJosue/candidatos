@@ -224,6 +224,52 @@ class CvDocumentImportServiceTest extends TestCase
         $this->assertSame('02/2022 - 07/2022', $parsed['experiences'][1]['period']);
     }
 
+    public function test_parse_text_handles_spanish_pipe_period_experience_blocks(): void
+    {
+        $service = new CvDocumentImportService;
+
+        $parsed = $service->parseText(implode("\n", [
+            'Sergio R. Santoy Rosas',
+            'Especialista en Ciberseguridad OT',
+            'Perfil Profesional',
+            'Lider estrategico en infraestructura y ciberseguridad IT/OT.',
+            'Experiencia Profesional',
+            'Consultor de Seguridad de la informacion e Infraestructura de Redes',
+            'King of kings Cybersecurity and Telecom Services.',
+            '| julio 2025 - presente |',
+            'Actividades Principales',
+            'Consultorias en la evaluacion y diseno de estrategias de proteccion de datos.',
+            'Gerente de Infraestructura de Red y Seguridad',
+            'Radiomovil DIPSA',
+            '| marzo 2018 - abril 2025 |',
+            'Lidere el diseno y la gestion de infraestructura IT/OT de mision critica.',
+            'Administrador de Redes e Infraestructura',
+            'Radiomovil DIPSA',
+            '| febrero 2010 - febrero 2018 |',
+            'Gestione infraestructura critica de unidades operativas a nivel nacional.',
+            'Formacion Academica y Certificaciones',
+            'Maestria en Seguridad Informatica | UNIR Mexico | 2023',
+            'Conocimientos y Habilidades Claves',
+            'ServiceNow, NIST, ISO 27001',
+            'Idiomas',
+            'espanol (Nativo)',
+        ]));
+
+        $this->assertSame('Sergio R. Santoy Rosas', $parsed['profile']['full_name']);
+        $this->assertSame('Especialista en Ciberseguridad OT', $parsed['profile']['headline']);
+        $this->assertCount(3, $parsed['experiences']);
+        $this->assertSame('Consultor de Seguridad de la informacion e Infraestructura de Redes', $parsed['experiences'][0]['title']);
+        $this->assertSame('King of kings Cybersecurity and Telecom Services.', $parsed['experiences'][0]['organization']);
+        $this->assertSame('julio 2025 - presente', $parsed['experiences'][0]['period']);
+        $this->assertSame('Gerente de Infraestructura de Red y Seguridad', $parsed['experiences'][1]['title']);
+        $this->assertSame('Radiomovil DIPSA', $parsed['experiences'][1]['organization']);
+        $this->assertStringContainsString('infraestructura IT/OT', $parsed['experiences'][1]['description'] ?? '');
+        $this->assertStringNotContainsString('Formacion Academica', $parsed['experiences'][2]['description'] ?? '');
+        $this->assertCount(1, $parsed['education']);
+        $this->assertContains('NIST', $parsed['skills']);
+        $this->assertSame(['espanol (Nativo)'], $parsed['languages']);
+    }
+
     public function test_parse_text_handles_inline_duration_client_labels_and_custom_headings(): void
     {
         $service = new CvDocumentImportService;

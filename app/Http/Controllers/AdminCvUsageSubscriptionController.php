@@ -37,7 +37,7 @@ class AdminCvUsageSubscriptionController extends Controller
             'subscription' => $subscription,
             'plans' => CvUsagePlan::query()->where('is_active', true)->orderBy('monthly_quota')->get(),
             'summary' => $usageService->summary($user),
-            'subordinateUsage' => $usageService->subordinateUsageFor($user, $subscription),
+            'accountUsage' => $usageService->accountUsageFor($user, $subscription),
         ]);
     }
 
@@ -47,10 +47,13 @@ class AdminCvUsageSubscriptionController extends Controller
 
         $data = $request->validate([
             'cv_usage_plan_id' => ['required', Rule::exists('cv_usage_plans', 'id')->where('is_active', true)],
+            'extra_cv_quota' => ['nullable', 'integer', 'min:0', 'max:1000000'],
             'current_period_starts_at' => ['required', 'date'],
             'current_period_ends_at' => ['required', 'date', 'after:current_period_starts_at'],
             'status' => ['required', Rule::in(['active', 'paused', 'cancelled'])],
         ]);
+
+        $data['extra_cv_quota'] = $data['extra_cv_quota'] ?? 0;
 
         $subscription = $usageService->subscriptionFor($user);
         $subscription->update($data);

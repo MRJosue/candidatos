@@ -50,7 +50,7 @@ class CvDocumentImportTest extends TestCase
             ->assertDontSee('Parser actual');
     }
 
-    public function test_cv_edit_blocks_ai_document_import_when_group_usage_reaches_plan_limit(): void
+    public function test_cv_edit_allows_local_document_import_when_group_ai_usage_reaches_plan_limit(): void
     {
         $this->travelTo('2026-05-15 10:30:00');
 
@@ -106,14 +106,17 @@ class CvDocumentImportTest extends TestCase
             ->get(route('cv.edit', $profile))
             ->assertOk()
             ->assertSee('Plan grupal limitado')
-            ->assertSee('2 / 2 CV usados por el grupo')
+            ->assertSee('2 / 2 CV usados con IA por el grupo')
             ->assertSee('Has llegado al limite mensual de CVs de tu plan')
-            ->assertSee('x-bind:disabled="processing || unsupportedDoc || true"', false);
+            ->assertSee('se usara el parser local sin consumir CVs del plan')
+            ->assertSee('x-bind:disabled="processing || unsupportedDoc"', false);
     }
 
-    public function test_ai_document_import_request_is_rejected_when_group_usage_reaches_plan_limit(): void
+    public function test_ai_document_import_uses_local_parser_without_consumption_when_group_usage_reaches_plan_limit(): void
     {
         $this->travelTo('2026-05-15 10:30:00');
+        config()->set('services.gemini.key', 'test-key');
+        Http::fake();
 
         Role::findOrCreate('jefe_cuenta');
         Role::findOrCreate('usuario_subordinado');
@@ -158,7 +161,16 @@ class CvDocumentImportTest extends TestCase
             ->post(route('cv.import-document-ai', $profile), [
                 'cv_document' => UploadedFile::fake()->createWithContent('cv.txt', 'Andrea Lopez PHP Developer'),
             ])
-            ->assertSessionHasErrors('cv_document_ai');
+            ->assertRedirect(route('cv.edit', $profile))
+            ->assertSessionHas("cv_document_import.{$profile->id}");
+
+        Http::assertNothingSent();
+
+        $import = session("cv_document_import.{$profile->id}");
+
+        $this->assertSame('parser', $import['source']);
+        $this->assertSame('Andrea Lopez PHP Developer', $import['parsed']['profile']['full_name'] ?? null);
+        $this->assertDatabaseCount('cv_usage_events', 1);
     }
 
     public function test_cv_show_hides_soft_skills_section(): void
@@ -482,6 +494,13 @@ class CvDocumentImportTest extends TestCase
             && data_get($request->data(), 'generationConfig.responseSchema.type') === 'object'
             && ! str_contains(json_encode($request->data('generationConfig.responseSchema')), 'additionalProperties'));
 
+        $this->assertDatabaseHas('cv_usage_events', [
+            'user_id' => $user->id,
+            'cv_profile_id' => $profile->id,
+            'type' => CvUsageEvent::TYPE_IMPORT_AI,
+            'quantity' => 1,
+        ]);
+
         $this->assertDatabaseMissing('cv_profiles', [
             'id' => $profile->id,
             'full_name' => 'Andrea IA',
@@ -774,6 +793,7 @@ class CvDocumentImportTest extends TestCase
         $this->assertNotEmpty($import['notice'] ?? null);
         $this->assertArrayNotHasKey('notice_details', $import);
         $this->assertSame('Andrea Lopez', $import['parsed']['profile']['full_name'] ?? null);
+        $this->assertDatabaseCount('cv_usage_events', 0);
     }
 
     public function test_admin_ai_document_import_fallback_includes_detailed_error_message(): void
@@ -856,6 +876,7 @@ class CvDocumentImportTest extends TestCase
         $this->assertSame('parser', $import['source']);
         $this->assertSame('Andrea Lopez', $import['parsed']['profile']['full_name'] ?? null);
         $this->assertNotEmpty($import['parsed']['experiences'] ?? []);
+        $this->assertDatabaseCount('cv_usage_events', 0);
     }
 
     public function test_ai_document_import_rejects_legacy_doc_files_with_friendly_message(): void

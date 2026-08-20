@@ -11,6 +11,7 @@ class CvUsageSubscription extends Model
     protected $fillable = [
         'user_id',
         'cv_usage_plan_id',
+        'extra_cv_quota',
         'current_period_starts_at',
         'current_period_ends_at',
         'status',
@@ -19,6 +20,7 @@ class CvUsageSubscription extends Model
     protected function casts(): array
     {
         return [
+            'extra_cv_quota' => 'integer',
             'current_period_starts_at' => 'datetime',
             'current_period_ends_at' => 'datetime',
         ];

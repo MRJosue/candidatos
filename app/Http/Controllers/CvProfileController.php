@@ -755,7 +755,6 @@ class CvProfileController extends Controller
         )->validate();
 
         try {
-            $usageService->ensureCanConsume($request->user());
             $text = $importService->extractText($data['cv_document']);
         } catch (RuntimeException $exception) {
             Log::warning('CV document extraction failed.', [
@@ -770,6 +769,12 @@ class CvProfileController extends Controller
             return back()
                 ->withErrors(['cv_document_ai' => $exception->getMessage()])
                 ->withInput();
+        }
+
+        try {
+            $usageService->ensureCanConsume($request->user());
+        } catch (RuntimeException $exception) {
+            return $this->fallbackDocumentImport($request, $importService, $data['cv_document'], $text, $exception);
         }
 
         try {

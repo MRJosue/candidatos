@@ -19,7 +19,9 @@ class CvUsageService
     {
         $subscription = $this->subscriptionFor($user);
         $used = $this->usedInCurrentPeriod($subscription);
-        $quota = $subscription->plan->monthly_quota;
+        $baseQuota = $subscription->plan->monthly_quota;
+        $extraQuota = $subscription->extra_cv_quota ?? 0;
+        $quota = $baseQuota + $extraQuota;
         $accountOwner = $this->accountOwnerFor($user);
 
         return [
@@ -27,6 +29,8 @@ class CvUsageService
             'plan' => $subscription->plan,
             'accountOwner' => $accountOwner,
             'used' => $used,
+            'baseQuota' => $baseQuota,
+            'extraQuota' => $extraQuota,
             'quota' => $quota,
             'remaining' => max(0, $quota - $used),
             'percentage' => $quota > 0 ? min(100, round(($used / $quota) * 100)) : 0,
@@ -87,6 +91,40 @@ class CvUsageService
             ->where('occurred_at', '>=', $subscription->current_period_starts_at)
             ->where('occurred_at', '<', $subscription->current_period_ends_at)
             ->sum('quantity');
+    }
+
+    public function accountUsageFor(User $accountOwner, CvUsageSubscription $subscription): EloquentCollection
+    {
+        $accountUsers = User::query()
+            ->whereKey($accountOwner->id)
+            ->get(['id', 'name', 'email'])
+            ->merge(
+                $accountOwner->accountUsers()
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'email'])
+            );
+
+        $eventsByUser = CvUsageEvent::query()
+            ->with('cvProfile:id,title,full_name')
+            ->whereIn('user_id', $accountUsers->pluck('id'))
+            ->where('occurred_at', '>=', $subscription->current_period_starts_at)
+            ->where('occurred_at', '<', $subscription->current_period_ends_at)
+            ->orderByDesc('occurred_at')
+            ->get()
+            ->each(function (CvUsageEvent $event): void {
+                $event->type_label = $this->labelForEventType($event->type);
+            })
+            ->groupBy('user_id');
+
+        return $accountUsers->each(function (User $accountUser) use ($accountOwner, $eventsByUser): void {
+            $events = $eventsByUser->get($accountUser->id, collect());
+
+            $accountUser->current_period_usage = (int) $events->sum('quantity');
+            $accountUser->current_period_usage_events = $events;
+            $accountUser->current_period_usage_role = $accountUser->id === $accountOwner->id
+                ? 'Usuario principal'
+                : 'Subordinado';
+        });
     }
 
     public function subordinateUsageFor(User $accountOwner, CvUsageSubscription $subscription): EloquentCollection

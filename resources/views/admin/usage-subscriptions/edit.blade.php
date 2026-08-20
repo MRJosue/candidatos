@@ -41,6 +41,24 @@
                             <x-input-error class="mt-2" :messages="$errors->get('cv_usage_plan_id')" />
                         </div>
 
+                        <div class="sm:col-span-2">
+                            <x-input-label for="extra_cv_quota" value="CV extra para esta cuenta" />
+                            <x-text-input
+                                id="extra_cv_quota"
+                                name="extra_cv_quota"
+                                type="number"
+                                min="0"
+                                step="1"
+                                class="mt-1 block w-full"
+                                :value="old('extra_cv_quota', $subscription->extra_cv_quota)"
+                                required
+                            />
+                            <p class="mt-2 text-sm text-gray-500">
+                                Se suma al limite mensual del plan solo para esta cuenta. Usa 0 si no tiene CV extra.
+                            </p>
+                            <x-input-error class="mt-2" :messages="$errors->get('extra_cv_quota')" />
+                        </div>
+
                         <div>
                             <x-input-label for="current_period_starts_at" value="Fecha de inicio" />
                             <x-text-input
@@ -94,6 +112,14 @@
                                 <dd class="font-semibold text-gray-900">{{ number_format($summary['used']) }} / {{ number_format($summary['quota']) }}</dd>
                             </div>
                             <div>
+                                <dt class="text-gray-500">Plan base</dt>
+                                <dd class="font-semibold text-gray-900">{{ number_format($summary['baseQuota']) }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-gray-500">CV extra</dt>
+                                <dd class="font-semibold text-gray-900">{{ number_format($summary['extraQuota']) }}</dd>
+                            </div>
+                            <div>
                                 <dt class="text-gray-500">Restantes</dt>
                                 <dd class="font-semibold text-gray-900">{{ number_format($summary['remaining']) }}</dd>
                             </div>
@@ -131,32 +157,71 @@
 
             <div class="mt-6 overflow-hidden bg-white shadow sm:rounded-lg">
                 <div class="border-b border-gray-100 p-4 sm:px-8 sm:py-6">
-                    <h3 class="text-lg font-medium text-gray-900">Consumo por subordinado</h3>
-                    <p class="mt-1 text-sm text-gray-500">CV usados dentro del periodo actual de la cuenta.</p>
+                    <h3 class="text-lg font-medium text-gray-900">Consumo por usuario</h3>
+                    <p class="mt-1 text-sm text-gray-500">CV usados dentro del periodo actual por el usuario principal y sus subordinados.</p>
                 </div>
 
-                @if ($subordinateUsage->isEmpty())
-                    <p class="p-4 text-sm text-gray-500 sm:px-8">Esta cuenta no tiene usuarios subordinados.</p>
+                @if ($accountUsage->isEmpty())
+                    <p class="p-4 text-sm text-gray-500 sm:px-8">Esta cuenta no tiene usuarios para mostrar.</p>
                 @else
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 text-sm">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-600 sm:px-8">Subordinado</th>
+                                    <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-600 sm:px-8">Usuario</th>
+                                    <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-600">Tipo</th>
                                     <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-600">Correo</th>
-                                    <th scope="col" class="px-4 py-3 text-right font-semibold text-gray-600 sm:px-8">CV usados</th>
+                                    <th scope="col" class="px-4 py-3 text-right font-semibold text-gray-600">CV usados</th>
+                                    <th scope="col" class="px-4 py-3 text-left font-semibold text-gray-600 sm:px-8">Detalle</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 bg-white">
-                                @foreach ($subordinateUsage as $subordinate)
+                                @foreach ($accountUsage as $usageUser)
                                     <tr>
                                         <td class="px-4 py-3 font-medium text-gray-900 sm:px-8">
-                                            <a href="{{ route('admin.users.edit', $subordinate) }}" class="hover:text-amber-700">
-                                                {{ $subordinate->name }}
+                                            <a href="{{ route('admin.users.edit', $usageUser) }}" class="hover:text-amber-700">
+                                                {{ $usageUser->name }}
                                             </a>
                                         </td>
-                                        <td class="px-4 py-3 text-gray-500">{{ $subordinate->email }}</td>
-                                        <td class="px-4 py-3 text-right font-semibold text-gray-900 sm:px-8">{{ number_format($subordinate->current_period_usage) }}</td>
+                                        <td class="px-4 py-3 text-gray-500">{{ $usageUser->current_period_usage_role }}</td>
+                                        <td class="px-4 py-3 text-gray-500">{{ $usageUser->email }}</td>
+                                        <td class="px-4 py-3 text-right font-semibold text-gray-900">{{ number_format($usageUser->current_period_usage) }}</td>
+                                        <td class="px-4 py-3 text-gray-600 sm:px-8">
+                                            <details class="group">
+                                                <summary class="cursor-pointer text-sm font-medium text-amber-700 hover:text-amber-900">
+                                                    Ver detalle
+                                                </summary>
+
+                                                @if ($usageUser->current_period_usage_events->isEmpty())
+                                                    <p class="mt-2 text-sm text-gray-500">Sin consumo en este periodo.</p>
+                                                @else
+                                                    <div class="mt-2 overflow-hidden rounded-md border border-gray-200">
+                                                        <table class="min-w-full divide-y divide-gray-100 text-xs">
+                                                            <thead class="bg-gray-50">
+                                                                <tr>
+                                                                    <th scope="col" class="px-3 py-2 text-left font-semibold text-gray-600">Fecha</th>
+                                                                    <th scope="col" class="px-3 py-2 text-left font-semibold text-gray-600">Consumo</th>
+                                                                    <th scope="col" class="px-3 py-2 text-left font-semibold text-gray-600">CV</th>
+                                                                    <th scope="col" class="px-3 py-2 text-right font-semibold text-gray-600">Cantidad</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody class="divide-y divide-gray-100 bg-white">
+                                                                @foreach ($usageUser->current_period_usage_events as $event)
+                                                                    <tr>
+                                                                        <td class="px-3 py-2 text-gray-500">{{ $event->occurred_at->format('d/m/Y H:i') }}</td>
+                                                                        <td class="px-3 py-2 text-gray-700">{{ $event->type_label }}</td>
+                                                                        <td class="px-3 py-2 text-gray-500">
+                                                                            {{ $event->cvProfile?->title ?? data_get($event->metadata, 'original_name', 'No disponible') }}
+                                                                        </td>
+                                                                        <td class="px-3 py-2 text-right font-semibold text-gray-900">{{ number_format($event->quantity) }}</td>
+                                                                    </tr>
+                                                                @endforeach
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                @endif
+                                            </details>
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>

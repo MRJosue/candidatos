@@ -65,6 +65,24 @@ class CvUsageServiceTest extends TestCase
         $this->assertSame(598, $summary['remaining']);
     }
 
+    public function test_extra_cv_quota_extends_subscription_limit_for_the_account(): void
+    {
+        $user = User::factory()->create();
+        $service = app(CvUsageService::class);
+        $subscription = $service->subscriptionFor($user);
+
+        $subscription->update(['extra_cv_quota' => 2]);
+
+        $service->record($user, CvUsageEvent::TYPE_IMPORT_AI, quantity: 601);
+
+        $summary = $service->summary($user);
+
+        $this->assertSame(600, $summary['baseQuota']);
+        $this->assertSame(2, $summary['extraQuota']);
+        $this->assertSame(602, $summary['quota']);
+        $this->assertSame(1, $summary['remaining']);
+    }
+
     public function test_subordinates_consume_account_owner_plan_quota(): void
     {
         Role::findOrCreate('jefe_cuenta');

@@ -43,6 +43,55 @@ class AdminCvUsageSubscriptionTest extends TestCase
         $this->assertSame('2026-06-01', $subscription->current_period_ends_at->toDateString());
     }
 
+    public function test_admin_can_add_extra_cv_quota_to_account_subscription(): void
+    {
+        $this->travelTo('2026-05-15 10:30:00');
+
+        Role::findOrCreate('admin');
+        Role::findOrCreate('jefe_cuenta');
+
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $account = User::factory()->create();
+        $account->assignRole('jefe_cuenta');
+        $subscription = app(CvUsageService::class)->subscriptionFor($account);
+
+        CvUsageEvent::create([
+            'user_id' => $account->id,
+            'cv_usage_subscription_id' => $subscription->id,
+            'type' => CvUsageEvent::TYPE_IMPORT_AI,
+            'quantity' => 601,
+            'occurred_at' => '2026-05-10 12:00:00',
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.usage-subscriptions.update', $account), [
+                'cv_usage_plan_id' => $subscription->cv_usage_plan_id,
+                'extra_cv_quota' => 5,
+                'current_period_starts_at' => '2026-05-01',
+                'current_period_ends_at' => '2026-06-01',
+                'status' => 'active',
+            ])
+            ->assertRedirect(route('admin.usage-subscriptions.edit', $account));
+
+        $subscription = $subscription->refresh();
+        $summary = app(CvUsageService::class)->summary($account);
+
+        $this->assertSame(5, $subscription->extra_cv_quota);
+        $this->assertSame(600, $summary['baseQuota']);
+        $this->assertSame(5, $summary['extraQuota']);
+        $this->assertSame(605, $summary['quota']);
+        $this->assertSame(4, $summary['remaining']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.usage-subscriptions.edit', $account))
+            ->assertOk()
+            ->assertSee('name="extra_cv_quota"', false)
+            ->assertSee('601 / 605')
+            ->assertSee('CV extra')
+            ->assertSee('5');
+    }
+
     public function test_non_admin_cannot_manage_usage_plans(): void
     {
         $user = User::factory()->create();
@@ -96,7 +145,7 @@ class AdminCvUsageSubscriptionTest extends TestCase
         $this->assertSame('2026-06-15 10:30:00', $subscription->current_period_ends_at->toDateTimeString());
     }
 
-    public function test_edit_page_shows_subordinate_usage_and_total_consumption(): void
+    public function test_edit_page_shows_account_user_usage_details_and_total_consumption(): void
     {
         $this->travelTo('2026-05-15 10:30:00');
 
@@ -128,11 +177,20 @@ class AdminCvUsageSubscriptionTest extends TestCase
         ]);
 
         CvUsageEvent::create([
+            'user_id' => $account->id,
+            'cv_usage_subscription_id' => $subscription->id,
+            'type' => CvUsageEvent::TYPE_IMPORT_AI,
+            'quantity' => 4,
+            'occurred_at' => '2026-05-09 12:00:00',
+            'metadata' => ['original_name' => 'principal.pdf'],
+        ]);
+        CvUsageEvent::create([
             'user_id' => $firstSubordinate->id,
             'cv_usage_subscription_id' => null,
             'type' => CvUsageEvent::TYPE_IMPORT_AI,
             'quantity' => 3,
             'occurred_at' => '2026-05-10 12:00:00',
+            'metadata' => ['original_name' => 'ana.pdf'],
         ]);
         CvUsageEvent::create([
             'user_id' => $secondSubordinate->id,
@@ -152,11 +210,18 @@ class AdminCvUsageSubscriptionTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.usage-subscriptions.edit', $account))
             ->assertOk()
-            ->assertSee('5 / 600')
+            ->assertSee('9 / 600')
+            ->assertSee('Consumo por usuario')
+            ->assertSee('Cuenta Principal')
+            ->assertSee('Usuario principal')
+            ->assertSee('principal.pdf')
+            ->assertSee('Analisis de CV con IA')
             ->assertSee('Ana Subordinada')
             ->assertSee('ana.subordinada@example.com')
+            ->assertSee('ana.pdf')
             ->assertSee('Beto Subordinado')
             ->assertSee('beto.subordinado@example.com')
-            ->assertSeeInOrder(['Ana Subordinada', '3', 'Beto Subordinado', '2']);
+            ->assertSee('Traduccion de CV')
+            ->assertSeeInOrder(['Cuenta Principal', 'Usuario principal', '4', 'Ana Subordinada', 'Subordinado', '3', 'Beto Subordinado', 'Subordinado', '2']);
     }
 }

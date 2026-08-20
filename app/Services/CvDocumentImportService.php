@@ -124,6 +124,8 @@ class CvDocumentImportService
             throw new RuntimeException('El DOCX no contiene texto legible.');
         }
 
+        $document = preg_replace('/<w:tab\s*\/>/u', "\n", $document) ?? $document;
+        $document = preg_replace('/<w:br\b[^>]*\/>/u', "\n", $document) ?? $document;
         $document = preg_replace('/<\/w:p>/u', "\n", $document) ?? $document;
         $document = preg_replace('/<\/w:tr>/u', "\n", $document) ?? $document;
         $text = html_entity_decode(strip_tags($document), ENT_QUOTES | ENT_XML1, 'UTF-8');
@@ -589,9 +591,9 @@ class CvDocumentImportService
             'profile' => ['perfil', 'profile', 'management background', 'technical background'],
             'objective' => ['objetivo', 'objective'],
             'experience' => ['experiencia', 'experiencia laboral', 'experiencia profesional', 'work experience', 'professional experience', 'employment', 'experience/project work', 'project work'],
-            'education' => ['educacion', 'educación', 'formacion', 'formación', 'formacion academica', 'academic background', 'education'],
+            'education' => ['educacion', 'educación', 'formacion', 'formación', 'formacion academica', 'formación académica', 'formacion academica y certificaciones', 'formación académica y certificaciones', 'academic background', 'education'],
             'software' => ['software', 'herramientas', 'herramientas digitales', 'tools', 'platforms', 'plataformas', 'aplicaciones'],
-            'skills' => ['habilidades', 'competencias', 'skills', 'technical skills', 'tecnologias', 'tecnologías', 'lenguajes', 'programming languages'],
+            'skills' => ['habilidades', 'competencias', 'conocimientos y habilidades claves', 'conocimientos y habilidades clave', 'skills', 'technical skills', 'tecnologias', 'tecnologías', 'lenguajes', 'programming languages'],
             'languages' => ['idiomas', 'languages'],
         ];
 
@@ -1422,10 +1424,19 @@ class CvDocumentImportService
             ->map(function ($lineIndex, $entryIndex) use ($lines, $periodIndexes) {
                 $nextPeriodIndex = $periodIndexes[$entryIndex + 1] ?? count($lines);
                 $periodLine = $lines[$lineIndex];
+                $descriptionEndIndex = $nextPeriodIndex;
+
+                if (
+                    $nextPeriodIndex < count($lines)
+                    && $this->looksLikeStandalonePeriodLine($lines[$nextPeriodIndex])
+                ) {
+                    $descriptionEndIndex = max($lineIndex + 1, $nextPeriodIndex - 2);
+                }
+
                 $isStructured = $this->looksLikeStructuredExperiencePeriod($periodLine);
                 $isLabeled = $this->looksLikeLabeledExperiencePeriod($periodLine);
                 [$period, $organization] = $this->periodAndOrganization($periodLine);
-                $descriptionLines = array_slice($lines, $lineIndex + 1, $nextPeriodIndex - $lineIndex - 1);
+                $descriptionLines = array_slice($lines, $lineIndex + 1, $descriptionEndIndex - $lineIndex - 1);
 
                 return [
                     'title' => $isLabeled
@@ -1437,7 +1448,7 @@ class CvDocumentImportService
                         ? $this->labeledExperienceOrganization($lines, $lineIndex)
                         : ($isStructured
                         ? $this->structuredExperienceOrganization($lines, $lineIndex)
-                        : $organization),
+                        : ($organization ?: $this->organizationBeforePeriod($lines, $lineIndex))),
                     'period' => $isLabeled
                         ? $this->labeledExperiencePeriod($periodLine)
                         : ($isStructured
@@ -1461,7 +1472,26 @@ class CvDocumentImportService
             str_contains($line, '//')
             && preg_match('/(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|actualidad|actual|presente|present|(?:19|20)\d{2})/iu', $line)
             && preg_match('/(?:19|20)\d{2}/', $line)
-        ) || $this->looksLikeStructuredExperiencePeriod($line) || $this->looksLikeLabeledExperiencePeriod($line);
+        )
+            || $this->looksLikePipeSeparatedExperiencePeriod($line)
+            || $this->looksLikeStructuredExperiencePeriod($line)
+            || $this->looksLikeLabeledExperiencePeriod($line);
+    }
+
+    private function looksLikePipeSeparatedExperiencePeriod(string $line): bool
+    {
+        if (! str_contains($line, '|')) {
+            return false;
+        }
+
+        return (bool) preg_match('/\|\s*(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december|\d{2}\/\d{4}|(?:19|20)\d{2}).*(?:presente|present|actual|(?:19|20)\d{2})\s*\|?/iu', $line);
+    }
+
+    private function looksLikeStandalonePeriodLine(string $line): bool
+    {
+        $trimmed = trim($line, " \t\n\r\0\x0B|");
+
+        return $trimmed !== '' && $this->looksLikePeriodText($trimmed);
     }
 
     private function looksLikeStructuredExperiencePeriod(string $line): bool
@@ -1652,6 +1682,22 @@ class CvDocumentImportService
      */
     private function periodAndOrganization(string $line): array
     {
+        if ($this->looksLikePipeSeparatedExperiencePeriod($line)) {
+            $parts = collect(preg_split('/\|/u', $line) ?: [])
+                ->map(fn ($part) => trim($part))
+                ->filter()
+                ->values();
+
+            $periodIndex = $parts->search(fn ($part) => $this->looksLikePeriodText($part));
+
+            if ($periodIndex !== false) {
+                return [
+                    $parts->get($periodIndex),
+                    $periodIndex > 0 ? $parts->get($periodIndex - 1) : null,
+                ];
+            }
+        }
+
         [$period, $organization] = array_pad(preg_split('/\/\//u', $line, 2) ?: [], 2, null);
 
         return [
@@ -1660,13 +1706,28 @@ class CvDocumentImportService
         ];
     }
 
+    private function looksLikePeriodText(string $value): bool
+    {
+        return (bool) preg_match('/(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december|\d{2}\/\d{4}|(?:19|20)\d{2}).*(?:presente|present|actual|(?:19|20)\d{2})/iu', $value);
+    }
+
     /**
      * @param  array<int, string>  $lines
      */
     private function titleBeforePeriod(array $lines, int $periodIndex): ?string
     {
         for ($index = $periodIndex - 1; $index >= max(0, $periodIndex - 8); $index--) {
-            $title = $this->cleanTitle($lines[$index]);
+            $line = trim($lines[$index]);
+
+            if ($index === $periodIndex - 1 && $this->looksLikeStandalonePeriodLine($lines[$periodIndex])) {
+                continue;
+            }
+
+            if ($this->looksLikeNearbyExperienceTitle($line)) {
+                return $line;
+            }
+
+            $title = $this->cleanTitle($line);
 
             if ($title && ! in_array($this->headingKey($title), ['experiencia', 'formacion', 'formación', 'educacion', 'educación'], true)) {
                 return $title;
@@ -1676,9 +1737,52 @@ class CvDocumentImportService
         return null;
     }
 
+    /**
+     * @param  array<int, string>  $lines
+     */
+    private function organizationBeforePeriod(array $lines, int $periodIndex): ?string
+    {
+        if (! $this->looksLikeStandalonePeriodLine($lines[$periodIndex] ?? '')) {
+            return null;
+        }
+
+        $organization = trim($lines[$periodIndex - 1] ?? '');
+
+        if ($organization === '' || str_contains($organization, '|') || $this->looksLikeNearbyExperienceTitle($organization)) {
+            return null;
+        }
+
+        return $organization;
+    }
+
+    private function looksLikeNearbyExperienceTitle(string $line): bool
+    {
+        $line = trim($line);
+
+        if (
+            $line === ''
+            || str_contains($line, '|')
+            || str_contains($line, '@')
+            || preg_match('/[.!?]\s/u', $line)
+            || mb_strlen($line) > 140
+        ) {
+            return false;
+        }
+
+        if (preg_match('/\b(experiencia|formaci[oó]n|educaci[oó]n|habilidades|certificaciones|idiomas|actividades principales)\b/iu', $line)) {
+            return false;
+        }
+
+        return (bool) preg_match('/\b(consultor(?:ías)?|consultant|gerente|manager|administrador|jefe|ingeniero|engineer|analyst|developer|architect|specialist|especialista|lead|seguridad|infraestructura|redes)\b/iu', $line);
+    }
+
     private function cleanTitle(string $line): ?string
     {
         $line = trim($line);
+
+        if (mb_strlen($line) > 140 || preg_match('/[.!?]\s/u', $line)) {
+            return null;
+        }
 
         if (preg_match('/\b(experiencia|formaci[oó]n|educaci[oó]n|habilidades|cursos|idiomas|informaci[oó]n)\b/iu', $line)) {
             return null;
@@ -1704,14 +1808,41 @@ class CvDocumentImportService
      */
     private function descriptionFromLines(array $lines): ?string
     {
-        $description = collect($lines)
+        $descriptionLines = [];
+
+        foreach ($lines as $line) {
+            if ($this->isTerminalExperienceSectionLine($line)) {
+                break;
+            }
+
+            $descriptionLines[] = $line;
+        }
+
+        $description = collect($descriptionLines)
             ->reject(fn ($line) => filled($this->cleanTitle($line)))
-            ->reject(fn ($line) => preg_match('/@|^\(?\d|habilidades|cursos|educaci[oó]n complementaria|idiomas/i', $line))
+            ->reject(fn ($line) => preg_match('/@|^\(?\d|habilidades|cursos|educaci[oó]n complementaria|idiomas|actividades principales/i', $line))
             ->map(fn ($line) => trim($line))
             ->filter()
             ->implode("\n");
 
         return $description ?: null;
+    }
+
+    private function isTerminalExperienceSectionLine(string $line): bool
+    {
+        return in_array($this->headingKey($line), [
+            'formacion academica y certificaciones',
+            'formación académica y certificaciones',
+            'formacion academica',
+            'formación académica',
+            'educacion',
+            'educación',
+            'conocimientos y habilidades claves',
+            'conocimientos y habilidades clave',
+            'habilidades',
+            'idiomas',
+            'languages',
+        ], true);
     }
 
     /**

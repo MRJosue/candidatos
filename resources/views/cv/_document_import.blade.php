@@ -15,18 +15,18 @@
         @if ($aiUsageSummary)
             <div class="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
                 <p class="font-medium text-gray-900">{{ $aiUsageSummary['plan']->name }}</p>
-                <p>{{ number_format($aiUsageSummary['used']) }} / {{ number_format($aiUsageSummary['quota']) }} CV usados por el grupo</p>
+                <p>{{ number_format($aiUsageSummary['used']) }} / {{ number_format($aiUsageSummary['quota']) }} CV usados con IA por el grupo</p>
             </div>
         @endif
     </div>
 
     @if ($aiUsageBlocked)
-        <p class="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {{ $aiUsage['message'] }}
+        <p class="mt-4 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            {{ $aiUsage['message'] }} Si continuas, se usara el parser local sin consumir CVs del plan.
         </p>
     @endif
 
-    <form method="POST" action="{{ $action }}" enctype="multipart/form-data" class="mt-5 grid gap-4 md:grid-cols-[1fr_auto] md:items-end" x-on:submit="if (unsupportedDoc || {{ $aiUsageBlocked ? 'true' : 'false' }}) { $event.preventDefault(); return; } processing = true">
+    <form method="POST" action="{{ $action }}" enctype="multipart/form-data" class="mt-5 grid gap-4 md:grid-cols-[1fr_auto] md:items-end" x-on:submit="if (unsupportedDoc) { $event.preventDefault(); return; } processing = true">
         @csrf
         @if (filled($talent?->id ?? null))
             <input type="hidden" name="talent_id" value="{{ $talent->id }}">
@@ -41,7 +41,6 @@
                 accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
                 class="mt-1 block w-full cursor-pointer rounded border border-gray-300 text-sm file:mr-4 file:cursor-pointer file:border-0 file:bg-indigo-100 file:px-4 file:py-2 file:text-sm file:text-indigo-800"
                 x-on:change="fileName = $event.target.files[0]?.name || ''; fileLoaded = fileName !== ''; unsupportedDoc = fileName.toLowerCase().endsWith('.doc')"
-                @disabled($aiUsageBlocked)
                 required
             >
         </label>
@@ -64,8 +63,7 @@
         <button
             type="submit"
             class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-            x-bind:disabled="processing || unsupportedDoc || {{ $aiUsageBlocked ? 'true' : 'false' }}"
-            @disabled($aiUsageBlocked)
+            x-bind:disabled="processing || unsupportedDoc"
         >
             Analizar documento
         </button>
