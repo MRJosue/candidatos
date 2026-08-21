@@ -6,6 +6,7 @@ use App\Mail\AppointmentInvitation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class AppointmentTest extends TestCase
@@ -91,6 +92,69 @@ class AppointmentTest extends TestCase
         Mail::assertSent(AppointmentInvitation::class, 2);
         Mail::assertSent(AppointmentInvitation::class, fn ($mail) => $mail->hasTo('ana@example.com'));
         Mail::assertSent(AppointmentInvitation::class, fn ($mail) => $mail->hasTo('rrhh@acme.test'));
+    }
+
+    public function test_account_members_can_manage_same_account_appointments(): void
+    {
+        Mail::fake();
+
+        Role::findOrCreate('jefe_cuenta');
+        Role::findOrCreate('usuario_subordinado');
+
+        $owner = User::factory()->create();
+        $owner->assignRole('jefe_cuenta');
+
+        $firstMember = User::factory()->create(['account_owner_id' => $owner->id]);
+        $firstMember->assignRole('usuario_subordinado');
+
+        $secondMember = User::factory()->create(['account_owner_id' => $owner->id]);
+        $secondMember->assignRole('usuario_subordinado');
+
+        $talent = $secondMember->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $vacancy = $secondMember->vacancies()->create([
+            'title' => 'Backend Developer',
+            'status' => 'open',
+            'currency' => 'MXN',
+        ]);
+
+        $this->actingAs($firstMember)
+            ->get(route('appointments.create'))
+            ->assertOk()
+            ->assertSee('Ana Lopez')
+            ->assertSee('Backend Developer');
+
+        $response = $this->actingAs($firstMember)
+            ->post(route('appointments.store'), [
+                'talent_id' => $talent->id,
+                'vacancy_id' => $vacancy->id,
+                'scheduled_at' => now()->addDay()->format('Y-m-d H:i:s'),
+                'timezone' => 'America/Mexico_City',
+                'notes' => 'Entrevista tecnica',
+            ]);
+
+        $appointment = $firstMember->appointments()->first();
+
+        $response
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('appointments.show', $appointment));
+
+        $this->actingAs($secondMember)
+            ->put(route('appointments.update', $appointment), [
+                'talent_id' => $talent->id,
+                'vacancy_id' => $vacancy->id,
+                'scheduled_at' => now()->addDays(2)->format('Y-m-d H:i:s'),
+                'timezone' => 'America/Mexico_City',
+                'notes' => 'Reagendada',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('appointments.show', $appointment));
+
+        $this->assertSame('Reagendada', $appointment->refresh()->notes);
     }
 
     public function test_recruiter_can_resend_appointment_invitation_to_talent_and_company(): void

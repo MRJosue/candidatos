@@ -205,11 +205,100 @@ class RecruitingCrudTest extends TestCase
             ->assertOk()
             ->assertSee($subordinateTalent->full_name)
             ->assertDontSee($otherTalent->full_name)
-            ->assertDontSee(route('talents.edit', $subordinateTalent), false);
+            ->assertSee(route('talents.edit', $subordinateTalent), false);
 
         $this->actingAs($owner)
             ->get(route('talents.show', $subordinateTalent))
             ->assertOk();
+    }
+
+    public function test_account_members_can_manage_recruiting_records_in_same_account(): void
+    {
+        Role::findOrCreate('jefe_cuenta');
+        Role::findOrCreate('usuario_subordinado');
+
+        $owner = User::factory()->create();
+        $owner->assignRole('jefe_cuenta');
+
+        $firstMember = User::factory()->create(['account_owner_id' => $owner->id]);
+        $firstMember->assignRole('usuario_subordinado');
+
+        $secondMember = User::factory()->create(['account_owner_id' => $owner->id]);
+        $secondMember->assignRole('usuario_subordinado');
+
+        $company = $secondMember->companies()->create(['name' => 'Acme']);
+        $talent = $secondMember->talents()->create([
+            'first_name' => 'Ana',
+            'last_name' => 'Lopez',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+        $vacancy = $secondMember->vacancies()->create([
+            'company_id' => $company->id,
+            'title' => 'Backend Developer',
+            'client_company' => $company->name,
+            'status' => 'open',
+            'currency' => 'MXN',
+        ]);
+        $application = $secondMember->jobApplications()->create([
+            'talent_id' => $talent->id,
+            'vacancy_id' => $vacancy->id,
+            'status' => 'active',
+            'stage' => 'review',
+        ]);
+
+        $this->actingAs($firstMember)
+            ->get(route('talents.index'))
+            ->assertOk()
+            ->assertSee($talent->full_name)
+            ->assertSee(route('talents.edit', $talent), false);
+
+        $this->actingAs($firstMember)
+            ->put(route('talents.update', $talent), [
+                'first_name' => 'Ana',
+                'last_name' => 'Lopez',
+                'status' => 'paused',
+                'currency' => 'MXN',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('talents.show', $talent));
+
+        $this->assertSame('paused', $talent->refresh()->status);
+
+        $this->actingAs($firstMember)
+            ->put(route('companies.update', $company), [
+                'name' => 'Acme Shared',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('companies.show', $company));
+
+        $this->assertSame('Acme Shared', $company->refresh()->name);
+
+        $this->actingAs($firstMember)
+            ->put(route('vacancies.update', $vacancy), [
+                'company_id' => $company->id,
+                'position_title' => 'Lead Backend Developer',
+                'currency' => 'MXN',
+                'status' => 'paused',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('vacancies.show', $vacancy));
+
+        $this->assertSame('paused', $vacancy->refresh()->status);
+        $this->assertSame($secondMember->id, $vacancy->recruiter_id);
+
+        $this->actingAs($firstMember)
+            ->put(route('applications.update', $application), [
+                'talent_id' => $talent->id,
+                'vacancy_id' => $vacancy->id,
+                'status' => 'active',
+                'stage' => 'technical_interview',
+                'match_score' => 90,
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('applications.show', $application));
+
+        $this->assertSame('technical_interview', $application->refresh()->stage);
     }
 
     public function test_user_cannot_view_unrelated_talent(): void

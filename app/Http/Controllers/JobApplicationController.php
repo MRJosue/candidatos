@@ -6,6 +6,7 @@ use App\Models\CvProfile;
 use App\Models\CvTemplate;
 use App\Models\JobApplication;
 use App\Models\Talent;
+use App\Models\Vacancy;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -109,8 +110,8 @@ class JobApplicationController extends Controller
             ->where('is_active', true)
             ->firstOrFail();
 
-        $applications = $request->user()
-            ->jobApplications()
+        $applications = JobApplication::query()
+            ->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())
             ->with([
                 'cvProfile.template',
                 'cvProfile.experiences',
@@ -203,7 +204,7 @@ class JobApplicationController extends Controller
 
     public function show(Request $request, JobApplication $application)
     {
-        abort_unless($application->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($application->recruiter_id), 403);
 
         return view('applications.show', [
             'application' => $application->load(['talent', 'vacancy.company', 'vacancy.position', 'cvProfile']),
@@ -212,7 +213,7 @@ class JobApplicationController extends Controller
 
     public function edit(Request $request, JobApplication $application)
     {
-        abort_unless($application->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($application->recruiter_id), 403);
 
         return view('applications.edit', [
             'application' => $application,
@@ -222,7 +223,7 @@ class JobApplicationController extends Controller
 
     public function update(Request $request, JobApplication $application)
     {
-        abort_unless($application->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($application->recruiter_id), 403);
 
         $application->update($this->validatedData($request, $application));
 
@@ -231,7 +232,7 @@ class JobApplicationController extends Controller
 
     public function destroy(Request $request, JobApplication $application)
     {
-        abort_unless($application->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($application->recruiter_id), 403);
 
         $application->delete();
 
@@ -240,12 +241,13 @@ class JobApplicationController extends Controller
 
     public function storeForTalent(Request $request, Talent $talent)
     {
-        abort_unless($talent->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($talent->recruiter_id), 403);
 
         $data = $request->validate([
             'vacancy_id' => [
                 'required',
-                Rule::exists('vacancies', 'id')->where('recruiter_id', $request->user()->id),
+                Rule::exists('vacancies', 'id')
+                    ->where(fn ($query) => $query->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())),
                 Rule::unique('job_applications', 'vacancy_id')->where('talent_id', $talent->id),
             ],
         ]);
@@ -269,18 +271,21 @@ class JobApplicationController extends Controller
         return $request->validate([
             'talent_id' => [
                 'required',
-                Rule::exists('talents', 'id')->where('recruiter_id', $request->user()->id),
+                Rule::exists('talents', 'id')
+                    ->where(fn ($query) => $query->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())),
             ],
             'vacancy_id' => [
                 'required',
-                Rule::exists('vacancies', 'id')->where('recruiter_id', $request->user()->id),
+                Rule::exists('vacancies', 'id')
+                    ->where(fn ($query) => $query->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())),
                 Rule::unique('job_applications', 'vacancy_id')
                     ->where('talent_id', $request->input('talent_id'))
                     ->ignore($application),
             ],
             'cv_profile_id' => [
                 'nullable',
-                Rule::exists('cv_profiles', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('cv_profiles', 'id')
+                    ->where(fn ($query) => $query->whereIn('user_id', $request->user()->visibleCvUserIds())),
             ],
             'status' => ['required', Rule::in(array_keys($this->statusOptions()))],
             'stage' => ['required', Rule::in(array_keys($this->stageOptions()))],
@@ -294,18 +299,18 @@ class JobApplicationController extends Controller
     private function formOptions(Request $request): array
     {
         return [
-            'talents' => $request->user()
-                ->talents()
+            'talents' => Talent::query()
+                ->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())
                 ->orderBy('last_name')
                 ->orderBy('first_name')
                 ->get(),
-            'vacancies' => $request->user()
-                ->vacancies()
+            'vacancies' => Vacancy::query()
+                ->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())
                 ->with(['company', 'position'])
                 ->orderBy('title')
                 ->get(),
             'cvProfiles' => CvProfile::query()
-                ->where('user_id', $request->user()->id)
+                ->whereIn('user_id', $request->user()->visibleCvUserIds())
                 ->orderBy('title')
                 ->get(),
             'statusOptions' => $this->statusOptions(),
@@ -325,8 +330,8 @@ class JobApplicationController extends Controller
 
     private function filteredApplicationsQuery(Request $request, array $filters)
     {
-        return $request->user()
-            ->jobApplications()
+        return JobApplication::query()
+            ->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())
             ->with(['talent.cvProfile', 'vacancy.company', 'vacancy.position', 'cvProfile'])
             ->when($filters['talent_id'], fn ($query, string $talentId) => $query->where('talent_id', $talentId))
             ->when($filters['vacancy_id'], fn ($query, string $vacancyId) => $query->where('vacancy_id', $vacancyId))
@@ -361,8 +366,8 @@ class JobApplicationController extends Controller
 
     private function filterOptions(Request $request): array
     {
-        $applications = $request->user()
-            ->jobApplications()
+        $applications = JobApplication::query()
+            ->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())
             ->with(['talent.cvProfile', 'vacancy.company', 'vacancy.position', 'cvProfile'])
             ->get();
 

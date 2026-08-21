@@ -86,7 +86,12 @@ class CvProfileController extends Controller
             'profilesByTalent' => $profiles
                 ->getCollection()
                 ->groupBy(fn (CvProfile $profile) => $profile->talent_id ?: 'unassigned'),
-            'talents' => $user->talents()->with('cvProfiles:id,talent_id,title,language,is_primary')->orderBy('last_name')->orderBy('first_name')->get(),
+            'talents' => Talent::query()
+                ->whereIn('recruiter_id', $user->visibleRecruiterUserIds())
+                ->with('cvProfiles:id,talent_id,title,language,is_primary')
+                ->orderBy('last_name')
+                ->orderBy('first_name')
+                ->get(),
             'filters' => $filters,
             'filterOptions' => [
                 'languages' => CvProfile::languageOptions(),
@@ -121,7 +126,7 @@ class CvProfileController extends Controller
 
     public function createForTalent(Request $request, Talent $talent, CvUsageService $usageService)
     {
-        abort_unless($talent->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($talent->recruiter_id), 403);
 
         if (! $this->talentCanReceiveCv($talent)) {
             return redirect()
@@ -150,7 +155,7 @@ class CvProfileController extends Controller
 
     public function storeForTalent(Request $request, Talent $talent)
     {
-        abort_unless($talent->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($talent->recruiter_id), 403);
 
         $data = $request->validate([
             'language' => ['nullable', Rule::in(array_keys(CvProfile::languageOptions()))],
@@ -285,7 +290,7 @@ class CvProfileController extends Controller
         });
 
         return redirect()
-            ->route('cv.edit', $cvProfile)
+            ->route($cvProfile->talent_id ? 'talents.index' : 'cv.edit', $cvProfile->talent_id ? [] : $cvProfile)
             ->with('status', 'CV actualizado.');
     }
 
@@ -301,7 +306,9 @@ class CvProfileController extends Controller
         $talent = null;
 
         if ($talentId) {
-            $talent = $request->user()->talents()->findOrFail($talentId);
+            $talent = Talent::query()
+                ->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())
+                ->findOrFail($talentId);
             $this->ensureTalentCanReceiveCv($talent, $cvProfile);
         }
 
@@ -466,7 +473,9 @@ class CvProfileController extends Controller
         session()->put($this->createDocumentImportSessionKey(), $import);
 
         $talent = filled($request->input('talent_id'))
-            ? $request->user()->talents()->find($request->integer('talent_id'))
+            ? Talent::query()
+                ->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())
+                ->find($request->integer('talent_id'))
             : null;
 
         return redirect()
@@ -593,7 +602,9 @@ class CvProfileController extends Controller
             return null;
         }
 
-        $talent = $request->user()->talents()->findOrFail($data['talent_id']);
+        $talent = Talent::query()
+            ->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())
+            ->findOrFail($data['talent_id']);
 
         return $talent;
     }

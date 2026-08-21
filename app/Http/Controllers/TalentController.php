@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Talent;
 use App\Models\CvTemplate;
+use App\Models\Vacancy;
 use App\Services\CvWordDocumentService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -29,7 +30,7 @@ class TalentController extends Controller
         return view('talents.index', [
             'talents' => Talent::query()
                 ->whereIn('recruiter_id', $visibleRecruiterIds)
-                ->with(['cvProfile', 'cvProfiles', 'applications:id,talent_id,vacancy_id'])
+                ->with(['recruiter', 'cvProfile', 'cvProfiles', 'applications:id,talent_id,vacancy_id'])
                 ->withCount('applications')
                 ->when($name !== '', function ($query) use ($name): void {
                     collect(preg_split('/\s+/', $name) ?: [])
@@ -49,8 +50,8 @@ class TalentController extends Controller
                 ->orderByDesc('id')
                 ->paginate($perPage)
                 ->appends($request->query()),
-            'vacancies' => $request->user()
-                ->vacancies()
+            'vacancies' => Vacancy::query()
+                ->whereIn('recruiter_id', $visibleRecruiterIds)
                 ->with(['company', 'position'])
                 ->whereIn('status', ['open', 'paused'])
                 ->orderBy('title')
@@ -106,14 +107,14 @@ class TalentController extends Controller
 
     public function edit(Request $request, Talent $talent)
     {
-        abort_unless($talent->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($talent->recruiter_id), 403);
 
         return view('talents.edit', compact('talent'));
     }
 
     public function update(Request $request, Talent $talent)
     {
-        abort_unless($talent->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($talent->recruiter_id), 403);
 
         $talent->update($this->validatedData($request));
 
@@ -122,7 +123,7 @@ class TalentController extends Controller
 
     public function destroy(Request $request, Talent $talent)
     {
-        abort_unless($talent->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($talent->recruiter_id), 403);
 
         $talent->delete();
 

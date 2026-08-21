@@ -134,4 +134,49 @@ class CvAccountVisibilityTest extends TestCase
             ->get(route('cv.show', $profile))
             ->assertForbidden();
     }
+
+    public function test_account_members_can_update_and_delete_same_account_cvs(): void
+    {
+        Role::findOrCreate('jefe_cuenta');
+        Role::findOrCreate('usuario_subordinado');
+
+        $owner = User::factory()->create();
+        $owner->assignRole('jefe_cuenta');
+
+        $firstMember = User::factory()->create(['account_owner_id' => $owner->id]);
+        $firstMember->assignRole('usuario_subordinado');
+
+        $secondMember = User::factory()->create(['account_owner_id' => $owner->id]);
+        $secondMember->assignRole('usuario_subordinado');
+
+        $profile = $secondMember->cvProfiles()->create([
+            'title' => 'CV Compartido',
+            'full_name' => 'Talento Compartido',
+            'email' => 'talento@example.com',
+        ]);
+
+        $this->actingAs($firstMember)
+            ->get(route('cv.index'))
+            ->assertOk()
+            ->assertSee('CV Compartido')
+            ->assertSee($secondMember->name);
+
+        $this->actingAs($firstMember)
+            ->put(route('cv.update', $profile), [
+                'title' => 'CV Editado',
+                'full_name' => 'Talento Compartido',
+                'email' => 'talento@example.com',
+                'headline' => 'Backend Developer',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('cv.edit', $profile));
+
+        $this->assertSame('CV Editado', $profile->refresh()->title);
+
+        $this->actingAs($firstMember)
+            ->delete(route('cv.destroy', $profile))
+            ->assertRedirect(route('cv.index'));
+
+        $this->assertNull($profile->fresh());
+    }
 }

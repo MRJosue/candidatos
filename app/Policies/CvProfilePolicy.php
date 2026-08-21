@@ -45,7 +45,7 @@ class CvProfilePolicy
      */
     public function delete(User $user, CvProfile $cvProfile): bool
     {
-        return $cvProfile->user_id === $user->id;
+        return $user->canViewCvOwner($cvProfile->user_id);
     }
 
     /**
@@ -53,7 +53,7 @@ class CvProfilePolicy
      */
     public function restore(User $user, CvProfile $cvProfile): bool
     {
-        return $cvProfile->user_id === $user->id;
+        return $user->canViewCvOwner($cvProfile->user_id);
     }
 
     /**
@@ -61,6 +61,6 @@ class CvProfilePolicy
      */
     public function forceDelete(User $user, CvProfile $cvProfile): bool
     {
-        return $cvProfile->user_id === $user->id;
+        return $user->canViewCvOwner($cvProfile->user_id);
     }
 }

@@ -86,22 +86,33 @@ class User extends Authenticatable
     /**
      * @return array<int, int>
      */
-    public function visibleCvUserIds(): array
+    public function accountMemberIds(): array
     {
         if ($this->hasAnyRole(['admin', 'administrator'])) {
             return self::query()->pluck('id')->all();
         }
 
-        if ($this->isAccountOwner()) {
-            return $this->accountUsers()
-                ->pluck('id')
-                ->push($this->id)
-                ->unique()
-                ->values()
-                ->all();
+        $accountOwnerId = $this->account_owner_id ?: ($this->isAccountOwner() ? $this->id : null);
+
+        if (! $accountOwnerId) {
+            return [$this->id];
         }
 
-        return [$this->id];
+        return self::query()
+            ->whereKey($accountOwnerId)
+            ->orWhere('account_owner_id', $accountOwnerId)
+            ->pluck('id')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public function visibleCvUserIds(): array
+    {
+        return $this->accountMemberIds();
     }
 
     /**

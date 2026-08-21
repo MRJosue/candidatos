@@ -26,11 +26,13 @@ class StoreAppointmentRequest extends FormRequest
         return [
             'talent_id' => [
                 'required',
-                Rule::exists('talents', 'id')->where('recruiter_id', $this->user()->id),
+                Rule::exists('talents', 'id')
+                    ->where(fn ($query) => $query->whereIn('recruiter_id', $this->user()->visibleRecruiterUserIds())),
             ],
             'vacancy_id' => [
                 'required',
-                Rule::exists('vacancies', 'id')->where('recruiter_id', $this->user()->id),
+                Rule::exists('vacancies', 'id')
+                    ->where(fn ($query) => $query->whereIn('recruiter_id', $this->user()->visibleRecruiterUserIds())),
             ],
             'scheduled_at' => ['required', 'date', 'after:now'],
             'timezone' => ['nullable', 'timezone'],

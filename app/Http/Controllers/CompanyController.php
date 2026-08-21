@@ -11,8 +11,8 @@ class CompanyController extends Controller
     public function index(Request $request)
     {
         return view('companies.index', [
-            'companies' => $request->user()
-                ->companies()
+            'companies' => Company::query()
+                ->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())
                 ->withCount(['positions', 'vacancies'])
                 ->orderBy('name')
                 ->paginate(15),
@@ -35,7 +35,7 @@ class CompanyController extends Controller
 
     public function show(Request $request, Company $company)
     {
-        abort_unless($company->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($company->recruiter_id), 403);
 
         return view('companies.show', [
             'company' => $company->load([
@@ -47,14 +47,14 @@ class CompanyController extends Controller
 
     public function edit(Request $request, Company $company)
     {
-        abort_unless($company->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($company->recruiter_id), 403);
 
         return view('companies.edit', compact('company'));
     }
 
     public function update(Request $request, Company $company)
     {
-        abort_unless($company->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($company->recruiter_id), 403);
 
         $company->update($this->validatedData($request, $company));
 
@@ -63,7 +63,7 @@ class CompanyController extends Controller
 
     public function destroy(Request $request, Company $company)
     {
-        abort_unless($company->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($company->recruiter_id), 403);
 
         $company->delete();
 
@@ -78,7 +78,7 @@ class CompanyController extends Controller
                 'string',
                 'max:180',
                 Rule::unique('companies', 'name')
-                    ->where('recruiter_id', $request->user()->id)
+                    ->where(fn ($query) => $query->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds()))
                     ->ignore($company),
             ],
             'industry' => ['nullable', 'string', 'max:120'],

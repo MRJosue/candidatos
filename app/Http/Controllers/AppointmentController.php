@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreAppointmentRequest;
 use App\Mail\AppointmentInvitation;
 use App\Models\Appointment;
+use App\Models\Talent;
+use App\Models\Vacancy;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
@@ -21,8 +23,9 @@ class AppointmentController extends Controller
         $calendarMonth = $this->resolveCalendarMonth($request->query('month'));
         $calendarStart = $calendarMonth->startOfMonth()->startOfWeek(CarbonInterface::MONDAY);
         $calendarEnd = $calendarMonth->endOfMonth()->endOfWeek(CarbonInterface::SUNDAY);
-        $calendarAppointmentsByDate = $request->user()
-            ->appointments()
+        $visibleUserIds = $request->user()->visibleCvUserIds();
+        $calendarAppointmentsByDate = Appointment::query()
+            ->whereIn('user_id', $visibleUserIds)
             ->with(['talent.cvProfile', 'vacancy.company', 'vacancy.position'])
             ->whereBetween('scheduled_at', [$calendarStart, $calendarEnd])
             ->where('status', '!=', 'cancelled')
@@ -31,8 +34,8 @@ class AppointmentController extends Controller
             ->groupBy(fn (Appointment $appointment) => $appointment->scheduled_at->toDateString());
 
         return view('appointments.index', [
-            'appointments' => $request->user()
-                ->appointments()
+            'appointments' => Appointment::query()
+                ->whereIn('user_id', $visibleUserIds)
                 ->with(['talent.cvProfile', 'vacancy.company', 'vacancy.position'])
                 ->latest('scheduled_at')
                 ->paginate(20),
@@ -80,7 +83,7 @@ class AppointmentController extends Controller
      */
     public function show(Appointment $appointment)
     {
-        abort_unless($appointment->user_id === auth()->id(), 403);
+        abort_unless(auth()->user()->canViewCvOwner($appointment->user_id), 403);
 
         return view('appointments.show', [
             'appointment' => $appointment->load(['talent.cvProfile', 'vacancy.company', 'vacancy.position']),
@@ -92,7 +95,7 @@ class AppointmentController extends Controller
      */
     public function edit(Request $request, Appointment $appointment)
     {
-        abort_unless($appointment->user_id === auth()->id(), 403);
+        abort_unless($request->user()->canViewCvOwner($appointment->user_id), 403);
 
         return view('appointments.edit', [
             'appointment' => $appointment,
@@ -105,7 +108,7 @@ class AppointmentController extends Controller
      */
     public function update(StoreAppointmentRequest $request, Appointment $appointment)
     {
-        abort_unless($appointment->user_id === auth()->id(), 403);
+        abort_unless($request->user()->canViewCvOwner($appointment->user_id), 403);
 
         $appointment->update($request->validated());
 
@@ -117,7 +120,7 @@ class AppointmentController extends Controller
      */
     public function destroy(Appointment $appointment)
     {
-        abort_unless($appointment->user_id === auth()->id(), 403);
+        abort_unless(auth()->user()->canViewCvOwner($appointment->user_id), 403);
 
         $appointment->delete();
 
@@ -126,7 +129,7 @@ class AppointmentController extends Controller
 
     public function sendInvitations(Appointment $appointment)
     {
-        abort_unless($appointment->user_id === auth()->id(), 403);
+        abort_unless(auth()->user()->canViewCvOwner($appointment->user_id), 403);
 
         $delivery = $this->sendAppointmentInvitations($appointment);
 
@@ -182,13 +185,13 @@ class AppointmentController extends Controller
     private function formOptions(Request $request): array
     {
         return [
-            'talents' => $request->user()
-                ->talents()
+            'talents' => Talent::query()
+                ->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())
                 ->orderBy('last_name')
                 ->orderBy('first_name')
                 ->get(),
-            'vacancies' => $request->user()
-                ->vacancies()
+            'vacancies' => Vacancy::query()
+                ->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())
                 ->with(['company', 'position'])
                 ->orderBy('title')
                 ->get(),

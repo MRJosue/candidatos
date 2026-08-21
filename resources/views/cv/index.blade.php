@@ -36,7 +36,7 @@
             </div>
 
             <div class="bg-white rounded shadow-sm overflow-x-auto">
-                <table class="min-w-[1040px] w-full divide-y divide-gray-200">
+                <table class="min-w-[1160px] w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -79,6 +79,7 @@
                                     @endforeach
                                 </select>
                             </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Creado por</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                 <span>Actualizado</span>
                                 <input
@@ -122,15 +123,13 @@
                                     <td class="px-6 py-4">
                                         <a href="{{ route('cv.show', $profile) }}" class="font-medium text-indigo-600">{{ $profile->title }}</a>
                                         <p class="text-sm text-gray-500">{{ $profile->full_name ?: 'Sin nombre detectado' }}</p>
-                                        @if ($profile->user_id !== auth()->id())
-                                            <p class="text-xs text-gray-400">Propietario: {{ $profile->user?->name ?? 'Usuario' }}</p>
-                                        @endif
                                         @if ($profile->is_primary)
                                             <span class="mt-1 inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">Principal</span>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-700">{{ $profile->languageLabel() }}</td>
                                     <td class="px-6 py-4 text-sm text-gray-700">{{ $profile->template?->name ?? 'Sin plantilla' }}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-700">{{ $profile->user?->name ?? 'Usuario' }}</td>
                                     <td class="px-6 py-4 text-sm text-gray-700">{{ $profile->updated_at?->format('d/m/Y') }}</td>
                                     <td class="px-6 py-4 text-right text-sm whitespace-nowrap">
                                         <div
@@ -273,7 +272,7 @@
                             @endforeach
                         @empty
                             <tr>
-                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">Crea tu primer CV para empezar.</td>
+                                <td colspan="7" class="px-6 py-8 text-center text-gray-500">Crea tu primer CV para empezar.</td>
                             </tr>
                         @endforelse
                     </tbody>

@@ -87,7 +87,7 @@
             </div>
 
             <div class="bg-white rounded shadow-sm overflow-x-auto">
-                <table class="min-w-[1040px] w-full divide-y divide-gray-200">
+                <table class="min-w-[1160px] w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-3 text-left">
@@ -128,6 +128,7 @@
                                     @endforeach
                                 </datalist>
                             </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Creado por</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fuente</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CV</th>
@@ -142,7 +143,7 @@
                                 $hasAvailableVacancies = $vacancies->contains(fn ($vacancy) => ! in_array($vacancy->id, $appliedVacancyIds, true));
                                 $spanishCv = $talent->cvProfiles->first(fn ($profile) => ($profile->language ?: 'es') === 'es');
                                 $englishCv = $talent->cvProfiles->first(fn ($profile) => ($profile->language ?: 'es') === 'en');
-                                $canManageTalent = $talent->recruiter_id === auth()->id();
+                                $canManageTalent = auth()->user()->canViewRecruiterOwner($talent->recruiter_id);
                             @endphp
                             <tr>
                                 <td class="px-6 py-4">
@@ -160,6 +161,7 @@
                                     <p class="text-sm text-gray-500">{{ $talent->cvProfile?->email ?? 'Sin CV asociado' }}</p>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-700">{{ $talent->created_at?->format('d/m/Y') }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-700">{{ $talent->recruiter?->name ?? 'Usuario' }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-700">{{ $talent->source ?? 'No definida' }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-700 capitalize">{{ $talent->status }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-700">
@@ -349,7 +351,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-6 py-8 text-center text-gray-500">Aun no tienes talentos registrados.</td>
+                                <td colspan="9" class="px-6 py-8 text-center text-gray-500">Aun no tienes talentos registrados.</td>
                             </tr>
                         @endforelse
                     </tbody>

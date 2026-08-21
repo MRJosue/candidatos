@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Company;
 use App\Models\Position;
 use App\Models\Vacancy;
 use Illuminate\Http\Request;
@@ -12,8 +13,8 @@ class VacancyController extends Controller
     public function index(Request $request)
     {
         return view('vacancies.index', [
-            'vacancies' => $request->user()
-                ->vacancies()
+            'vacancies' => Vacancy::query()
+                ->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())
                 ->with(['company', 'position'])
                 ->withCount('applications')
                 ->latest()
@@ -66,7 +67,7 @@ class VacancyController extends Controller
 
     public function show(Request $request, Vacancy $vacancy)
     {
-        abort_unless($vacancy->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($vacancy->recruiter_id), 403);
 
         return view('vacancies.show', [
             'vacancy' => $vacancy->load(['company', 'position', 'applications.talent', 'applications.cvProfile']),
@@ -75,7 +76,7 @@ class VacancyController extends Controller
 
     public function edit(Request $request, Vacancy $vacancy)
     {
-        abort_unless($vacancy->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($vacancy->recruiter_id), 403);
 
         return view('vacancies.edit', [
             'vacancy' => $vacancy->load(['company', 'position']),
@@ -98,7 +99,7 @@ class VacancyController extends Controller
 
     public function update(Request $request, Vacancy $vacancy)
     {
-        abort_unless($vacancy->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($vacancy->recruiter_id), 403);
 
         $data = $this->validatedData($request);
         [$company, $position] = $this->syncCompanyAndPosition($request, $data, $vacancy);
@@ -128,7 +129,7 @@ class VacancyController extends Controller
 
     public function destroy(Request $request, Vacancy $vacancy)
     {
-        abort_unless($vacancy->recruiter_id === $request->user()->id, 403);
+        abort_unless($request->user()->canViewRecruiterOwner($vacancy->recruiter_id), 403);
 
         $vacancy->delete();
 
@@ -140,7 +141,8 @@ class VacancyController extends Controller
         $data = $request->validate([
             'company_id' => [
                 'required',
-                Rule::exists('companies', 'id')->where('recruiter_id', $request->user()->id),
+                Rule::exists('companies', 'id')
+                    ->where(fn ($query) => $query->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())),
             ],
             'position_title' => ['required', 'string', 'max:180'],
             'position_department' => ['nullable', 'string', 'max:120'],
@@ -166,11 +168,14 @@ class VacancyController extends Controller
 
     private function syncCompanyAndPosition(Request $request, array $data, ?Vacancy $vacancy = null): array
     {
-        $company = $request->user()->companies()->findOrFail($data['company_id']);
+        $company = Company::query()
+            ->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())
+            ->findOrFail($data['company_id']);
 
-        $position = $vacancy?->position ?? new Position(['recruiter_id' => $request->user()->id]);
+        $recruiterId = $vacancy?->recruiter_id ?? $request->user()->id;
+        $position = $vacancy?->position ?? new Position(['recruiter_id' => $recruiterId]);
         $position->fill([
-            'recruiter_id' => $request->user()->id,
+            'recruiter_id' => $recruiterId,
             'company_id' => $company->id,
             'title' => $data['position_title'],
             'department' => $data['position_department'] ?? null,
@@ -191,8 +196,8 @@ class VacancyController extends Controller
 
     private function companyCatalog(Request $request)
     {
-        return $request->user()
-            ->companies()
+        return Company::query()
+            ->whereIn('recruiter_id', $request->user()->visibleRecruiterUserIds())
             ->orderBy('name')
             ->get();
     }
