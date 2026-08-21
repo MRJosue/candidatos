@@ -167,8 +167,12 @@ class AdminUserController extends Controller
 
     private function validateAccountOwner($roles, $accountOwnerId): ?string
     {
-        if (! $roles->contains('usuario_subordinado') || blank($accountOwnerId)) {
+        if (! $roles->contains('usuario_subordinado')) {
             return null;
+        }
+
+        if (blank($accountOwnerId)) {
+            return 'Selecciona un jefe de cuenta para el usuario subordinado.';
         }
 
         $owner = User::find($accountOwnerId);

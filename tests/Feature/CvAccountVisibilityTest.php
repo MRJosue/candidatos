@@ -81,6 +81,69 @@ class CvAccountVisibilityTest extends TestCase
             ->assertJsonPath('ordered_ids', [$second->id, $first->id]);
     }
 
+    public function test_subordinate_can_view_account_owner_cvs(): void
+    {
+        Role::findOrCreate('jefe_cuenta');
+        Role::findOrCreate('usuario_subordinado');
+
+        $owner = User::factory()->create();
+        $owner->assignRole('jefe_cuenta');
+
+        $subordinate = User::factory()->create([
+            'account_owner_id' => $owner->id,
+        ]);
+        $subordinate->assignRole('usuario_subordinado');
+
+        $profile = $owner->cvProfiles()->create([
+            'title' => 'CV Del Jefe',
+            'full_name' => 'Talento Del Jefe',
+            'email' => 'talento.jefe@example.com',
+        ]);
+
+        $this->actingAs($subordinate)
+            ->get(route('cv.index'))
+            ->assertOk()
+            ->assertSee('CV Del Jefe')
+            ->assertSee($owner->name);
+
+        $this->actingAs($subordinate)
+            ->get(route('cv.show', $profile))
+            ->assertOk();
+    }
+
+    public function test_account_member_can_filter_cvs_by_creator_name(): void
+    {
+        Role::findOrCreate('jefe_cuenta');
+        Role::findOrCreate('usuario_subordinado');
+
+        $owner = User::factory()->create(['name' => 'Jefa Cuenta']);
+        $owner->assignRole('jefe_cuenta');
+
+        $subordinate = User::factory()->create([
+            'name' => 'Reclutadora Uno',
+            'account_owner_id' => $owner->id,
+        ]);
+        $subordinate->assignRole('usuario_subordinado');
+
+        $owner->cvProfiles()->create([
+            'title' => 'CV Del Jefe',
+            'full_name' => 'Talento Del Jefe',
+            'email' => 'talento.jefe@example.com',
+        ]);
+
+        $subordinate->cvProfiles()->create([
+            'title' => 'CV Del Subordinado',
+            'full_name' => 'Talento Del Subordinado',
+            'email' => 'talento.subordinado@example.com',
+        ]);
+
+        $this->actingAs($subordinate)
+            ->get(route('cv.index', ['created_by' => 'Jefa']))
+            ->assertOk()
+            ->assertSee('CV Del Jefe')
+            ->assertDontSee('CV Del Subordinado');
+    }
+
     public function test_atc_account_owner_can_view_subordinate_cvs(): void
     {
         Role::findOrCreate('jefe_atc');

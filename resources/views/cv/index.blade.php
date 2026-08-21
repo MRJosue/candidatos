@@ -79,7 +79,17 @@
                                     @endforeach
                                 </select>
                             </th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Creado por</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <span>Creado por</span>
+                                <input
+                                    type="search"
+                                    name="created_by"
+                                    value="{{ $filters['created_by'] }}"
+                                    form="cv-filters"
+                                    placeholder="Buscar usuario"
+                                    class="mt-2 block w-44 rounded border-gray-300 text-xs normal-case font-normal"
+                                >
+                            </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                 <span>Actualizado</span>
                                 <input

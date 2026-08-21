@@ -28,7 +28,7 @@
                 <div class="flex flex-wrap items-center gap-3">
                     <p id="selected-talents-count" class="text-sm text-gray-500">0 talentos seleccionados</p>
                     <button type="submit" form="talent-filters" class="rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50">Buscar</button>
-                    @if ($filters['name'] !== '' || $filters['created_date'] !== '')
+                    @if ($filters['name'] !== '' || $filters['created_date'] !== '' || $filters['created_by'] !== '')
                         <a href="{{ route('talents.index') }}" class="rounded bg-gray-100 px-3 py-2 text-sm text-gray-700 hover:bg-gray-200">Limpiar</a>
                     @endif
                     <label class="block">
@@ -128,7 +128,18 @@
                                     @endforeach
                                 </datalist>
                             </th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Creado por</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <span>Creado por</span>
+                                <input
+                                    type="search"
+                                    name="created_by"
+                                    value="{{ $filters['created_by'] }}"
+                                    form="talent-filters"
+                                    placeholder="Buscar usuario"
+                                    class="mt-2 block w-44 rounded border-gray-300 text-xs normal-case font-normal"
+                                    aria-label="Buscar talento por usuario creador"
+                                >
+                            </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fuente</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CV</th>

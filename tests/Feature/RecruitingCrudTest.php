@@ -301,6 +301,41 @@ class RecruitingCrudTest extends TestCase
         $this->assertSame('technical_interview', $application->refresh()->stage);
     }
 
+    public function test_account_member_can_filter_talents_by_creator_name(): void
+    {
+        Role::findOrCreate('jefe_cuenta');
+        Role::findOrCreate('usuario_subordinado');
+
+        $owner = User::factory()->create(['name' => 'Jefa Cuenta']);
+        $owner->assignRole('jefe_cuenta');
+
+        $subordinate = User::factory()->create([
+            'name' => 'Reclutadora Uno',
+            'account_owner_id' => $owner->id,
+        ]);
+        $subordinate->assignRole('usuario_subordinado');
+
+        $ownerTalent = $owner->talents()->create([
+            'first_name' => 'Talento',
+            'last_name' => 'Jefatura',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+
+        $subordinateTalent = $subordinate->talents()->create([
+            'first_name' => 'Talento',
+            'last_name' => 'Subordinado',
+            'status' => 'active',
+            'currency' => 'MXN',
+        ]);
+
+        $this->actingAs($subordinate)
+            ->get(route('talents.index', ['created_by' => 'Jefa']))
+            ->assertOk()
+            ->assertSee($ownerTalent->full_name)
+            ->assertDontSee($subordinateTalent->full_name);
+    }
+
     public function test_user_cannot_view_unrelated_talent(): void
     {
         $user = User::factory()->create();

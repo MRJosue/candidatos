@@ -19,11 +19,13 @@ class TalentController extends Controller
         $filters = $request->validate([
             'name' => ['nullable', 'string', 'max:160'],
             'created_date' => ['nullable', 'string', 'max:40'],
+            'created_by' => ['nullable', 'string', 'max:160'],
         ]);
         $perPage = $this->perPage($request);
 
         $name = trim((string) ($filters['name'] ?? ''));
         $createdDate = trim((string) ($filters['created_date'] ?? ''));
+        $createdBy = trim((string) ($filters['created_by'] ?? ''));
         $normalizedCreatedDate = $this->normalizedDateSearch($createdDate);
         $visibleRecruiterIds = $request->user()->visibleRecruiterUserIds();
 
@@ -46,6 +48,18 @@ class TalentController extends Controller
                 ->when($createdDate !== '', function ($query) use ($createdDate, $normalizedCreatedDate): void {
                     $query->whereDate('created_at', 'like', '%'.($normalizedCreatedDate ?: $createdDate).'%');
                 })
+                ->when($createdBy !== '', function ($query) use ($createdBy): void {
+                    $query->whereHas('recruiter', function ($query) use ($createdBy): void {
+                        collect(preg_split('/\s+/', $createdBy) ?: [])
+                            ->filter()
+                            ->each(function (string $term) use ($query): void {
+                                $query->where(function ($query) use ($term): void {
+                                    $query->where('name', 'like', "%{$term}%")
+                                        ->orWhere('email', 'like', "%{$term}%");
+                                });
+                            });
+                    });
+                })
                 ->orderByDesc('created_at')
                 ->orderByDesc('id')
                 ->paginate($perPage)
@@ -59,6 +73,7 @@ class TalentController extends Controller
             'filters' => [
                 'name' => $name,
                 'created_date' => $createdDate,
+                'created_by' => $createdBy,
             ],
             'perPage' => $perPage,
             'perPageOptions' => $this->perPageOptions(),

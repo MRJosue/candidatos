@@ -75,6 +75,18 @@ class CvProfileController extends Controller
             })
             ->when($filters['language'] !== '', fn ($query) => $query->where('language', $filters['language']))
             ->when($filters['template'] !== '', fn ($query) => $query->where('cv_template_id', $filters['template']))
+            ->when($filters['created_by'] !== '', function ($query) use ($filters): void {
+                $query->whereHas('user', function ($query) use ($filters): void {
+                    collect(preg_split('/\s+/', $filters['created_by']) ?: [])
+                        ->filter()
+                        ->each(function (string $term) use ($query): void {
+                            $query->where(function ($query) use ($term): void {
+                                $query->where('name', 'like', "%{$term}%")
+                                    ->orWhere('email', 'like', "%{$term}%");
+                            });
+                        });
+                });
+            })
             ->when($filters['updated_date'] !== '', fn ($query) => $query->whereDate('updated_at', $filters['updated_date']))
             ->orderByDesc('updated_at')
             ->orderByDesc('id')
@@ -1476,6 +1488,7 @@ class CvProfileController extends Controller
             'cv' => ['nullable', 'string', 'max:160'],
             'language' => ['nullable', Rule::in(array_keys(CvProfile::languageOptions()))],
             'template' => ['nullable', 'integer'],
+            'created_by' => ['nullable', 'string', 'max:160'],
             'updated_date' => ['nullable', 'date_format:Y-m-d'],
         ]);
 
@@ -1484,6 +1497,7 @@ class CvProfileController extends Controller
             'cv' => trim((string) ($validated['cv'] ?? '')),
             'language' => (string) ($validated['language'] ?? ''),
             'template' => isset($validated['template']) ? (string) $validated['template'] : '',
+            'created_by' => trim((string) ($validated['created_by'] ?? '')),
             'updated_date' => (string) ($validated['updated_date'] ?? ''),
         ];
     }

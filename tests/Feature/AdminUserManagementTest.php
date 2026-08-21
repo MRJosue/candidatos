@@ -128,6 +128,48 @@ class AdminUserManagementTest extends TestCase
         $this->assertSame($owner->id, $user->account_owner_id);
     }
 
+    public function test_admin_cannot_create_subordinate_without_account_owner(): void
+    {
+        Role::findOrCreate('admin');
+        Role::findOrCreate('usuario_subordinado');
+
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.store'), [
+                'name' => 'Nueva Reclutadora',
+                'email' => 'nueva.reclutadora@example.com',
+                'password' => 'password-seguro',
+                'password_confirmation' => 'password-seguro',
+                'roles' => ['usuario_subordinado'],
+            ])
+            ->assertSessionHasErrors('account_owner_id');
+
+        $this->assertDatabaseMissing('users', [
+            'email' => 'nueva.reclutadora@example.com',
+        ]);
+    }
+
+    public function test_admin_cannot_update_subordinate_without_account_owner(): void
+    {
+        Role::findOrCreate('admin');
+        Role::findOrCreate('usuario_subordinado');
+
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $account = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->patch(route('admin.users.update', $account), [
+                'roles' => ['usuario_subordinado'],
+            ])
+            ->assertSessionHasErrors('account_owner_id');
+
+        $this->assertFalse($account->fresh()->hasRole('usuario_subordinado'));
+        $this->assertNull($account->fresh()->account_owner_id);
+    }
+
     public function test_admin_can_impersonate_user_from_users_index(): void
     {
         Role::findOrCreate('admin');
