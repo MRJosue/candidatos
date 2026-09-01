@@ -13,6 +13,7 @@ use App\Services\CvDocumentImportService;
 use App\Services\CvTranslationService;
 use App\Services\CvUsageService;
 use App\Services\CvWordDocumentService;
+use App\Support\CvPeriodParser;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
@@ -1163,7 +1164,7 @@ class CvProfileController extends Controller
                     implode(' | ', array_filter([
                         $experience->position,
                         $experience->company,
-                        $this->periodFromDates($experience->start_date?->format('Y'), $experience->end_date?->format('Y'), $experience->is_current),
+                        $this->periodFromDates($experience->start_date, $experience->end_date, $experience->is_current),
                     ])),
                     $experience->description,
                     filled($experience->tools_used) ? 'Herramientas Utilizadas: '.$experience->tools_used : null,
@@ -1174,7 +1175,7 @@ class CvProfileController extends Controller
                     implode(' | ', array_filter([
                         $education->degree,
                         $education->institution,
-                        $this->periodFromDates($education->start_date?->format('Y'), $education->end_date?->format('Y'), false),
+                        $this->periodFromDates($education->start_date, $education->end_date, false),
                     ])),
                     $education->description,
                 ]))))
@@ -1456,13 +1457,9 @@ class CvProfileController extends Controller
             ->all();
     }
 
-    private function periodFromDates(?string $startYear, ?string $endYear, bool $isCurrent): ?string
+    private function periodFromDates(mixed $startDate, mixed $endDate, bool $isCurrent): ?string
     {
-        if (! $startYear && ! $endYear && ! $isCurrent) {
-            return null;
-        }
-
-        return trim(($startYear ?: '').' - '.($isCurrent ? 'presente' : ($endYear ?: '')));
+        return CvPeriodParser::textFromDates($startDate, $endDate, $isCurrent);
     }
 
     /**
@@ -1470,15 +1467,7 @@ class CvProfileController extends Controller
      */
     private function periodDates(?string $period, bool $requiresStartDate): array
     {
-        preg_match_all('/(?:19|20)\d{2}/', $period ?? '', $matches);
-        $years = $matches[0] ?? [];
-        $isCurrent = (bool) preg_match('/actual|presente|present/i', $period ?? '');
-
-        return [
-            'start_date' => isset($years[0]) ? "{$years[0]}-01-01" : ($requiresStartDate ? now()->startOfYear()->toDateString() : null),
-            'end_date' => (! $isCurrent && isset($years[1])) ? "{$years[1]}-12-31" : null,
-            'is_current' => $isCurrent,
-        ];
+        return CvPeriodParser::dates($period, $requiresStartDate);
     }
 
     private function indexFilters(Request $request): array

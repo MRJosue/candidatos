@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CvProfile;
 use App\Models\CvTemplate;
 use App\Models\Talent;
+use App\Support\CvPeriodParser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -153,7 +154,7 @@ class PublicTalentProfileController extends Controller
                     implode(' | ', array_filter([
                         $experience->position,
                         $experience->company,
-                        $this->periodFromDates($experience->start_date?->format('Y'), $experience->end_date?->format('Y'), $experience->is_current),
+                        $this->periodFromDates($experience->start_date, $experience->end_date, $experience->is_current),
                     ])),
                     $experience->description,
                 ]))))
@@ -163,7 +164,7 @@ class PublicTalentProfileController extends Controller
                     implode(' | ', array_filter([
                         $education->degree,
                         $education->institution,
-                        $this->periodFromDates($education->start_date?->format('Y'), $education->end_date?->format('Y'), false),
+                        $this->periodFromDates($education->start_date, $education->end_date, false),
                     ])),
                     $education->description,
                 ]))))
@@ -283,13 +284,9 @@ class PublicTalentProfileController extends Controller
             ->all();
     }
 
-    private function periodFromDates(?string $startYear, ?string $endYear, bool $isCurrent): ?string
+    private function periodFromDates(mixed $startDate, mixed $endDate, bool $isCurrent): ?string
     {
-        if (! $startYear && ! $endYear && ! $isCurrent) {
-            return null;
-        }
-
-        return trim(($startYear ?: '').' - '.($isCurrent ? 'presente' : ($endYear ?: '')));
+        return CvPeriodParser::textFromDates($startDate, $endDate, $isCurrent);
     }
 
     /**
@@ -297,15 +294,7 @@ class PublicTalentProfileController extends Controller
      */
     private function periodDates(?string $period, bool $requiresStartDate): array
     {
-        preg_match_all('/(?:19|20)\d{2}/', $period ?? '', $matches);
-        $years = $matches[0] ?? [];
-        $isCurrent = (bool) preg_match('/actual|presente|present/i', $period ?? '');
-
-        return [
-            'start_date' => isset($years[0]) ? "{$years[0]}-01-01" : ($requiresStartDate ? now()->startOfYear()->toDateString() : null),
-            'end_date' => (! $isCurrent && isset($years[1])) ? "{$years[1]}-12-31" : null,
-            'is_current' => $isCurrent,
-        ];
+        return CvPeriodParser::dates($period, $requiresStartDate);
     }
 
     private function splitList(?string $value): ?array

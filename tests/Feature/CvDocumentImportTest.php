@@ -374,6 +374,42 @@ class CvDocumentImportTest extends TestCase
         ]);
     }
 
+    public function test_section_import_preserves_month_year_periods(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = CvProfile::create([
+            'user_id' => $user->id,
+            'title' => 'CV con meses',
+            'full_name' => 'Eduardo Garza',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $this->actingAs($user)
+            ->put(route('cv.sections.update', $profile), [
+                'experiences_text' => implode("\n", [
+                    'Business Analyst | ACT Digital | 02/2024-03/2026',
+                    'Analisis funcional y seguimiento de requerimientos.',
+                ]),
+                'education_text' => 'Licenciatura | Universidad Demo | 08/2004 - 05/2007',
+            ])
+            ->assertRedirect(route('cv.edit', $profile))
+            ->assertSessionHasNoErrors();
+
+        $experience = $profile->fresh()->experiences()->firstOrFail();
+        $education = $profile->fresh()->education()->firstOrFail();
+
+        $this->assertSame('Business Analyst', $experience->position);
+        $this->assertSame('ACT Digital', $experience->company);
+        $this->assertSame('2024-02-01', $experience->start_date->toDateString());
+        $this->assertSame('2026-03-31', $experience->end_date->toDateString());
+
+        $this->assertSame('Licenciatura', $education->degree);
+        $this->assertSame('Universidad Demo', $education->institution);
+        $this->assertSame('2004-08-01', $education->start_date->toDateString());
+        $this->assertSame('2007-05-31', $education->end_date->toDateString());
+    }
+
     public function test_user_can_save_large_imported_section_text(): void
     {
         $user = User::factory()->create();
