@@ -219,6 +219,8 @@ class CvProfileController extends Controller
 
         if ($import && $request->boolean('apply_document_import')) {
             $importApplyOptions = $this->validatedImportApplyOptions($request);
+            // In create flow, profile fields are already editable form inputs.
+            $importApplyOptions['apply_profile'] = false;
             $this->validateImportedDataForApply($import['parsed'] ?? [], $importApplyOptions);
         }
 

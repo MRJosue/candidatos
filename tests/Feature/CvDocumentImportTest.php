@@ -731,7 +731,7 @@ class CvDocumentImportTest extends TestCase
         ]);
     }
 
-    public function test_create_cv_validates_imported_profile_before_applying_detected_data(): void
+    public function test_create_cv_keeps_edited_profile_fields_when_applying_detected_data(): void
     {
         $user = User::factory()->create();
         $sessionKey = "cv_document_import.create.{$user->id}";
@@ -745,6 +745,7 @@ class CvDocumentImportTest extends TestCase
                             'full_name' => 'Jafet Omaña Zarco',
                             'headline' => str_repeat('A', 181),
                         ],
+                        'skills' => ['Apex'],
                     ],
                 ],
             ])
@@ -752,18 +753,23 @@ class CvDocumentImportTest extends TestCase
             ->post(route('cv.store'), [
                 'title' => 'CV Jafet',
                 'full_name' => 'Jafet Omaña Zarco',
+                'headline' => 'Senior Salesforce Developer',
                 'apply_document_import' => '1',
                 'apply_profile' => '1',
+                'apply_skills' => '1',
             ])
-            ->assertRedirect(route('cv.create'))
-            ->assertSessionHas($sessionKey)
-            ->assertSessionHasErrors([
-                'headline' => 'Problema en titular profesional: el texto es demasiado largo. Máximo permitido: 180 caracteres.',
-            ]);
+            ->assertRedirect(route('talents.index'))
+            ->assertSessionHasNoErrors()
+            ->assertSessionMissing($sessionKey);
 
-        $this->assertDatabaseMissing('cv_profiles', [
+        $this->assertDatabaseHas('cv_profiles', [
             'user_id' => $user->id,
             'title' => 'CV Jafet',
+            'headline' => 'Senior Salesforce Developer',
+        ]);
+        $this->assertDatabaseHas('cv_skills', [
+            'name' => 'Apex',
+            'type' => 'skill',
         ]);
     }
 
