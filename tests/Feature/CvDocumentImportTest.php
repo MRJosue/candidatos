@@ -652,6 +652,121 @@ class CvDocumentImportTest extends TestCase
         ]);
     }
 
+    public function test_apply_document_import_validates_profile_fields_before_saving(): void
+    {
+        $user = User::factory()->create();
+        $profile = CvProfile::create([
+            'user_id' => $user->id,
+            'title' => 'CV IA',
+            'full_name' => 'Nombre anterior',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $sessionKey = "cv_document_import.{$profile->id}";
+
+        $this->actingAs($user)
+            ->withSession([
+                $sessionKey => [
+                    'original_name' => 'cv-ai.txt',
+                    'parsed' => [
+                        'profile' => [
+                            'full_name' => 'Andrea IA',
+                            'headline' => str_repeat('A', 181),
+                        ],
+                    ],
+                ],
+            ])
+            ->from(route('cv.edit', $profile))
+            ->post(route('cv.apply-document-import', $profile), [
+                'apply_profile' => '1',
+            ])
+            ->assertRedirect(route('cv.edit', $profile))
+            ->assertSessionHas($sessionKey)
+            ->assertSessionHasErrors([
+                'headline' => 'Problema en titular profesional: el texto es demasiado largo. Máximo permitido: 180 caracteres.',
+            ]);
+
+        $this->assertDatabaseHas('cv_profiles', [
+            'id' => $profile->id,
+            'full_name' => 'Nombre anterior',
+        ]);
+    }
+
+    public function test_apply_document_import_validates_section_items_before_saving(): void
+    {
+        $user = User::factory()->create();
+        $profile = CvProfile::create([
+            'user_id' => $user->id,
+            'title' => 'CV IA',
+            'full_name' => 'Nombre anterior',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $sessionKey = "cv_document_import.{$profile->id}";
+
+        $this->actingAs($user)
+            ->withSession([
+                $sessionKey => [
+                    'original_name' => 'cv-ai.txt',
+                    'parsed' => [
+                        'skills' => [
+                            str_repeat('A', 256),
+                        ],
+                    ],
+                ],
+            ])
+            ->from(route('cv.edit', $profile))
+            ->post(route('cv.apply-document-import', $profile), [
+                'apply_skills' => '1',
+            ])
+            ->assertRedirect(route('cv.edit', $profile))
+            ->assertSessionHas($sessionKey)
+            ->assertSessionHasErrors([
+                'skills_text' => 'Problema en habilidades: un elemento detectado es demasiado largo. Máximo permitido: 255 caracteres.',
+            ]);
+
+        $this->assertDatabaseMissing('cv_skills', [
+            'cv_profile_id' => $profile->id,
+            'type' => 'skill',
+        ]);
+    }
+
+    public function test_create_cv_validates_imported_profile_before_applying_detected_data(): void
+    {
+        $user = User::factory()->create();
+        $sessionKey = "cv_document_import.create.{$user->id}";
+
+        $this->actingAs($user)
+            ->withSession([
+                $sessionKey => [
+                    'original_name' => 'cv-ai.txt',
+                    'parsed' => [
+                        'profile' => [
+                            'full_name' => 'Jafet Omaña Zarco',
+                            'headline' => str_repeat('A', 181),
+                        ],
+                    ],
+                ],
+            ])
+            ->from(route('cv.create'))
+            ->post(route('cv.store'), [
+                'title' => 'CV Jafet',
+                'full_name' => 'Jafet Omaña Zarco',
+                'apply_document_import' => '1',
+                'apply_profile' => '1',
+            ])
+            ->assertRedirect(route('cv.create'))
+            ->assertSessionHas($sessionKey)
+            ->assertSessionHasErrors([
+                'headline' => 'Problema en titular profesional: el texto es demasiado largo. Máximo permitido: 180 caracteres.',
+            ]);
+
+        $this->assertDatabaseMissing('cv_profiles', [
+            'user_id' => $user->id,
+            'title' => 'CV Jafet',
+        ]);
+    }
+
     public function test_user_can_analyze_document_with_ai_before_creating_cv(): void
     {
         config()->set('services.gemini.key', 'test-key');

@@ -214,8 +214,15 @@ class CvProfileController extends Controller
         $this->ensureTalentCanReceiveCv($talent);
 
         $sectionData = $this->validatedSectionText($request);
+        $import = session($this->createDocumentImportSessionKey());
+        $importApplyOptions = [];
 
-        $profile = DB::transaction(function () use ($request, $talent, $data, $sectionData): CvProfile {
+        if ($import && $request->boolean('apply_document_import')) {
+            $importApplyOptions = $this->validatedImportApplyOptions($request);
+            $this->validateImportedDataForApply($import['parsed'] ?? [], $importApplyOptions);
+        }
+
+        $profile = DB::transaction(function () use ($request, $talent, $data, $sectionData, $import, $importApplyOptions): CvProfile {
             $profile = $request->user()->cvProfiles()->create([
                 ...$this->profileDataForStorage($data),
                 'talent_id' => $talent?->id,
@@ -224,22 +231,23 @@ class CvProfileController extends Controller
                 'section_order' => CvProfile::defaultSectionOrder(),
             ]);
 
-            $import = session($this->createDocumentImportSessionKey());
-
             if ($import) {
                 if ($request->boolean('apply_document_import')) {
-                    $this->applyImportedData($profile, $import['parsed'] ?? [], $this->validatedImportApplyOptions($request));
+                    $this->applyImportedData($profile, $import['parsed'] ?? [], $importApplyOptions);
                 } elseif ($this->hasSectionTextInput($request)) {
                     $this->replaceSectionsFromText($profile, $sectionData);
                 }
 
-                session()->forget($this->createDocumentImportSessionKey());
             } elseif ($this->hasSectionTextInput($request)) {
                 $this->replaceSectionsFromText($profile, $sectionData);
             }
 
             return $profile;
         });
+
+        if ($import) {
+            session()->forget($this->createDocumentImportSessionKey());
+        }
 
         return redirect()
             ->route('talents.index')
@@ -525,6 +533,8 @@ class CvProfileController extends Controller
 
         $parsed = $import['parsed'] ?? [];
 
+        $this->validateImportedDataForApply($parsed, $data);
+
         DB::transaction(fn () => $this->applyImportedData($cvProfile, $parsed, $data));
 
         session()->forget($this->documentImportSessionKey($cvProfile));
@@ -697,6 +707,141 @@ class CvProfileController extends Controller
                 'certifications_text' => 'certificaciones',
             ],
         )->validate();
+    }
+
+    private function validateImportedDataForApply(array $parsed, array $data): void
+    {
+        if ($data['apply_profile'] ?? false) {
+            $profileRules = collect((new StoreCvProfileRequest())->rules())
+                ->only([
+                    'full_name',
+                    'email',
+                    'phone',
+                    'location',
+                    'headline',
+                    'summary',
+                    'awards',
+                    'linkedin_url',
+                    'portfolio_url',
+                ])
+                ->all();
+
+            Validator::make(
+                $this->profileImportData($parsed['profile'] ?? []),
+                $profileRules,
+                (new StoreCvProfileRequest())->messages(),
+                (new StoreCvProfileRequest())->attributes(),
+            )->validate();
+        }
+
+        $sectionText = $this->sectionTextFromImport(['parsed' => $parsed]);
+        $selectedSectionText = [];
+
+        if ($data['apply_experiences'] ?? false) {
+            $selectedSectionText['experiences_text'] = $sectionText['experiences'] ?? '';
+            $this->ensureImportedExperienceItemsFit($parsed['experiences'] ?? []);
+        }
+
+        if ($data['apply_education'] ?? false) {
+            $selectedSectionText['education_text'] = $sectionText['education'] ?? '';
+            $this->ensureImportedEducationItemsFit($parsed['education'] ?? []);
+        }
+
+        if ($data['apply_software'] ?? false) {
+            $selectedSectionText['software_text'] = $sectionText['software'] ?? '';
+            $this->ensureImportedListItemsFit($parsed['software'] ?? [], 'software_text', 'software');
+        }
+
+        if ($data['apply_skills'] ?? false) {
+            $selectedSectionText['skills_text'] = $sectionText['skills'] ?? '';
+            $this->ensureImportedListItemsFit($parsed['skills'] ?? [], 'skills_text', 'habilidades');
+        }
+
+        if ($data['apply_languages'] ?? false) {
+            $selectedSectionText['languages_text'] = $sectionText['languages'] ?? '';
+            $this->ensureImportedListItemsFit($parsed['languages'] ?? [], 'languages_text', 'idiomas');
+        }
+
+        if ($data['apply_certifications'] ?? false) {
+            $selectedSectionText['certifications_text'] = $sectionText['certifications'] ?? '';
+            $this->ensureImportedListItemsFit($parsed['awards'] ?? [], 'certifications_text', 'certificaciones');
+        }
+
+        Validator::make(
+            $selectedSectionText,
+            [
+                'experiences_text' => ['nullable', 'string', 'max:'.self::SECTION_TEXT_LIMITS['experiences_text']],
+                'education_text' => ['nullable', 'string', 'max:'.self::SECTION_TEXT_LIMITS['education_text']],
+                'software_text' => ['nullable', 'string', 'max:'.self::SECTION_TEXT_LIMITS['software_text']],
+                'skills_text' => ['nullable', 'string', 'max:'.self::SECTION_TEXT_LIMITS['skills_text']],
+                'languages_text' => ['nullable', 'string', 'max:'.self::SECTION_TEXT_LIMITS['languages_text']],
+                'certifications_text' => ['nullable', 'string', 'max:'.self::SECTION_TEXT_LIMITS['certifications_text']],
+            ],
+            [
+                'max' => 'Problema en :attribute: el texto es demasiado largo. Máximo permitido: :max caracteres.',
+            ],
+            [
+                'experiences_text' => 'experiencia',
+                'education_text' => 'educación',
+                'software_text' => 'software',
+                'skills_text' => 'habilidades',
+                'languages_text' => 'idiomas',
+                'certifications_text' => 'certificaciones',
+            ],
+        )->validate();
+    }
+
+    private function ensureImportedExperienceItemsFit(mixed $items): void
+    {
+        foreach (array_values(is_array($items) ? $items : []) as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $position = $this->importValue($item, ['position', 'title'], 'Puesto por revisar');
+            $company = $this->importValue($item, ['company', 'organization'], 'Empresa por revisar');
+
+            if (mb_strlen($position) > 255 || mb_strlen($company) > 255) {
+                throw ValidationException::withMessages([
+                    'experiences_text' => 'Problema en experiencia: un puesto o empresa detectado es demasiado largo. Máximo permitido: 255 caracteres.',
+                ]);
+            }
+        }
+    }
+
+    private function ensureImportedEducationItemsFit(mixed $items): void
+    {
+        foreach (array_values(is_array($items) ? $items : []) as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $degree = $this->importValue($item, ['degree', 'title'], 'Estudio por revisar');
+            $institution = $this->importValue($item, ['institution', 'organization'], 'Institucion por revisar');
+
+            if (mb_strlen($degree) > 255 || mb_strlen($institution) > 255) {
+                throw ValidationException::withMessages([
+                    'education_text' => 'Problema en educación: un estudio o institución detectado es demasiado largo. Máximo permitido: 255 caracteres.',
+                ]);
+            }
+        }
+    }
+
+    private function ensureImportedListItemsFit(mixed $items, string $field, string $label): void
+    {
+        foreach (array_values(is_array($items) ? $items : []) as $item) {
+            if (! is_scalar($item) && $item !== null) {
+                throw ValidationException::withMessages([
+                    $field => "Problema en {$label}: se detectó un elemento con formato inválido. Revísalo antes de aplicar.",
+                ]);
+            }
+
+            if (mb_strlen(trim((string) $item)) > 255) {
+                throw ValidationException::withMessages([
+                    $field => "Problema en {$label}: un elemento detectado es demasiado largo. Máximo permitido: 255 caracteres.",
+                ]);
+            }
+        }
     }
 
     private function hasSectionTextInput(Request $request): bool
