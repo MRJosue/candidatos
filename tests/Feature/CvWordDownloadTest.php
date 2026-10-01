@@ -72,6 +72,46 @@ class CvWordDownloadTest extends TestCase
         $this->assertGreaterThan($certificationsPosition, $awardPosition);
     }
 
+    public function test_user_cannot_download_word_document_when_cv_has_no_sections(): void
+    {
+        $user = User::factory()->create();
+        $profile = CvProfile::create([
+            'user_id' => $user->id,
+            'title' => 'CV Rafael Chacolla',
+            'full_name' => 'RAFAEL JULIAN CHACOLLA HUARINGA',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->from(route('cv.show', $profile))
+            ->get(route('cv.download-word', $profile))
+            ->assertRedirect(route('cv.show', $profile))
+            ->assertSessionHasErrors([
+                'cv_download' => 'Este CV solo tiene datos basicos y no contiene secciones para descargar. Reimporta el DOCX original o completa resumen, experiencia, educacion o habilidades antes de descargar.',
+            ]);
+    }
+
+    public function test_user_cannot_download_pdf_when_cv_has_no_sections(): void
+    {
+        $user = User::factory()->create();
+        $profile = CvProfile::create([
+            'user_id' => $user->id,
+            'title' => 'CV Rafael Chacolla',
+            'full_name' => 'RAFAEL JULIAN CHACOLLA HUARINGA',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->from(route('cv.show', $profile))
+            ->get(route('cv.download', $profile))
+            ->assertRedirect(route('cv.show', $profile))
+            ->assertSessionHasErrors([
+                'cv_download' => 'Este CV solo tiene datos basicos y no contiene secciones para descargar. Reimporta el DOCX original o completa resumen, experiencia, educacion o habilidades antes de descargar.',
+            ]);
+    }
+
     public function test_user_can_download_selected_talent_cvs_as_word_zip(): void
     {
         $user = User::factory()->create();

@@ -57,12 +57,12 @@ class StoreCvProfileRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'max.string' => 'El campo :attribute es demasiado largo. Reduce un poco el texto o divídelo en secciones.',
-            'summary.max' => 'El campo resumen profesional es demasiado largo. Reduce un poco el texto o divídelo en secciones.',
-            'objective.max' => 'El campo objetivo profesional es demasiado largo. Reduce un poco el texto o divídelo en secciones.',
-            'awards.max' => 'El campo certificaciones es demasiado largo. Reduce un poco el texto o divídelo en secciones.',
-            'leadership_activities.max' => 'El campo actividades de liderazgo es demasiado largo. Reduce un poco el texto o divídelo en secciones.',
-            'interests.max' => 'El campo intereses es demasiado largo. Reduce un poco el texto o divídelo en secciones.',
+            'max' => 'Problema en :attribute: el texto es demasiado largo. Máximo permitido: :max caracteres.',
+            'summary.max' => 'Problema en resumen profesional: el texto es demasiado largo. Máximo permitido: :max caracteres.',
+            'objective.max' => 'Problema en objetivo profesional: el texto es demasiado largo. Máximo permitido: :max caracteres.',
+            'awards.max' => 'Problema en certificaciones: el texto es demasiado largo. Máximo permitido: :max caracteres.',
+            'leadership_activities.max' => 'Problema en actividades de liderazgo: el texto es demasiado largo. Máximo permitido: :max caracteres.',
+            'interests.max' => 'Problema en intereses: el texto es demasiado largo. Máximo permitido: :max caracteres.',
             'required' => 'El campo :attribute es obligatorio.',
             'email' => 'El campo :attribute debe ser un correo válido.',
             'url' => 'El campo :attribute debe ser una URL válida.',

@@ -458,7 +458,51 @@ class CvDocumentImportTest extends TestCase
                 'summary' => str_repeat('A', StoreCvProfileRequest::LARGE_TEXT_MAX + 1),
             ])
             ->assertSessionHasErrors([
-                'summary' => 'El campo resumen profesional es demasiado largo. Reduce un poco el texto o divídelo en secciones.',
+                'summary' => 'Problema en resumen profesional: el texto es demasiado largo. Máximo permitido: 12000 caracteres.',
+            ]);
+    }
+
+    public function test_cv_update_shows_field_name_when_headline_is_too_long(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = CvProfile::create([
+            'user_id' => $user->id,
+            'title' => 'CV headline largo',
+            'full_name' => 'Carlos Poucell Arrona',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $this->actingAs($user)
+            ->put(route('cv.update', $profile), [
+                'title' => 'CV headline largo',
+                'full_name' => 'Carlos Poucell Arrona',
+                'headline' => str_repeat('A', 181),
+            ])
+            ->assertSessionHasErrors([
+                'headline' => 'Problema en titular profesional: el texto es demasiado largo. Máximo permitido: 180 caracteres.',
+            ]);
+    }
+
+    public function test_cv_update_shows_field_name_when_section_text_is_too_long(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = CvProfile::create([
+            'user_id' => $user->id,
+            'title' => 'CV habilidades largo',
+            'full_name' => 'Carlos Poucell Arrona',
+            'section_order' => CvProfile::defaultSectionOrder(),
+        ]);
+
+        $this->actingAs($user)
+            ->put(route('cv.update', $profile), [
+                'title' => 'CV habilidades largo',
+                'full_name' => 'Carlos Poucell Arrona',
+                'skills_text' => str_repeat('A', 20001),
+            ])
+            ->assertSessionHasErrors([
+                'skills_text' => 'Problema en habilidades: el texto es demasiado largo. Máximo permitido: 20000 caracteres.',
             ]);
     }
 

@@ -576,6 +576,12 @@ class CvProfileController extends Controller
 
         $profile->load(['template', 'experiences', 'education', 'skills']);
 
+        if (! $this->hasDownloadableContent($profile)) {
+            return back()->withErrors([
+                'cv_download' => 'Este CV solo tiene datos basicos y no contiene secciones para descargar. Reimporta el DOCX original o completa resumen, experiencia, educacion o habilidades antes de descargar.',
+            ]);
+        }
+
         $paper = $profile->template?->slug === 'academico-bullet' ? 'letter' : 'a4';
 
         return Pdf::loadView('cv.pdf', compact('profile'))
@@ -599,10 +605,30 @@ class CvProfileController extends Controller
 
         $profile->load(['template', 'experiences', 'education', 'skills']);
 
+        if (! $this->hasDownloadableContent($profile)) {
+            return back()->withErrors([
+                'cv_download' => 'Este CV solo tiene datos basicos y no contiene secciones para descargar. Reimporta el DOCX original o completa resumen, experiencia, educacion o habilidades antes de descargar.',
+            ]);
+        }
+
         return response($wordDocumentService->output($profile), 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'Content-Disposition' => 'attachment; filename="'.(str($profile->title ?: $profile->full_name)->slug()->value() ?: 'cv-'.$profile->id).'.docx"',
         ]);
+    }
+
+    private function hasDownloadableContent(CvProfile $profile): bool
+    {
+        return filled($profile->summary)
+            || filled($profile->objective)
+            || filled($profile->headline)
+            || filled($profile->tagline)
+            || filled($profile->awards)
+            || filled($profile->leadership_activities)
+            || filled($profile->interests)
+            || $profile->experiences->isNotEmpty()
+            || $profile->education->isNotEmpty()
+            || $profile->skills->isNotEmpty();
     }
 
     private function validatedTalent(Request $request): ?Talent
@@ -660,7 +686,7 @@ class CvProfileController extends Controller
                 'certifications_text' => ['nullable', 'string', 'max:'.self::SECTION_TEXT_LIMITS['certifications_text']],
             ],
             [
-                'max.string' => 'El campo :attribute es demasiado largo. Puedes pegar bastante contenido, pero este bloque excede el límite permitido.',
+                'max' => 'Problema en :attribute: el texto es demasiado largo. Máximo permitido: :max caracteres.',
             ],
             [
                 'experiences_text' => 'experiencia',
